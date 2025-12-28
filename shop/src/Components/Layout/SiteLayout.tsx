@@ -163,6 +163,26 @@ export default function SiteLayout({ children }: Props) {
 
 function ColorSchemeToggle() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Evitar hidratación mismatch: solo renderizar después del mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Durante SSR, renderizar un estado neutral
+  if (!mounted) {
+    return (
+      <ActionIcon
+        variant="light"
+        aria-label="Toggle color scheme"
+        title="Cambiar tema"
+      >
+        <span style={{ fontSize: 18 }}>🌙</span>
+      </ActionIcon>
+    );
+  }
+
   const isDark = colorScheme === "dark";
   return (
     <ActionIcon
