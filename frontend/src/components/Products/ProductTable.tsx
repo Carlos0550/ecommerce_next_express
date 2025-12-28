@@ -22,7 +22,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
   const {
     // Estado
     search,
-    currentPage,
     searchParams,
     products,
     pagination,
