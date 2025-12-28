@@ -1,174 +1,99 @@
-import { theme } from '@/theme';
-import { Box, Flex, Paper, TextInput, Loader, Text, Button, ActionIcon, Badge, Group, Image, ScrollArea, Stack, Table, Select, Pagination, Modal, Textarea } from '@mantine/core';
+import { Box, Flex, Loader, Text, Pagination, Modal } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { useState, useEffect } from 'react';
-import { FiPlus, FiSearch, FiEdit, FiEye, FiTrash} from 'react-icons/fi';
-import { useDeleteProduct, useGetAllProducts, useUpdateProductStock, useEnhanceProductContent, useUpdateProduct, type GetProductsParams, type Product, type ProductState } from '@/components/Api/ProductsApi';
+import { theme } from '@/theme';
+import { useProductTable } from './hooks/useProductTable';
+import { ProductTableFilters } from './components/ProductTableFilters';
+import { ProductTableMobile } from './components/ProductTableMobile';
+import { ProductTableDesktop } from './components/ProductTableDesktop';
+import { ProductViewModal } from './components/ProductViewModal';
+import { EnhanceProductModal } from './components/EnhanceProductModal';
+import { StockModal } from './components/StockModal';
 import ModalWrapper from '@/components/Common/ModalWrapper';
-import dummyImage from '@/assets/dummy_image.png';
 import ProductForm from './ProductForm';
 
 
-function ProductTable({
-  setAddOpened
-}: {
+interface ProductTableProps {
   setAddOpened: (opened: boolean) => void;
-}) {
-  const deleteProductMutation = useDeleteProduct();
-  const updateStockMutation = useUpdateProductStock();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [updatingId] = useState<string | null>(null);
+}
 
-  const [search, setSearch] = useState<string>("");
+function ProductTable({ setAddOpened }: ProductTableProps) {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
+  
+  const {
+    // Estado
+    search,
+    currentPage,
+    searchParams,
+    products,
+    pagination,
+    isLoading,
+    isError,
+    
+    // Estados de UI
+    viewOpened,
+    selected,
+    editing,
+    stockModalOpen,
+    stockValue,
+    enhanceOpen,
+    enhanceTitle,
+    enhanceDescription,
+    additionalContext,
+    deletingId,
+    
+    // Mutations
+    deleteProductMutation,
+    updateStockMutation,
+    enhanceMutation,
+    updateProductDetailsMutation,
+    
+    // Setters
+    setSearch,
+    setCurrentPage,
+    setStockValue,
+    setAdditionalContext,
+    setEnhanceTitle,
+    setEnhanceDescription,
+    
+    // Handlers
+    handleViewProduct,
+    handleEditProduct,
+    handleCloseView,
+    handleDeleteProduct,
+    handleOpenStockModal,
+    handleCloseStockModal,
+    handleUpdateStock,
+    handleOpenEnhance,
+    handleRegenerateEnhance,
+    handleApplyEnhance,
+    handleCloseEnhance,
+    handleLimitChange,
+    handleStateChange,
+    handleSortByChange,
+    handleSortOrderChange,
+  } = useProductTable();
 
-  const [viewOpened, setViewOpened] = useState<boolean>(false);
-  const [selected, setSelected] = useState<Product | null>(null);
-
-  const [searchParams, setSearchParams] = useState<GetProductsParams>({
-    page: 1,
-    limit: 10,
-    state: 'active',
-    sortBy: undefined,
-    sortOrder: undefined,
-    isActive: undefined,
-    categoryId: undefined,
-  });
-
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [stockModalOpen, setStockModalOpen] = useState<boolean>(false);
-  const [stockProductId, setStockProductId] = useState<string | null>(null);
-  const [stockValue, setStockValue] = useState<string>("1");
-  const [enhanceOpen, setEnhanceOpen] = useState<boolean>(false);
-  const [enhanceTitle, setEnhanceTitle] = useState<string>("");
-  const [enhanceDescription, setEnhanceDescription] = useState<string>("");
-  const enhanceMutation = useEnhanceProductContent();
-  const updateProductDetailsMutation = useUpdateProduct();
-  const [additionalContext, setAdditionalContext] = useState<string>("");
-
-  const [currentPage, setCurrentPage] = useState<number>(1);
-
-  useEffect(() => {
-    setSearchParams(prev => ({
-      ...prev,
-      page: currentPage,
-    }));
-  }, [currentPage]);
-
-  useEffect(() => {
-    setSearchParams(prev => {
-      const next = { ...prev };
-      if (search.trim()) {
-        next.title = search.trim();
-      } else {
-        delete next.title;
-      }
-      return next;
-    });
-  }, [search]);
-
-  const { data, isLoading, isError } = useGetAllProducts(searchParams);
-  const products: Product[] = data?.products ?? [];
-  const pagination = data?.pagination;
-
-  useEffect(() => {
-    if (pagination?.totalPages && currentPage > pagination.totalPages) {
-      setCurrentPage(pagination.totalPages);
+  const handleUpdateStockWithValue = () => {
+    const qty = parseInt(stockValue, 10);
+    if (Number.isFinite(qty) && qty >= 0) {
+      handleUpdateStock(qty);
     }
-  }, [pagination, currentPage]);
-
-  const renderBadgeByState = (state: ProductState) => {
-    switch (state) {
-      case 'active':
-        return <Badge variant="light" color="green">Activo</Badge>;
-      case 'inactive':
-        return <Badge variant="light" color="gray">Inactivo</Badge>;
-      case 'draft':
-        return <Badge variant="light" color="orange">Borrador</Badge>;
-      case 'out_stock':
-        return <Badge variant="light" color="red">Agotado</Badge>;
-      case 'deleted':
-        return <Badge variant="light" color="red">Eliminado</Badge>;
-      default:
-        return null;
-    }
-  }
-
-
-  // const changeProductsStatus = (pr_id: string, status: ProductState) => {
-  //   setUpdatingId(pr_id);
-  //   updateProductStateMutation.mutate(
-  //     { productId: pr_id, state: status },
-  //     { onSettled: () => setUpdatingId(null) }
-  //   );
-  // }
-
-  const openStockModal = (product: Product) => {
-    setStockProductId(product.id);
-    setStockValue(String(typeof product.stock === 'number' ? product.stock : 1));
-    setStockModalOpen(true);
-  }
+  };
   return (
     <Box>
-      <Flex gap={"md"} align="center" mb="md" wrap="wrap">
-        <TextInput
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar producto por nombre"
-          leftSection={<FiSearch />}
-          style={{ flex: "1 1 280px", minWidth: 260, maxWidth: 520 }}
-        />
-        <Button leftSection={<FiPlus />} onClick={() => setAddOpened(true)}>
-          Añadir producto
-        </Button>
-
-        <Select
-          value={String(searchParams.limit)}
-          onChange={(value) => { setSearchParams(prev => ({ ...prev, limit: Number(value) })); setCurrentPage(1); }}
-          label="Mostrar por página"
-          data={[
-            { value: '5', label: '5 por página' },
-            { value: '10', label: '10 por página' },
-            { value: "20", label: '20 por página' },
-            { value: "50", label: '50 por página' },
-          ]}
-        />
-
-        <Select
-          value={String(searchParams.state)}
-          label="Filtrar por estado"
-          onChange={(value) => setSearchParams(prev => ({ ...prev, state: value as ProductState }))}
-          data={[
-            { value: 'active', label: 'Activo' },
-            { value: 'inactive', label: 'Inactivo' },
-            { value: 'draft', label: 'Borrador' },
-            { value: 'out_stock', label: 'Agotado' },
-            { value: 'deleted', label: 'Eliminado' },
-          ]}
-        />
-
-        <Select
-          value={searchParams.sortBy ?? ''}
-          label="Tipo de orden"
-          onChange={(value) => setSearchParams(prev => ({ ...prev, sortBy: value || undefined }))}
-          data={[
-            { value: '', label: 'Ninguno' },
-            { value: 'title', label: 'Nombre' },
-            { value: 'price', label: 'Precio' },
-            { value: 'created_at', label: 'Fecha de creación' },
-          ]}
-        />
-
-        <Select
-          value={searchParams.sortOrder || 'desc'}
-          label="Orden"
-          onChange={(value) => setSearchParams(prev => ({ ...prev, sortOrder: value as "asc" | "desc" }))}
-          data={[
-            { value: 'asc', label: 'Ascendente' },
-            { value: 'desc', label: 'Descendente' },
-          ]}
-        />
-      </Flex>
+      <ProductTableFilters
+        search={search}
+        limit={searchParams.limit || 10}
+        state={searchParams.state || 'active'}
+        sortBy={searchParams.sortBy}
+        sortOrder={searchParams.sortOrder || 'desc'}
+        onSearchChange={setSearch}
+        onLimitChange={handleLimitChange}
+        onStateChange={handleStateChange}
+        onSortByChange={handleSortByChange}
+        onSortOrderChange={handleSortOrderChange}
+        onAddProduct={() => setAddOpened(true)}
+      />
 
       {isLoading ? (
         <Flex justify="center" align="center" h={200}>
@@ -179,184 +104,33 @@ function ProductTable({
       ) : products.length === 0 ? (
         <Text ta="center">No se encontraron productos</Text>
       ) : isMobile ? (
-        <Stack>
-          {products.map((p) => (
-            <Paper key={p.id} withBorder p="sm" radius="md">
-              {searchParams.state === "draft" && (
-                <Text mb={"md"} c={"dimmed"}>Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón " <FiEdit /> editar " en la fila del producto.</Text>
-              )}
-              <Group justify="space-between" align="flex-start">
-                <Group gap="sm" wrap="nowrap">
-                  <Image src={p.images?.[0] || dummyImage} alt={p.title} w={64} h={64} radius="sm" fit="cover" />
-                  <Box>
-                    <Group gap="xs">
-                      {renderBadgeByState(p.state)}
-                    </Group>
-                    <Text c="dimmed">{typeof p.price === 'number' ? `Precio: $${p.price}` : "Precio: —"}</Text>
-                    <Text c="dimmed">{p.stock !== undefined ? `Stock: ${p.stock}` : "Stock: —"}</Text>
-                  </Box>
-                </Group>
-                <Stack gap="xs">
-                  <Group gap={"xs"}>
-                    <ActionIcon variant="light" aria-label="Ver" onClick={() => { setSelected(p); setViewOpened(true); }} loading={isLoading}>
-                      <FiEye />
-                    </ActionIcon>
-                    <ActionIcon color="red" variant="light" aria-label="Eliminar"
-                      onClick={() => { setDeletingId(p.id); deleteProductMutation.mutate(p.id, { onSettled: () => setDeletingId(null) }); }}
-                      loading={deleteProductMutation.isPending && deletingId === p.id}
-                      disabled={deleteProductMutation.isPending && deletingId === p.id}
-                    >
-                      <FiTrash />
-                    </ActionIcon>
-                    <Button size="xs" variant="light" leftSection={<FiEdit />} aria-label="Editar"
-                      onClick={() => { setEditing(p); setViewOpened(true); }}
-                      loading={isLoading}
-                    >
-                      Editar
-                    </Button>
-                  </Group>
-                  <Group gap="xs">
-                    <Button onClick={() => openStockModal(p)}
-                      loading={updateStockMutation.isPending && updatingId === p.id}
-                      disabled={updateStockMutation.isPending && updatingId === p.id}
-                    >
-                      Actualizar stock
-                    </Button>
-                    <Button size="xs" variant="outline" aria-label="Mejorar"
-                      onClick={() => {
-                        setSelected(p);
-                        setEnhanceOpen(true);
-                        setEnhanceTitle("");
-                        setEnhanceDescription("");
-                        setAdditionalContext("");
-                        enhanceMutation.mutate({ productId: p.id, imageUrls: Array.isArray(p.images) ? p.images : [], additionalContext }, {
-                          onSuccess: (resp) => {
-                            if (resp?.proposal) {
-                              setEnhanceTitle(resp.proposal.title || "");
-                              setEnhanceDescription(resp.proposal.description || "");
-                            }
-                          }
-                        });
-                      }}
-                      loading={enhanceMutation.isPending}
-                    >
-                      ✨ Mejorar
-                    </Button>
-                  </Group>
-                </Stack>
-              </Group>
-            </Paper>
-          ))}
-        </Stack>
+        <ProductTableMobile
+          products={products}
+          state={searchParams.state || 'active'}
+          deletingId={deletingId}
+          isDeleting={deleteProductMutation.isPending}
+          isUpdatingStock={updateStockMutation.isPending}
+          isEnhancing={enhanceMutation.isPending}
+          onView={handleViewProduct}
+          onEdit={handleEditProduct}
+          onDelete={handleDeleteProduct}
+          onUpdateStock={handleOpenStockModal}
+          onEnhance={handleOpenEnhance}
+        />
       ) : (
-        <Paper withBorder p="md" radius="md">
-          {searchParams.state === "draft" && (
-            <Text mb={"md"} c={"dimmed"}>Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón " <FiEdit /> editar " en la fila del producto.</Text>
-          )}
-          <ScrollArea>
-            <Table highlightOnHover withTableBorder withColumnBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th style={{ width: 120 }}>Imagen</Table.Th>
-                  <Table.Th>Título</Table.Th>
-                  <Table.Th>Precio</Table.Th>
-                  <Table.Th>Estado</Table.Th>
-                  <Table.Th>Stock</Table.Th>
-                  <Table.Th>Creado</Table.Th>
-                  <Table.Th style={{ width: 440 }}>Acciones</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {products.map((p) => (
-                  <Table.Tr key={p.id}>
-                    <Table.Td>
-                      <Image src={p.images?.[0] || dummyImage} alt={p.title} w={48} h={48} radius="sm" fit="cover" />
-                    </Table.Td>
-                    <Table.Td>
-                      <Text fw={600} style={{ textTransform: 'capitalize' }}>{p.title}</Text>
-                    </Table.Td>
-                    <Table.Td>
-                      {typeof p.price === 'number' ? `$${p.price}` : '—'}
-                    </Table.Td>
-                    <Table.Td>
-
-                      {renderBadgeByState(p.state)}
-                    </Table.Td>
-                    <Table.Td>
-                      {p.stock !== undefined ? p.stock : '—'}
-                    </Table.Td>
-                    <Table.Td>
-                      {p.created_at ? (
-                        <Text c="dimmed">{new Date(p.created_at).toLocaleString()}</Text>
-                      ) : (
-                        <Text c="dimmed">—</Text>
-                      )}
-                    </Table.Td>
-                    <Table.Td>
-                      <Stack gap="xs">
-                        <Group gap={"xs"}>
-                          <ActionIcon variant="light" aria-label="Ver" onClick={() => { setSelected(p); setViewOpened(true); }} loading={isLoading}>
-                            <FiEye />
-                          </ActionIcon>
-                          <ActionIcon color="red" variant="light" aria-label="Eliminar"
-                            onClick={() => { setDeletingId(p.id); deleteProductMutation.mutate(p.id, { onSettled: () => setDeletingId(null) }); }}
-                            loading={deleteProductMutation.isPending && deletingId === p.id}
-                            disabled={deleteProductMutation.isPending && deletingId === p.id}
-                          >
-                            <FiTrash />
-                          </ActionIcon>
-                    <Button size="xs" variant="light" leftSection={<FiEdit />} aria-label="Editar"
-                      onClick={() => { setEditing(p); setViewOpened(true); }}
-                      loading={isLoading}
-                    >
-                      Editar
-                    </Button>
-                    <Button size="xs" variant="outline" aria-label="Mejorar"
-                      onClick={() => {
-                        setSelected(p);
-                        setEnhanceOpen(true);
-                        setEnhanceTitle("");
-                        setEnhanceDescription("");
-                        setAdditionalContext("");
-                        enhanceMutation.mutate({ productId: p.id, imageUrls: Array.isArray(p.images) ? p.images : [], additionalContext }, {
-                          onSuccess: (resp) => {
-                            if (resp?.proposal) {
-                              setEnhanceTitle(resp.proposal.title || "");
-                              setEnhanceDescription(resp.proposal.description || "");
-                            }
-                          }
-                        });
-                      }}
-                      loading={enhanceMutation.isPending}
-                    >
-                      ✨ Mejorar
-                    </Button>
-                    <Button onClick={() => openStockModal(p)}
-                      loading={updateStockMutation.isPending && updatingId === p.id}
-                      disabled={updateStockMutation.isPending && updatingId === p.id}
-                    >
-                      Actualizar stock
-                    </Button>
-                          {/* {p.state !== 'out_stock' && (
-                            <Button onClick={() => changeProductsStatus(p.id, 'out_stock')}
-                              loading={updateProductMutation.isPending && updatingId === p.id}
-                              disabled={updateProductMutation.isPending && updatingId === p.id}
-                            >
-                              Sin stock
-                            </Button>
-                          )} */}
-                        </Group>
-                        {/* <Group gap="xs">
-                          
-                        </Group> */}
-                      </Stack>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </ScrollArea>
-        </Paper>
+        <ProductTableDesktop
+          products={products}
+          state={searchParams.state || 'active'}
+          deletingId={deletingId}
+          isDeleting={deleteProductMutation.isPending}
+          isUpdatingStock={updateStockMutation.isPending}
+          isEnhancing={enhanceMutation.isPending}
+          onView={handleViewProduct}
+          onEdit={handleEditProduct}
+          onDelete={handleDeleteProduct}
+          onUpdateStock={handleOpenStockModal}
+          onEnhance={handleOpenEnhance}
+        />
       )}
 
       {pagination && (
@@ -364,121 +138,66 @@ function ProductTable({
           <Text>
             Página {pagination.page} de {pagination.totalPages} ({pagination.total} productos)
           </Text>
-          <Pagination total={pagination.totalPages || 1} value={pagination.page || 1} onChange={setCurrentPage} disabled={isLoading} withEdges />
+          <Pagination
+            total={pagination.totalPages || 1}
+            value={pagination.page || 1}
+            onChange={setCurrentPage}
+            disabled={isLoading}
+            withEdges
+          />
         </Flex>
       )}
 
-      <Modal opened={stockModalOpen} onClose={() => setStockModalOpen(false)} title="Reponer stock" centered>
-        <Stack>
-          <TextInput label="Cantidad" value={stockValue} onChange={(e) => setStockValue(e.currentTarget.value)} type="number" min={0} />
-          <Group justify="flex-end">
-            <Button variant="light" onClick={() => setStockModalOpen(false)}>Cancelar</Button>
-            <Button onClick={() => {
-              if (!stockProductId) return;
-              const qty = parseInt(stockValue, 10);
-              if (!Number.isFinite(qty) || qty < 0) return;
-              setStockModalOpen(false);
-              updateStockMutation.mutate({ productId: stockProductId, quantity: qty });
-            }}>
-              Guardar
-            </Button>
-          </Group>
-        </Stack>
+      <Modal
+        opened={stockModalOpen}
+        onClose={handleCloseStockModal}
+        title="Reponer stock"
+        centered
+      >
+        <StockModal
+          stockValue={stockValue}
+          isUpdating={updateStockMutation.isPending}
+          onStockValueChange={setStockValue}
+          onSave={handleUpdateStockWithValue}
+          onCancel={handleCloseStockModal}
+        />
       </Modal>
-      <ModalWrapper opened={viewOpened} onClose={() => { setViewOpened(false); setEditing(null); }} title={selected ? selected.title : 'Ver producto'} size="md">
-        {selected && (
-          <Stack>
-            <Group align="flex-start" gap="md" wrap="nowrap">
-              <Image src={selected.images?.[0] || dummyImage} alt={selected.title} w={128} h={128} radius="md" fit="cover" />
-              <Box>
-                <Group gap="xs">
-                  <Text fw={700} size="lg">{selected.title}</Text>
-                  {renderBadgeByState(selected.state)}
-                </Group>
-                <Text c="dimmed">Precio: {typeof selected.price === 'number' ? `$${selected.price}` : '—'}</Text>
-                <Text c="dimmed">Categoría: {selected.category?.title || '—'}</Text>
-              </Box>
-            </Group>
-            {selected.description && (
-              <Box>
-                <Text fw={600}>Descripción</Text>
-                <Text>{selected.description}</Text>
-              </Box>
-            )}
-            {Array.isArray(selected.images) && selected.images.length > 1 && (
-              <Stack>
-                <Text fw={600}>Imágenes</Text>
-                <Group gap="xs">
-                  {selected.images.map((url, idx) => (
-                    <Image key={`${url}-${idx}`} src={url} alt={`Imagen ${idx + 1}`} w={72} h={72} radius="sm" fit="cover" />
-                  ))}
-                </Group>
-              </Stack>
-            )}
-          </Stack>
-        )}
+
+      <ModalWrapper
+        opened={viewOpened}
+        onClose={handleCloseView}
+        title={selected ? selected.title : 'Ver producto'}
+        size="md"
+      >
+        {selected && !editing && <ProductViewModal product={selected} />}
         {editing && (
           <ProductForm
             product={editing}
-            onSuccess={() => {
-              setEditing(null);
-              setViewOpened(false);
-            }}
+            onSuccess={handleCloseView}
           />
         )}
-
       </ModalWrapper>
-      <Modal opened={enhanceOpen} onClose={() => setEnhanceOpen(false)} title="Mejorar título y descripción" centered>
-        <Stack>
-          <Text size="sm" c="dimmed">La IA analizará las imágenes del producto para sugerir mejoras.</Text>
-          <Textarea
-            label="Contexto adicional (opcional)"
-            description="Ej: beneficios clave, materiales, ocasión de uso"
-            value={additionalContext}
-            onChange={(e) => setAdditionalContext(e.currentTarget.value)}
-            autosize
-            minRows={2}
-          />
-          <Group justify="flex-end">
-            <Button
-              variant="light"
-              onClick={() => {
-                if (!selected) return;
-                enhanceMutation.mutate({ productId: selected.id, additionalContext });
-              }}
-              loading={enhanceMutation.isPending}
-            >
-              Re-generar sugerencias
-            </Button>
-          </Group>
-          <TextInput label="Título sugerido" value={enhanceTitle} onChange={(e) => setEnhanceTitle(e.currentTarget.value)} />
-          <Textarea label="Descripción sugerida" value={enhanceDescription} onChange={(e) => setEnhanceDescription(e.currentTarget.value)} autosize minRows={4} />
-          <Group justify="flex-end">
-            <Button
-              onClick={() => {
-                if (!selected) return;
-                updateProductDetailsMutation.mutate({
-                  productId: selected.id,
-                  title: enhanceTitle || selected.title,
-                  description: enhanceDescription || selected.description || "",
-                  price: typeof selected.price === "number" ? selected.price : String(selected.price || ""),
-                  active: selected.active,
-                  category: selected.category?.id,
-                  images: [],
-                  existingImageUrls: Array.isArray(selected.images) ? selected.images : [],
-                  deletedImageUrls: [],
-                  state: selected.state,
-                  options: selected.options || [],
-                }, {
-                  onSuccess: () => setEnhanceOpen(false)
-                });
-              }}
-              loading={updateProductDetailsMutation.isPending}
-            >
-              Aplicar cambios
-            </Button>
-          </Group>
-        </Stack>
+
+      <Modal
+        opened={enhanceOpen}
+        onClose={handleCloseEnhance}
+        title="Mejorar título y descripción"
+        centered
+      >
+        <EnhanceProductModal
+          product={selected}
+          enhanceTitle={enhanceTitle}
+          enhanceDescription={enhanceDescription}
+          additionalContext={additionalContext}
+          isRegenerating={enhanceMutation.isPending}
+          isApplying={updateProductDetailsMutation.isPending}
+          onTitleChange={setEnhanceTitle}
+          onDescriptionChange={setEnhanceDescription}
+          onContextChange={setAdditionalContext}
+          onRegenerate={handleRegenerateEnhance}
+          onApply={handleApplyEnhance}
+          onClose={handleCloseEnhance}
+        />
       </Modal>
     </Box>
   );

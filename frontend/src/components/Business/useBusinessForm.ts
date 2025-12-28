@@ -149,11 +149,11 @@ export function useBusinessForm() {
   }, []);
 
   const handleGenerateDescription = async () => {
-    if (!form.name || !form.city) {
-      notifications.show({ message: "Nombre y Ciudad son requeridos para generar descripción", color: "yellow" });
+    if (!form.name || !form.city || !form.state) {
+      notifications.show({ message: "Nombre, Ciudad y Provincia son requeridos para generar descripción", color: "yellow" });
       return;
     }
-    const description = await generateDescriptionMutation.mutateAsync({ name: form.name, city: form.city, type: form.type });
+    const description = await generateDescriptionMutation.mutateAsync({ name: form.name, city: form.city, province: form.state, type: form.type, actualDescription: form.description });
     handleChange("description", description);
   };
 

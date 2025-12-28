@@ -5,7 +5,7 @@ import { prisma } from "@/config/prisma";
 import { redis } from "@/config/redis";
 import { CategoryStatus, ProductState } from "@prisma/client";
 import { UpdateCategoryStatusSchema, UpdateProductRequest, UpdateProductStatusSchema } from "./product.zod";
-import { analyzeProductImages } from "@/config/openai";
+import { analyzeProductImages } from "@/config/groq";
 class ProductServices {
     async enhanceProductContent(req: Request, res: Response) {
         try {
@@ -151,6 +151,7 @@ class ProductServices {
             }
         });
 
+        await this.refreshAllProductsCache()
         await this.refreshProductCache(product.id);
 
         return res.status(201).json({
@@ -495,6 +496,9 @@ class ProductServices {
                     ...(finalOptions !== undefined ? { options: finalOptions } : {}),
                 }
             });
+
+            await this.refreshAllProductsCache()
+            await this.refreshProductCache(product_id);
 
             return res.status(200).json({
                 ok: true,

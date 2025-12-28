@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { BusinessDataRequest } from "./schemas/business.schemas";
 import businessServices from "./business.services";
-import { generateBusinessDescription } from "@/config/openai";
+import { generateBusinessDescription } from "@/config/groq";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
 import fs from "fs";
+import { logger } from "@/utils/logger";
 
 class BusinessController {
     async uploadImage(req: Request, res: Response) {
@@ -54,7 +55,8 @@ class BusinessController {
 
     async generateDescription(req: Request, res: Response) {
         try {
-            const { name, city, type } = req.body;
+            const { name, city, province, type, actualDescription } = req.body;
+            logger.info("generateDescription_body", req.body);
             if (!name || !city) {
                 return res.status(400).json({ error: "Nombre y ciudad son requeridos" });
             }
@@ -63,7 +65,7 @@ class BusinessController {
                 const current = await businessServices.getBusiness();
                 finalType = (current as any)?.type || undefined;
             }
-            const description = await generateBusinessDescription(name, city, finalType);
+            const description = await generateBusinessDescription(name, city, province, finalType, actualDescription);
             return res.json({ description });
         } catch (error) {
             console.error(error);

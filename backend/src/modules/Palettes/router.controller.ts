@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import paletteServices from "./services/palette.services";
-import { generatePaletteFromPrompt } from "@/config/openai";
+import { generatePaletteFromPrompt } from "@/config/groq";
 
 class PaletteController {
   async list(req: Request, res: Response) {

@@ -9,6 +9,7 @@ import type { Metadata } from "next"
 import CartWrapper from "@/Components/Cart/CartWrapper"
 import { getBusinessInfo } from "@/Api/useBusiness"
 import { extractIdFromSlug } from "@/utils/slugs"
+import ProductDescription from "@/Components/Common/ProductDescription"
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -108,7 +109,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           <Stack gap="sm">
             <Group gap="sm">
               <Title order={1} style={{ textTransform: "capitalize", fontSize: "2rem" }}>{product.title}</Title>
-              <Badge color="pink">{product.category?.title || "Sin categoría"}</Badge>
+              <Badge >{product.category?.title || "Sin categoría"}</Badge>
             </Group>
             <Text fw={600} size="lg">
               {typeof product.price === "number" ? new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(product.price) : "Precio no disponible"}
@@ -116,8 +117,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             <Text c="dimmed">{typeof product.stock === "number" ? `Stock: ${product.stock}` : "Stock no disponible"}</Text>
             {product.description && (
               <Box>
-                <Text fw={600}>Descripción</Text>
-                <Text>{product.description}</Text>
+                <Text fw={600} mb="xs">Descripción</Text>
+                <ProductDescription description={product.description} />
               </Box>
             )}
             <Group gap="sm">
@@ -128,14 +129,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         </Box>
       </SimpleGrid>
 
-      <Box mt={60} component="section" aria-labelledby="product-details-heading">
-        <Title order={2} id="product-details-heading" size="h3" mb="md">Más información sobre {product.title}</Title>
-        <Text style={{ lineHeight: 1.6 }}>
-            {product.description ? product.description : `Descubre nuestro exclusivo ${product.title}, ideal para quienes buscan calidad y estilo. Este producto de la categoría ${product.category?.title || 'general'} destaca por sus materiales premium y diseño funcional.`}
-            {' '}
-            Compra online {product.title} con envío a todo el país. Garantizamos la mejor experiencia de compra en nuestra tienda online.
-        </Text>
-      </Box>
+
 
       {similar.length > 0 && (
         <Box mt="xl">

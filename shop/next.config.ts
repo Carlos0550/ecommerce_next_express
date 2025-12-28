@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
         hostname: '**.up.railway.app',
         pathname: '/**',
       },
+      // Supabase Storage (legacy - para imágenes que aún no se migraron)
+      {
+        protocol: 'https',
+        hostname: '**.supabase.co',
+        pathname: '/**',
+      },
     ],
   },
 };

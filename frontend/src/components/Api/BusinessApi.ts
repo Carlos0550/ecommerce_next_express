@@ -86,14 +86,21 @@ export const useGenerateDescription = () => {
   const { auth: { token } } = useAppContext();
   return useMutation({
     mutationKey: ["generateDescription"],
-    mutationFn: async ({ name, city, type }: { name: string; city: string; type?: string }) => {
+    mutationFn: async ({ name, city, province, type, actualDescription }: { name: string; city: string; province: string; type?: string; actualDescription?: string }) => {
+      console.log(
+        "name", name,
+        "city", city,
+        "province", province,
+        "type", type,
+        "actualDescription", actualDescription
+      );
       const res = await fetch(`${baseUrl}/business/generate-description`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ name, city, type })
+        body: JSON.stringify({ name, city, province, type, actualDescription })
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Error generando descripción");
