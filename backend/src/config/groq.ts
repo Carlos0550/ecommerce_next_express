@@ -119,13 +119,32 @@ Instrucciones claras de cómo usar el producto (1-2 oraciones).
 
 Frase final motivacional para la compra.
 
-REGLAS DE FORMATO:
-- USA los subtítulos exactos: "**✨ Beneficios:**", "**📦 Características:**", "**💡 Modo de uso:**"
-- Los guiones "-" son para listas de items
-- Usa emojis solo en los subtítulos
+REGLAS DE FORMATO ESTRICTAS:
+- USA EXACTAMENTE estos subtítulos (copia y pega): "**✨ Beneficios:**", "**📦 Características:**", "**💡 Modo de uso:**"
+- NO uses checkmarks (✅) ni otros símbolos en las listas
+- USA SOLO guiones "-" (guion medio) para los items de lista, NUNCA checkmarks
+- Formato de lista: cada item debe empezar con "- " (guion + espacio)
+- Usa emojis SOLO en los subtítulos, NUNCA en los items de lista
 - Si hay marca visible en la imagen, menciónala en la introducción
 - Evita palabras como "básico", "común", "simple"
 - NO menciones "cabello humano", "uñas humanas" aunque aparezca en etiquetas
+
+EJEMPLO DE FORMATO CORRECTO (copia este formato exacto):
+**✨ Beneficios:**
+- Beneficio 1
+- Beneficio 2
+- Beneficio 3
+
+**📦 Características:**
+- Característica 1
+- Característica 2
+
+**💡 Modo de uso:**
+Texto descriptivo aquí.
+
+FORMATO INCORRECTO (NO uses esto):
+✅ Beneficio 1
+✅ Beneficio 2
 
 === OPTIONS (opciones) ===
 PRIORIDAD 1: Si el contexto adicional menciona opciones de compra explícitas, ÚSALAS DIRECTAMENTE.
@@ -213,7 +232,7 @@ RECUERDA: La descripción DEBE tener mínimo 600 caracteres y usar el formato co
           ]
         }
       ],
-      temperature: 0.3,
+      temperature: 0.1, // Reducida para más consistencia en formato
       max_tokens: 2000
     });
 
