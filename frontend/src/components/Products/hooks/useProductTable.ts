@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useGetAllProducts, useDeleteProduct, useUpdateProductStock, useEnhanceProductContent, useUpdateProduct, type GetProductsParams, type Product, type ProductState } from '@/components/Api/ProductsApi';
 
 export const useProductTable = () => {
   const [search, setSearch] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [searchParams, setSearchParams] = useState<GetProductsParams>({
-    page: 1,
+  // Estado base para parámetros que no dependen de search/page
+  const [baseParams, setBaseParams] = useState<Omit<GetProductsParams, 'page' | 'title'>>({
     limit: 10,
     state: 'active',
     sortBy: undefined,
@@ -13,6 +13,18 @@ export const useProductTable = () => {
     isActive: undefined,
     categoryId: undefined,
   });
+
+  // Derivar searchParams desde estado base + search + currentPage
+  const searchParams = useMemo<GetProductsParams>(() => {
+    const params: GetProductsParams = {
+      ...baseParams,
+      page: currentPage,
+    };
+    if (search.trim()) {
+      params.title = search.trim();
+    }
+    return params;
+  }, [baseParams, currentPage, search]);
 
   // React Query hooks
   const { data, isLoading, isError } = useGetAllProducts(searchParams);
@@ -38,33 +50,17 @@ export const useProductTable = () => {
   const products: Product[] = useMemo(() => data?.products ?? [], [data?.products]);
   const pagination = data?.pagination;
 
-  // Sincronizar currentPage con searchParams
-  useEffect(() => {
-    setSearchParams(prev => ({
-      ...prev,
-      page: currentPage,
-    }));
-  }, [currentPage]);
-
-  // Sincronizar búsqueda con searchParams
-  useEffect(() => {
-    setSearchParams(prev => {
-      const next = { ...prev };
-      if (search.trim()) {
-        next.title = search.trim();
-      } else {
-        delete next.title;
+  // Ajustar página en el setter (en lugar de useEffect)
+  const safeSetCurrentPage = useCallback((pageOrUpdater: number | ((prev: number) => number)) => {
+    setCurrentPage(prev => {
+      const newPage = typeof pageOrUpdater === 'function' ? pageOrUpdater(prev) : pageOrUpdater;
+      // Ajustar si excede el total (usando el valor más reciente de pagination)
+      if (pagination?.totalPages && newPage > pagination.totalPages) {
+        return pagination.totalPages;
       }
-      return next;
+      return newPage;
     });
-  }, [search]);
-
-  // Ajustar página si excede el total
-  useEffect(() => {
-    if (pagination?.totalPages && currentPage > pagination.totalPages) {
-      setCurrentPage(pagination.totalPages);
-    }
-  }, [pagination, currentPage]);
+  }, [pagination]);
 
   // Handlers
   const handleSearchChange = useCallback((value: string) => {
@@ -73,20 +69,20 @@ export const useProductTable = () => {
   }, []);
 
   const handleLimitChange = useCallback((limit: number) => {
-    setSearchParams(prev => ({ ...prev, limit }));
+    setBaseParams(prev => ({ ...prev, limit }));
     setCurrentPage(1);
   }, []);
 
   const handleStateChange = useCallback((state: ProductState) => {
-    setSearchParams(prev => ({ ...prev, state }));
+    setBaseParams(prev => ({ ...prev, state }));
   }, []);
 
   const handleSortByChange = useCallback((sortBy: string | undefined) => {
-    setSearchParams(prev => ({ ...prev, sortBy }));
+    setBaseParams(prev => ({ ...prev, sortBy }));
   }, []);
 
   const handleSortOrderChange = useCallback((sortOrder: "asc" | "desc") => {
-    setSearchParams(prev => ({ ...prev, sortOrder }));
+    setBaseParams(prev => ({ ...prev, sortOrder }));
   }, []);
 
   const handleViewProduct = useCallback((product: Product) => {
@@ -242,7 +238,7 @@ export const useProductTable = () => {
     
     // Setters
     setSearch: handleSearchChange,
-    setCurrentPage,
+    setCurrentPage: safeSetCurrentPage,
     setStockValue,
     setAdditionalContext,
     setEnhanceTitle,

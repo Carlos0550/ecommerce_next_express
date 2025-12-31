@@ -182,7 +182,7 @@ function useCart(baseUrl: string, token: string | null) {
                 return { ok: false, error: json.error || 'validation_failed' }
             }
             return { ok: true, ...json }
-        } catch (error) {
+        } catch {
             return { ok: false, error: 'network_error' }
         }
     }, [cart])
@@ -342,7 +342,7 @@ function useCart(baseUrl: string, token: string | null) {
             showNotification({ title: 'Error de conexión', message: 'No se pudo contactar al servidor.', color: 'red', autoClose: 3000 })
             return { ok: false }
         }
-    }, [cart.items, formValues, clearCart])
+    }, [cart.items, formValues, clearCart, cart.promo_code])
 
     const syncWithServer = useCallback(async (baseUrl: string, token: string | null) => {
         if (!token) return

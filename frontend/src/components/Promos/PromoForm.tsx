@@ -37,28 +37,35 @@ export interface PromoFormProps {
     promo?: Promo | null
 }
 
+const getInitialFormValues = (promo?: Promo | null): PromoRequest => ({
+    code: promo?.code || "",
+    title: promo?.title || "",
+    description: promo?.description || "",
+    type: promo?.type === 'fixed' ? PromoTypes.FIXED : PromoTypes.PERCENTAGE,
+    value: Number(promo?.value || 0),
+    max_discount: promo?.max_discount ?? 0,
+    min_order_amount: promo?.min_order_amount ?? 0,
+    start_date: promo?.start_date ? String(promo.start_date).split('T')[0] : "",
+    end_date: promo?.end_date ? String(promo.end_date).split('T')[0] : "",
+    is_active: !!promo?.is_active,
+    usage_limit: promo?.usage_limit ?? 0,
+    usage_count: promo?.usage_count ?? 0,
+    show_in_home: !!promo?.show_in_home,
+    per_user_limit: promo?.per_user_limit ?? 0,
+    categories: (promo?.categories || []).map((c: any) => c.id),
+    products: (promo?.products || []).map((p: any) => p.id),
+});
+
+const getInitialDateRange = (promo?: Promo | null): [Date | string | null, Date | string | null] => [
+    promo?.start_date ? new Date(promo.start_date as any) : null,
+    promo?.end_date ? new Date(promo.end_date as any) : null,
+];
+
 export function PromoForm({ onClose, promo }: PromoFormProps) {
-    const [formValues, setFormValues] = useState<PromoRequest>({
-        code: "",
-        title: "",
-        description: "",
-        type: PromoTypes.PERCENTAGE,
-        value: 0,
-        max_discount: 0,
-        min_order_amount: 0,
-        start_date: "",
-        end_date: "",
-        is_active: false,
-        usage_limit: 0,
-        usage_count: 0,
-        show_in_home: false,
-        per_user_limit: 0,
-        categories: [],
-        products: [],
-    })
+    const [formValues, setFormValues] = useState<PromoRequest>(() => getInitialFormValues(promo))
 
     const [image, setImage] = useState<File | null>(null)
-    const [dateRange, setDateRange] = useState<[Date | string | null, Date | string | null]>([null, null])
+    const [dateRange, setDateRange] = useState<[Date | string | null, Date | string | null]>(() => getInitialDateRange(promo))
 
     const [productSearch, setProductSearch] = useState<string>("")
     const [debouncedProductSearch] = useDebouncedValue(productSearch, 300)
@@ -143,33 +150,6 @@ export function PromoForm({ onClose, promo }: PromoFormProps) {
             productCombobox.focusTarget()
         }
     }, [productsLoading, products?.products, productSearch])
-
-    useEffect(() => {
-        if (promo) {
-            setFormValues({
-                code: promo.code || "",
-                title: promo.title || "",
-                description: promo.description || "",
-                type: promo.type === 'fixed' ? PromoTypes.FIXED : PromoTypes.PERCENTAGE,
-                value: Number(promo.value || 0),
-                max_discount: promo.max_discount ?? 0,
-                min_order_amount: promo.min_order_amount ?? 0,
-                start_date: promo.start_date ? String(promo.start_date).split('T')[0] : "",
-                end_date: promo.end_date ? String(promo.end_date).split('T')[0] : "",
-                is_active: !!promo.is_active,
-                usage_limit: promo.usage_limit ?? 0,
-                usage_count: promo.usage_count ?? 0,
-                show_in_home: !!promo.show_in_home,
-                per_user_limit: promo.per_user_limit ?? 0,
-                categories: (promo.categories || []).map((c: any) => c.id),
-                products: (promo.products || []).map((p: any) => p.id),
-            })
-            setDateRange([
-                promo.start_date ? new Date(promo.start_date as any) : null,
-                promo.end_date ? new Date(promo.end_date as any) : null,
-            ])
-        }
-    }, [promo])
 
     const handleSubmit = async () => {
         

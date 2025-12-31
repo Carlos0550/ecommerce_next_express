@@ -41,21 +41,19 @@ export async function fetchWithTimeout(
         });
         clearTimeout(timeoutId);
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
         clearTimeout(timeoutId);
         
         // Si es un abort por timeout, lanzar error específico
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
           throw new Error(`Request timeout after ${timeout}ms`);
         }
         throw error;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error as Error;
       
-      // No reintentar en el último intento
       if (attempt < retries) {
-        // Exponential backoff
         const delayMs = retryDelay * Math.pow(2, attempt);
         await delay(delayMs);
         continue;

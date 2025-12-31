@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Group, Stack, TextInput, Textarea, Badge, Image, TagsInput, Select, Switch, Text, Modal } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
@@ -42,6 +42,25 @@ const PRODUCT_STATE_OPTIONS: { value: ProductState; label: string }[] = (
   Object.keys(PRODUCT_STATE_META) as ProductState[]
 ).map((value) => ({ value, label: PRODUCT_STATE_META[value].label }));
 
+const getInitialFormValues = (product?: Product | null): ProductFormValues => ({
+  title: product?.title || "",
+  price: product?.price != null ? String(product.price) : "",
+  active: product?.active ?? true,
+  tags: [],
+  category: product?.category?.id ?? "",
+  description: product?.description ?? "",
+  images: [],
+  existingImageUrls: Array.isArray(product?.images) ? product.images : [],
+  deletedImageUrls: [],
+  productId: product?.id,
+  state: product?.state || 'active',
+  fillWithAI: false,
+  publishAutomatically: false,
+  stock: "1",
+  additionalContext: "",
+  options: product?.options || [],
+});
+
 export default function ProductForm({ product, onSuccess, onCancel }: ProductFormProps & { product?: Product | null }) {
   const {data: categories = []} = useGetAllCategories();
   const saveProductMutation = useSaveProduct();
@@ -50,46 +69,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [enhanceTitle, setEnhanceTitle] = useState("");
   const [enhanceDescription, setEnhanceDescription] = useState("");
-  const [fillWithAI, setFillWithAI] = useState(false);
-  const [publishAutomatically, setPublishAutomatically] = useState(false);
-  const [formValues, setFormValues] = useState<ProductFormValues>({
-    title: "",
-    price: "",
-    active: true,
-    tags: [],
-    category: "",
-    description: "",
-    images: [],
-    existingImageUrls: [],
-    deletedImageUrls: [],
-    productId: undefined,
-    state: 'active',
-    fillWithAI: false,
-    publishAutomatically: false,
-    stock: "1",
-    additionalContext: "",
-    options: [],
-  });
-
-  useEffect(() => {
-    if (product) {
-      setFormValues(prev => ({
-        ...prev,
-        title: product.title || "",
-        price: product.price != null ? String(product.price) : "",
-        active: product.active ?? true,
-        tags: prev.tags ?? [],
-        category: product.category?.id ?? "",
-        description: product.description ?? "",
-        images: [],
-        existingImageUrls: Array.isArray(product.images) ? product.images : [],
-        deletedImageUrls: [],
-        productId: product.id,
-        state: product.state || 'active',
-        options: product.options || [],
-      }));
-    }
-  }, [product]);
+  const [formValues, setFormValues] = useState<ProductFormValues>(() => getInitialFormValues(product));
 
   const handleChangeValues = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -171,23 +151,10 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
     });
   };
 
-  useEffect(() => {
-    console.log("values:", formValues);
-  },[formValues])
+  // Valores derivados para los switches
+  const fillWithAI = formValues.fillWithAI ?? false;
+  const publishAutomatically = formValues.publishAutomatically ?? false;
 
-  useEffect(() => {
-    setFormValues(prev => ({
-      ...prev,
-      fillWithAI
-    }));
-  }, [fillWithAI]);
-
-  useEffect(() => {
-    setFormValues(prev => ({
-      ...prev,
-      publishAutomatically
-    }));
-  }, [publishAutomatically]);
   return (
     <Stack>
       {!product && (
@@ -196,7 +163,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
             label="Completar con IA"
             description="La IA analizará las imágenes para generar título y descripción automáticamente"
             checked={fillWithAI}
-            onChange={(event) => setFillWithAI(event.currentTarget.checked)}
+            onChange={(event) => setFormValues(prev => ({ ...prev, fillWithAI: event.currentTarget.checked }))}
           />
         </Group>
       )}
@@ -336,7 +303,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           <Switch
             label="Publicar automáticamente"
             checked={publishAutomatically}
-            onChange={(event) => setPublishAutomatically(event.currentTarget.checked)}
+            onChange={(event) => setFormValues(prev => ({ ...prev, publishAutomatically: event.currentTarget.checked }))}
           />
         )}
         <Dropzone

@@ -32,7 +32,6 @@ function Cart({ opened = true, onClose }: CartProps) {
     businessData,
     isLoadingBankInfo,
     bankInfoError,
-    validatePromoCode,
     applyPromoCode,
     removePromoCode
   } = useCart(onClose);
@@ -62,7 +61,7 @@ function Cart({ opened = true, onClose }: CartProps) {
         'promo_not_started': 'Esta promoción aún no está disponible',
         'promo_usage_limit_reached': 'Esta promoción alcanzó su límite de uso',
         'promo_user_limit_reached': 'Ya has usado esta promoción el máximo de veces permitido',
-        'min_order_amount_not_met': `El monto mínimo de compra es ${formatCurrency((result as any).min_amount || 0)}`,
+        'min_order_amount_not_met': `El monto mínimo de compra es ${formatCurrency((result as { min_amount?: number }).min_amount || 0)}`,
         'promo_not_applicable_to_items': 'Esta promoción no aplica a los productos en tu carrito',
         'network_error': 'Error de conexión. Intenta de nuevo.'
       }

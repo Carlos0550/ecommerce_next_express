@@ -36,7 +36,6 @@ export default function Layout() {
     { to: "/categories", label: "Categorias", icon: FiBox },
     { to: "/sales", label: "Ventas", icon: FiBox },
     { to: "/users", label: "Usuarios", icon: FiUser },
-    { to: "/promos", label: "Promociones", icon: FiBox },
     { to: "/faq", label: "FAQ", icon: FiHelpCircle },
     { to: "/business", label: "Negocio", icon: FiUser },
     { to: "/colors", label: "Colores", icon: FiBox },

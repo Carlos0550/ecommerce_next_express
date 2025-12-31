@@ -1,7 +1,7 @@
 import { baseUrl } from "@/components/Api"
 import { showNotification } from "@mantine/notifications"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useState, useMemo, useLayoutEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { fetchWithTimeout } from "@/Utils/fetchWithTimeout"
 
@@ -13,20 +13,23 @@ export type Session = {
     role: number
 }
 
+const getInitialToken = (): string | null => {
+    const storedToken = localStorage.getItem('auth_token')
+    if (storedToken && storedToken !== "") {
+        return storedToken
+    }
+    localStorage.removeItem('auth_token')
+    return null
+}
+
 export function useAuth() {
-    const [session, setSession] = useState<Session | null>(null)
-    const [token, setToken] = useState<string | null>(null)
+    const [token, setToken] = useState<string | null>(getInitialToken)
     const navigate = useNavigate()
 
-    useEffect(() => {
-        const storedToken = localStorage.getItem('auth_token')
-        if (![null, "", undefined].includes(storedToken)) {
-            setToken(storedToken)
-        }else{
+    // Redirigir si no hay token (solo navegación, sin setState)
+    useLayoutEffect(() => {
+        if (!token) {
             navigate("/auth")
-            localStorage.removeItem('auth_token')
-            setToken(null)
-            setSession(null)
         }
     }, [])
 
@@ -36,7 +39,6 @@ export function useAuth() {
             localStorage.setItem('auth_token', newToken)
         } else {
             localStorage.removeItem('auth_token')
-            setSession(null)
         }
     }
 
@@ -66,8 +68,26 @@ export function useAuth() {
         retry: false,
         staleTime: 5 * 60 * 1000, 
         refetchInterval: 5 * 60 * 1000, 
-        refetchIntervalInBackground: true, 
+        refetchIntervalInBackground: true,
+        throwOnError: false,
     })
+
+    // Derivar session desde validationData
+    const session = useMemo<Session | null>(() => validationData ?? null, [validationData])
+
+    // Manejar error de validación - solo side effects externos (sin setState)
+    useLayoutEffect(() => {
+        if (error && token) {
+            console.error('Token validation error')
+            navigate("/auth")
+            localStorage.removeItem('auth_token')
+            showNotification({
+                title: "Token inválido o sesión expirada",
+                message: 'Por favor, inicie sesión de nuevo',
+                color: 'red',
+            })
+        }
+    }, [error, token, navigate])
 
     const logout = (expired_session: boolean = false) => {
         updateToken(null)
@@ -87,30 +107,9 @@ export function useAuth() {
         }
     }
 
-    useEffect(() => {
-        if (validationData) {
-            setSession(validationData)
-        }
-    }, [validationData])
-
-    useEffect(() => {
-        if (error) {
-            console.error('Token validation error:', error)
-            navigate("/auth")
-            localStorage.removeItem('auth_token')
-            setToken(null)
-            setSession(null)
-            showNotification({
-                title: "Token inválido o sesión expirada",
-                message: 'Por favor, inicie sesión de nuevo',
-                color: 'red',
-            })
-        }
-    }, [error, navigate])
-
     return {
         session,
-        setSession,
+        setSession: () => {}, // Deprecated: session is now derived from validationData
         token,
         setToken: updateToken,
         loading: isLoading,

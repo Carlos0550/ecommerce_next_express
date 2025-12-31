@@ -6,7 +6,7 @@ import type { Product } from "../Api/ProductsApi"
 import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale } from "../Api/SalesApi"
 import type { PaymentMethods, SaleSource, ManualProductItem } from "./SalesForm"
 import ModalWrapper from "@/components/Common/ModalWrapper"
-import React, { useMemo, useState, useEffect } from "react"
+import React, { useMemo, useState } from "react"
 import { SalesForm } from "./SalesForm"
 import { FiEdit, FiTrash } from "react-icons/fi"
 
@@ -38,7 +38,6 @@ export default function SalesTable() {
   const [perPage, setPerPage] = useState<number>(5)
   const [preset, setPreset] = useState<string>("HOY")
   const [range, setRange] = useState<[Date | null, Date | null]>([null, null])
-  const [totalToday, setTotalToday] = useState<number>(0)
 
   const startEndFromPreset = useMemo(() => {
     const today = new Date();
@@ -129,7 +128,19 @@ export default function SalesTable() {
   const [editSale, setEditSale] = useState<Sales | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => { setCurrentPage(1) }, [preset, range])
+  // Derivar totalToday desde data
+  const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
+
+  // Handlers que resetean página
+  const handlePresetChange = (value: string) => {
+    setPreset(value)
+    setCurrentPage(1)
+  }
+
+  const handleRangeChange = (value: [Date | null, Date | null]) => {
+    setRange(value)
+    setCurrentPage(1)
+  }
 
   const openProducts = (sale: Sales) => {
     setSelectedSale(sale)
@@ -182,13 +193,6 @@ export default function SalesTable() {
     );
   }
 
-  useEffect(() => {
-    if (data && Array.isArray(data.sales) && data.sales.length > 0) {
-      console.log(data.sales)
-      setTotalToday(data.totalSalesByDate || 0)
-    }
-  }, [data])
-
   const renderActionButtons = (sale: Sales) => {
     return (
       <Group gap="xs" wrap="wrap">
@@ -237,7 +241,7 @@ export default function SalesTable() {
       <Group mb="md" gap="md" align="center" wrap="wrap">
         <SegmentedControl
           value={preset}
-          onChange={setPreset}
+          onChange={handlePresetChange}
           style={{ flexWrap: "wrap" }}
           data={[
             { label: "Hoy", value: "HOY" },
@@ -253,7 +257,7 @@ export default function SalesTable() {
           <DatePickerInput
             type="range"
             value={range}
-            onChange={(value) => setRange(value as [Date | null, Date | null])}
+            onChange={(value) => handleRangeChange(value as [Date | null, Date | null])}
             placeholder="Selecciona rango"
             locale="es"
           />

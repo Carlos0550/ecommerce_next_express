@@ -167,6 +167,7 @@ function ColorSchemeToggle() {
 
   // Evitar hidratación mismatch: solo renderizar después del mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

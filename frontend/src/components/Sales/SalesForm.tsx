@@ -42,16 +42,27 @@ type Props = {
     onClose: () => void,
     sale?: Sales
 }
-export function SalesForm({ onClose, sale }: Props) {
-    const saveSale = useSaveSale();
-    const updateSale = useUpdateSale();
-    const formatDateOnly = (d: unknown) => {
-        const m = dayjs(d as any);
-        return m.isValid() ? m.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
-    };
 
-    const [saleDate, setSaleDate] = useState<Date | null>(dayjs().toDate());
-    const [formValue, setFormValue] = useState<SaleRequest>({
+const formatDateOnly = (d: unknown) => {
+    const m = dayjs(d as any);
+    return m.isValid() ? m.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
+};
+
+const getInitialFormValue = (sale?: Sales): SaleRequest => {
+    if (sale) {
+        const pm = Array.isArray((sale as any).paymentMethods) ? (sale as any).paymentMethods : [];
+        return {
+            payment_method: sale.payment_method,
+            source: sale.source,
+            product_ids: (sale.products || []).map(p => p.id),
+            tax: Number(sale.tax) || 0,
+            loadedManually: !!sale.loadedManually,
+            manualProducts: (sale.manualProducts || []) as any,
+            payment_methods: pm,
+            sale_date: formatDateOnly(dayjs(sale.created_at).toDate()),
+        };
+    }
+    return {
         payment_method: "EFECTIVO",
         source: "CAJA",
         product_ids: [],
@@ -61,12 +72,41 @@ export function SalesForm({ onClose, sale }: Props) {
         manualProducts: [],
         payment_methods: [{ method: "EFECTIVO", amount: 0 }],
         sale_date: formatDateOnly(new Date()),
-    })
+    };
+};
 
-    const [manualText, setManualText] = useState<string>("");
+const getInitialSaleDate = (sale?: Sales): Date | null => {
+    if (sale) {
+        return dayjs(sale.created_at).toDate();
+    }
+    return dayjs().toDate();
+};
+
+const getInitialManualText = (sale?: Sales): string => {
+    if (sale && Array.isArray(sale.manualProducts)) {
+        return sale.manualProducts.map(mi => `${mi.quantity} ${mi.title} ${mi.price}`).join("\n");
+    }
+    return "";
+};
+
+const getInitialSelectedProducts = (sale?: Sales): Product[] => {
+    if (sale && sale.products) {
+        return sale.products as any;
+    }
+    return [];
+};
+
+export function SalesForm({ onClose, sale }: Props) {
+    const saveSale = useSaveSale();
+    const updateSale = useUpdateSale();
+
+    const [saleDate, setSaleDate] = useState<Date | null>(() => getInitialSaleDate(sale));
+    const [formValue, setFormValue] = useState<SaleRequest>(() => getInitialFormValue(sale));
+
+    const [manualText, setManualText] = useState<string>(() => getInitialManualText(sale));
     const [searchTitle, setSearchTitle] = useState<string>("");
     const [selectValue, setSelectValue] = useState<string | null>(null);
-    const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+    const [selectedProducts, setSelectedProducts] = useState<Product[]>(() => getInitialSelectedProducts(sale));
 
     const productQueryParams: GetProductsParams = useMemo(() => ({
         page: 1,
@@ -142,11 +182,19 @@ export function SalesForm({ onClose, sale }: Props) {
     };
     const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), []);
 
-    useEffect(() => {
-        if (formValue.payment_method == "EFECTIVO" || formValue.payment_method == "NINGUNO") {
-            setFormValue(v => ({ ...v, tax: 0 }));
+    // Derivar payment_method desde el primer método de pago
+    const primaryPaymentMethod = useMemo(() => {
+        const primary = formValue.payment_methods?.[0]?.method;
+        return primary || formValue.payment_method;
+    }, [formValue.payment_methods, formValue.payment_method]);
+
+    // Derivar tax (0 si es EFECTIVO o NINGUNO)
+    const effectiveTax = useMemo(() => {
+        if (primaryPaymentMethod === "EFECTIVO" || primaryPaymentMethod === "NINGUNO") {
+            return 0;
         }
-    }, [formValue.payment_method])
+        return formValue.tax;
+    }, [primaryPaymentMethod, formValue.tax]);
 
     const resetForm = () => {
         setFormValue(prev => ({
@@ -173,46 +221,16 @@ export function SalesForm({ onClose, sale }: Props) {
         }
     }, [updateSale.isSuccess])
 
-    useEffect(() => {
-        const primary = formValue.payment_methods?.[0]?.method;
-        if (primary && primary !== formValue.payment_method) {
-            setFormValue(v => ({ ...v, payment_method: primary }));
-        }
-    }, [formValue.payment_methods])
-
     const productsSubtotal = useMemo(() => selectedProducts.reduce((acc, p) => acc + (typeof p.price === 'number' ? p.price : 0), 0), [selectedProducts]);
     const manualSubtotal = useMemo(() => (formValue.manualProducts || []).reduce((acc, item) => acc + Number(item.quantity) * Number(item.price), 0), [formValue.manualProducts]);
     const subtotal = formValue.loadedManually ? manualSubtotal : productsSubtotal;
-    const finalTotal = subtotal * (1 + Number(formValue.tax) / 100);
+    const finalTotal = subtotal * (1 + Number(effectiveTax) / 100);
     const paymentSum = (formValue.payment_methods || []).reduce((acc, pm) => acc + Number(pm.amount || 0), 0);
 
-    const remainingBase = formValue.tax > 0 ? subtotal : finalTotal;
+    const remainingBase = effectiveTax > 0 ? subtotal : finalTotal;
     const remainingAmount = Math.max(remainingBase - paymentSum, 0);
     const manualInvalid = useMemo(() => formValue.loadedManually && (manualInvalidCount > 0 || (formValue.manualProducts?.length || 0) === 0), [formValue.loadedManually, manualInvalidCount, formValue.manualProducts]);
 
-    useEffect(() => {
-        console.log("Sales Form Values", formValue)
-    }, [formValue])
-
-    useEffect(() => {
-        if (!sale) return;
-        const pm = Array.isArray((sale as any).paymentMethods) ? (sale as any).paymentMethods : [];
-        const d = dayjs(sale.created_at).toDate();
-        setSaleDate(d);
-        setFormValue({
-            payment_method: sale.payment_method,
-            source: sale.source,
-            product_ids: (sale.products || []).map(p => p.id),
-            tax: Number(sale.tax) || 0,
-            loadedManually: !!sale.loadedManually,
-            manualProducts: (sale.manualProducts || []) as any,
-            payment_methods: pm,
-            sale_date: formatDateOnly(d),
-        });
-        setSelectedProducts((sale.products || []) as any);
-        const mt = Array.isArray(sale.manualProducts) ? sale.manualProducts.map(mi => `${mi.quantity} ${mi.title} ${mi.price}`).join("\n") : "";
-        setManualText(mt);
-    }, [sale])
     return (
         <Box>
 
@@ -360,11 +378,11 @@ export function SalesForm({ onClose, sale }: Props) {
                                         <Text c="red">Advertencia: la suma de los métodos de pago ({currency.format(paymentSum)}) no coincide con el total ({currency.format(finalTotal)}).</Text>
                                     )} */}
                                     {remainingAmount > 0 && ((formValue.payment_methods?.length || 0) > 1) && (
-                                        <Text c="orange">Faltan {currency.format(remainingAmount)} {formValue.tax > 0 ? "(calculado sobre subtotal sin impuesto)" : ""}</Text>
+                                        <Text c="orange">Faltan {currency.format(remainingAmount)} {effectiveTax > 0 ? "(calculado sobre subtotal sin impuesto)" : ""}</Text>
                                     )}
                                 </Stack>
                             </Card>
-                            {["TARJETA", "QR", "TRANSFERENCIA"].includes(formValue.payment_method) && (
+                            {["TARJETA", "QR", "TRANSFERENCIA"].includes(primaryPaymentMethod) && (
                                 <TextInput
                                     label="Agregar impuesto"
                                     placeholder="Ingresar impuesto"
@@ -374,10 +392,10 @@ export function SalesForm({ onClose, sale }: Props) {
                                 />
                             )}
                             <Card withBorder shadow="sm" radius="md">
-                                {formValue.tax > 0 && (
+                                {effectiveTax > 0 && (
                                     <Group justify="space-between">
-                                        <Text>Impuesto ({formValue.tax}%)</Text>
-                                        <Text>{currency.format(Number(subtotal) * Number(formValue.tax) / 100)}</Text>
+                                        <Text>Impuesto ({effectiveTax}%)</Text>
+                                        <Text>{currency.format(Number(subtotal) * Number(effectiveTax) / 100)}</Text>
                                     </Group>
                                 )}
                                 <Group justify="space-between">
@@ -391,7 +409,12 @@ export function SalesForm({ onClose, sale }: Props) {
                         disabled={(sale ? updateSale.isPending : false) || manualInvalid}
                         loading={sale ? updateSale.isPending : false}
                         onClick={() => {
-                            const payload = { ...formValue, total: finalTotal };
+                            const payload = { 
+                                ...formValue, 
+                                total: finalTotal, 
+                                tax: effectiveTax,
+                                payment_method: primaryPaymentMethod 
+                            };
                             if (sale) {
                                 updateSale.mutate({ id: sale.id, request: payload });
                             } else {

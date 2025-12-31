@@ -2,7 +2,7 @@ import { Badge, Box, Button, Group, Image, Stack, TextInput } from "@mantine/cor
 import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
 import { useCreateCategory, useUpdateCategory } from "../Api/CategoriesApi";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Category } from "./CategoriesTable";
 
 type FormValues = {
@@ -15,6 +15,11 @@ type CategoryFormProps = {
     initialValues?: Category       
 };
 
+const getInitialFormValues = (initialValues?: Category): FormValues => ({
+    title: initialValues?.title || "",
+    images: null
+});
+
 function CategoriesForm({
     closeForm,
     initialValues
@@ -24,19 +29,7 @@ function CategoriesForm({
     const { mutate: createCategory, isPending: isCreating } = useCreateCategory()
     const { mutate: updateCategory, isPending: isUpdating } = useUpdateCategory()
     
-    const [formValues, setFormValues] = useState<FormValues>({
-        title: "",
-        images: null
-    })
-
-    useEffect(() => {
-        if (initialValues) {
-            setFormValues({
-                title: initialValues.title || "",
-                images: null 
-            })
-        }
-    }, [initialValues])
+    const [formValues, setFormValues] = useState<FormValues>(() => getInitialFormValues(initialValues))
 
     const handleSubmit = () => {
         if (!formValues.title.trim()) {
