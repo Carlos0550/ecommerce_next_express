@@ -2,7 +2,7 @@ import { Badge, Box, Button, Group, Image, Stack, TextInput } from "@mantine/cor
 import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
 import { useCreateCategory, useUpdateCategory } from "../Api/CategoriesApi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Category } from "./CategoriesTable";
 
 type FormValues = {

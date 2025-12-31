@@ -21,7 +21,6 @@ export default function LoginForm(){
       isMobile
     },
     auth:{
-      setSession,
       setToken
     }
   } = useAppContext()
@@ -30,7 +29,7 @@ export default function LoginForm(){
 
   useEffect(() => {
     if (loginHook.isSuccess && loginHook.data) {
-      setSession(loginHook.data.user)
+      // La sesión se deriva automáticamente de la validación del token
       setToken(loginHook.data.token)
       navigate("/");
       showNotification({
