@@ -229,7 +229,7 @@ class AuthServices {
     }
 
     async newUser(req: Request, res: Response) {
-        const { email, role_id, name } = req.body;
+        const { email, role_id, name, phone } = req.body;
         if (Number(role_id) === 1) {
             const rows: any[] = await prisma.$queryRaw`SELECT id FROM "Admin" WHERE email = ${email} LIMIT 1`;
             const exists = rows[0];
@@ -248,8 +248,10 @@ class AuthServices {
         const normalized_name = name.trim().toLowerCase()
         let user: any;
         if (Number(role_id) === 1) {
-            await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, is_active, role, created_at, updated_at) VALUES (${email}, ${hashedPassword}, ${normalized_name}, true, 1, NOW(), NOW())`;
-            const created: any[] = await prisma.$queryRaw`SELECT id, email, name, role, profile_image, created_at, updated_at FROM "Admin" WHERE email = ${email} LIMIT 1`;
+            // Crear admin con phone si está disponible
+            const phoneValue = phone ? String(phone).trim() : null;
+            await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, phone, is_active, role, created_at, updated_at) VALUES (${email}, ${hashedPassword}, ${normalized_name}, ${phoneValue}, true, 1, NOW(), NOW())`;
+            const created: any[] = await prisma.$queryRaw`SELECT id, email, name, role, phone, profile_image, created_at, updated_at FROM "Admin" WHERE email = ${email} LIMIT 1`;
             user = created[0];
         } else {
             user = await prisma.user.create({
@@ -311,13 +313,13 @@ class AuthServices {
                 let rows: any[] = []
                 if (searchQ) {
                     countRows = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM "Admin" WHERE name ILIKE ${pattern} OR email ILIKE ${pattern}`
-                    rows = await prisma.$queryRaw`SELECT id, name, email, role, is_active FROM "Admin" WHERE name ILIKE ${pattern} OR email ILIKE ${pattern} ORDER BY created_at DESC LIMIT ${limitQ} OFFSET ${(pageQ - 1) * limitQ}`
+                    rows = await prisma.$queryRaw`SELECT id, name, email, role, phone, is_active FROM "Admin" WHERE name ILIKE ${pattern} OR email ILIKE ${pattern} ORDER BY created_at DESC LIMIT ${limitQ} OFFSET ${(pageQ - 1) * limitQ}`
                 } else {
                     countRows = await prisma.$queryRaw`SELECT COUNT(*)::int AS count FROM "Admin"`
-                    rows = await prisma.$queryRaw`SELECT id, name, email, role, is_active FROM "Admin" ORDER BY created_at DESC LIMIT ${limitQ} OFFSET ${(pageQ - 1) * limitQ}`
+                    rows = await prisma.$queryRaw`SELECT id, name, email, role, phone, is_active FROM "Admin" ORDER BY created_at DESC LIMIT ${limitQ} OFFSET ${(pageQ - 1) * limitQ}`
                 }
                 const count = Number(countRows?.[0]?.count || 0)
-                const users = rows.map((r: any) => ({ id: String(r.id), name: r.name, email: r.email, role: 1, is_active: !!r.is_active }))
+                const users = rows.map((r: any) => ({ id: String(r.id), name: r.name, email: r.email, role: 1, phone: r.phone || null, is_active: !!r.is_active }))
                 const total_pages = Math.ceil(count / limitQ)
                 const pagination = { total: count, page: pageQ, limit: limitQ, totalPages: total_pages, hasNextPage: pageQ < total_pages, hasPrevPage: pageQ > 1 }
                 return res.status(200).json({ ok: true, users, pagination })

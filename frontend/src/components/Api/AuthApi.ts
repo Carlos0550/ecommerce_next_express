@@ -9,7 +9,7 @@ import { fetchWithTimeout } from "@/Utils/fetchWithTimeout";
 export const useCreateUser = () => {
   return useMutation({
     mutationKey: ["createUser"],
-    mutationFn: async ({ name, email, role_id }: { name: string, email: string, role_id: string }) => {
+    mutationFn: async ({ name, email, role_id, phone }: { name: string, email: string, role_id: string, phone?: string }) => {
       const response = await fetchWithTimeout(`${baseUrl}/new`, {
         method: "POST",
         headers: {
@@ -19,6 +19,7 @@ export const useCreateUser = () => {
           name,
           email,
           role_id,
+          phone,
         }),
         timeout: 10000,
       });

@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useGetUsers, useDisableUser, useEnableUser, useDeleteUser } from "../Api/AuthApi";
-import { Box, Table, Flex, Text, Group, Button, Badge, Card, Stack, useMantineTheme, SegmentedControl } from "@mantine/core";
+import { Box, Table, Flex, Text, Group, Button, Badge, Card, Stack, useMantineTheme, SegmentedControl, Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { FaWhatsapp } from "react-icons/fa";
 
 type User = {
     id: string,
@@ -9,6 +10,7 @@ type User = {
     email: string,
     role: number,
     is_active: boolean,
+    phone?: string,
 }
 
 type PaginationData = {
@@ -78,6 +80,12 @@ export function UsersTable({
                             <Box>
                                 <Text fw={600}>{capitalizeNames(user.name)}</Text>
                                 <Text size="sm" c="dimmed">{user.email}</Text>
+                                {user.phone && filterType === 'admin' && (
+                                    <Group gap={4} mt={4}>
+                                        <FaWhatsapp size={12} color="#25D366" />
+                                        <Text size="xs" c="dimmed">{user.phone}</Text>
+                                    </Group>
+                                )}
                             </Box>
                             {renderBadgeByRole(user.role)}
                         </Group>
@@ -114,6 +122,7 @@ export function UsersTable({
                     <Table.Tr>
                         <Table.Th>Nombre</Table.Th>
                         <Table.Th>Email</Table.Th>
+                        {filterType === 'admin' && <Table.Th>WhatsApp</Table.Th>}
                         <Table.Th>Rol</Table.Th>
                         <Table.Th>Estado</Table.Th>
                         <Table.Th>Acciones</Table.Th>
@@ -124,6 +133,20 @@ export function UsersTable({
                         <Table.Tr key={user.id}>
                             <Table.Td>{capitalizeNames(user.name)}</Table.Td>
                             <Table.Td>{user.email}</Table.Td>
+                            {filterType === 'admin' && (
+                                <Table.Td>
+                                    {user.phone ? (
+                                        <Tooltip label="Autorizado para WhatsApp">
+                                            <Group gap={4}>
+                                                <FaWhatsapp color="#25D366" />
+                                                <Text size="sm">{user.phone}</Text>
+                                            </Group>
+                                        </Tooltip>
+                                    ) : (
+                                        <Text size="sm" c="dimmed">-</Text>
+                                    )}
+                                </Table.Td>
+                            )}
                             <Table.Td>{renderBadgeByRole(user.role)}</Table.Td>
                             <Table.Td>
                                 {user.is_active ? <Badge color="green">Activo</Badge> : <Badge color="gray">Inhabilitado</Badge>}

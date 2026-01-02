@@ -79,11 +79,13 @@ model Admin {
   is_active     Boolean  @default(true)
   profile_image String?
   role          Int      @default(1)
+  phone         String?  // Número de teléfono vinculado para WhatsApp
   created_at    DateTime @default(now()) @db.Timestamptz(3)
   updated_at    DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([is_active])
   @@index([created_at])
+  @@index([phone])
 }
 
 model Categories {
@@ -264,6 +266,16 @@ model BusinessData {
   business_image String?
   favicon        String?
   bankData  BusinessBankData[]
+  
+  // WhatsApp Integration
+  whatsapp_enabled        Boolean  @default(false)
+  whatsapp_access_token   String?  // Personal Access Token de WasenderAPI
+  whatsapp_session_id     Int?     // ID de sesión (número según API)
+  whatsapp_api_key        String?  // API Key de la sesión (para enviar mensajes)
+  whatsapp_webhook_secret String?  // Secret para validar webhooks entrantes
+  whatsapp_phone_number   String?  // Número conectado
+  whatsapp_connected      Boolean  @default(false)
+  whatsapp_allowed_remitents String? // Lista de números permitidos separados por coma
 }
 model BusinessBankData{
   id        String   @id @default(cuid())

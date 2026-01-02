@@ -17,10 +17,124 @@ const groq = new OpenAI({
 });
 
 
+// Modelos de visión de Groq que soportan imágenes
 const VISION_MODEL = 'meta-llama/llama-4-maverick-17b-128e-instruct';
 const TEXT_MODEL = 'llama-3.3-70b-versatile';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+
+/**
+ * Detecta el tipo MIME real de una imagen basándose en los magic bytes
+ */
+function detectImageMimeType(buffer: Buffer): string | null {
+  // Magic bytes para diferentes formatos de imagen
+  const signatures: { bytes: number[]; mime: string }[] = [
+    { bytes: [0xFF, 0xD8, 0xFF], mime: 'image/jpeg' },
+    { bytes: [0x89, 0x50, 0x4E, 0x47], mime: 'image/png' },
+    { bytes: [0x47, 0x49, 0x46, 0x38], mime: 'image/gif' },
+    { bytes: [0x52, 0x49, 0x46, 0x46], mime: 'image/webp' }, // RIFF (WebP)
+  ];
+
+  // Log de los primeros bytes para debugging
+  const firstBytes = Array.from(buffer.slice(0, 10)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  console.log('🔢 Primeros 10 bytes (hex):', firstBytes);
+
+  for (const sig of signatures) {
+    let match = true;
+    for (let i = 0; i < sig.bytes.length; i++) {
+      if (buffer[i] !== sig.bytes[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      return sig.mime;
+    }
+  }
+
+  console.warn('⚠️ No se reconoció el formato de imagen');
+  return null; // No reconocido
+}
+
+/**
+ * Descarga una imagen desde una URL externa y la convierte a base64
+ * Útil para URLs de WhatsApp que son temporales y requieren autenticación
+ */
+async function downloadAndConvertToBase64(url: string): Promise<string | null> {
+  try {
+    console.log('📥 Descargando imagen desde URL externa:', url.substring(0, 100) + '...');
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'image/*',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error('Error descargando imagen:', response.status, response.statusText);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    console.log('📊 Tamaño descargado:', buffer.length, 'bytes');
+    
+    // Detectar el tipo MIME real basándose en los magic bytes
+    const detectedMimeType = detectImageMimeType(buffer);
+    const headerContentType = response.headers.get('content-type') || '';
+    
+    console.log('📋 Content-Type del header:', headerContentType);
+    console.log('🔍 Tipo MIME detectado:', detectedMimeType);
+    
+    // Si no se pudo detectar el tipo, la imagen probablemente está encriptada o corrupta
+    if (!detectedMimeType) {
+      console.error('❌ No se pudo detectar el tipo de imagen. Puede estar encriptada.');
+      console.log('📄 Primeros 100 bytes como string:', buffer.slice(0, 100).toString('utf8').replace(/[^\x20-\x7E]/g, '.'));
+      return null;
+    }
+    
+    const base64 = buffer.toString('base64');
+    
+    // Validar que tenemos datos suficientes
+    if (base64.length < 100) {
+      console.error('❌ Base64 demasiado corto, imagen probablemente inválida');
+      return null;
+    }
+    
+    // Verificar que el base64 corresponde al tipo detectado
+    const expectedPrefixes: Record<string, string[]> = {
+      'image/jpeg': ['/9j/', '/9k/', '/9l/'], // JPEG puede tener variaciones
+      'image/png': ['iVBORw'],
+      'image/gif': ['R0lGOD'],
+      'image/webp': ['UklGR'],
+    };
+    
+    const validPrefixes = expectedPrefixes[detectedMimeType] || [];
+    const hasValidPrefix = validPrefixes.some(prefix => base64.startsWith(prefix));
+    
+    console.log('✅ Base64 primeros 20 chars:', base64.substring(0, 20));
+    console.log('✅ Prefijo válido:', hasValidPrefix);
+    
+    if (!hasValidPrefix) {
+      console.warn('⚠️ El base64 no tiene el prefijo esperado para', detectedMimeType);
+      // Intentar de todas formas, puede que funcione
+    }
+    
+    return `data:${detectedMimeType};base64,${base64}`;
+  } catch (error) {
+    console.error('Error convirtiendo URL externa a base64:', error);
+    return null;
+  }
+}
+
+/**
+ * Verifica si una URL es de WhatsApp (temporal y requiere descarga)
+ */
+function isWhatsAppUrl(url: string): boolean {
+  return url.includes('whatsapp.net') || url.includes('whatsapp.com');
+}
 
 async function convertLocalUrlToBase64(url: string): Promise<string | null> {
   try {
@@ -63,8 +177,25 @@ function isLocalhostUrl(url: string): boolean {
 
 export const analyzeProductImages = async (imageUrls: string[], additionalContext?: string): Promise<{ title: string; description: string; options: { name: string; values: string[] }[] }> => {
   try {
-    const imageMessages = await Promise.all(
+    const imageMessagesRaw = await Promise.all(
       imageUrls.map(async (url) => {
+        // URLs de WhatsApp son temporales - descargar y convertir a base64
+        if (isWhatsAppUrl(url)) {
+          const base64Image = await downloadAndConvertToBase64(url);
+          if (base64Image) {
+            return {
+              type: "image_url" as const,
+              image_url: {
+                url: base64Image,
+                detail: "high" as const
+              }
+            };
+          }
+          console.warn('❌ No se pudo descargar imagen de WhatsApp:', url.substring(0, 50));
+          return null; // Marcar como fallida
+        }
+        
+        // URLs de localhost en desarrollo
         if (isDevelopment && isLocalhostUrl(url)) {
           const base64Image = await convertLocalUrlToBase64(url);
           if (base64Image) {
@@ -76,8 +207,10 @@ export const analyzeProductImages = async (imageUrls: string[], additionalContex
               }
             };
           }
+          return null; // Marcar como fallida
         }
 
+        // URL pública - usarla directamente
         return {
           type: "image_url" as const,
           image_url: {
@@ -87,6 +220,15 @@ export const analyzeProductImages = async (imageUrls: string[], additionalContex
         };
       })
     );
+    
+    // Filtrar imágenes que fallaron
+    const imageMessages = imageMessagesRaw.filter((msg): msg is NonNullable<typeof msg> => msg !== null);
+    
+    console.log(`🖼️ Imágenes válidas: ${imageMessages.length}/${imageUrls.length}`);
+    
+    if (imageMessages.length === 0) {
+      throw new Error('No se pudieron procesar las imágenes. Por favor intenta con otras imágenes.');
+    }
 
     const systemPrompt = `Eres un experto copywriter de e-commerce. Genera contenido de venta para productos.
 
