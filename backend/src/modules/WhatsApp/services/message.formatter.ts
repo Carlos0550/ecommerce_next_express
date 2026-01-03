@@ -1,7 +1,14 @@
 /**
  * Formateador de mensajes para WhatsApp
  * Usa formato de WhatsApp: *bold*, _italic_, ~strikethrough~, ```monospace```
+ * 
+ * Este módulo centraliza todo el formateo de mensajes para mantener
+ * consistencia en la comunicación con los usuarios.
  */
+
+// ============================================================================
+// TIPOS
+// ============================================================================
 
 interface ProductPreviewData {
   title: string;
@@ -13,18 +20,58 @@ interface ProductPreviewData {
   imageCount: number;
 }
 
+interface ProductCreatedData {
+  id: string;
+  title: string;
+  price: number;
+  stock: number;
+  state?: string;
+  link?: string;
+}
+
+interface CollectionStatusData {
+  images: number;
+  price?: number;
+  stock?: number;
+  category?: string;
+  context?: string;
+}
+
+interface ProductListItem {
+  id: string;
+  title: string;
+  price: number;
+  stock: number;
+  state: string;
+}
+
+// ============================================================================
+// CONSTANTES
+// ============================================================================
+
+const STATE_LABELS: Record<string, string> = {
+  active: '✅ Activo',
+  draft: '📝 Borrador',
+  out_stock: '📦 Sin stock',
+  deleted: '🗑️ Eliminado',
+};
+
+// ============================================================================
+// FORMATEADOR
+// ============================================================================
+
 class MessageFormatter {
   /**
-   * Formatear preview del producto
+   * Formatear preview del producto antes de crear
    */
   formatProductPreview(data: ProductPreviewData): string {
     let message = `📦 *PREVIEW DEL PRODUCTO*\n\n`;
     
-    message += `*Título:* ${data.title}\n`;
-    message += `*Precio:* $${data.price.toLocaleString()}\n`;
-    message += `*Stock:* ${data.stock} unidades\n`;
-    message += `*Categoría:* ${data.category}\n`;
-    message += `*Imágenes:* ${data.imageCount}\n`;
+    message += `📝 *Título:* ${data.title}\n`;
+    message += `💰 *Precio:* $${data.price.toLocaleString()}\n`;
+    message += `📊 *Stock:* ${data.stock} unidades\n`;
+    message += `📁 *Categoría:* ${data.category}\n`;
+    message += `🖼️ *Imágenes:* ${data.imageCount}\n`;
     
     if (data.options && data.options.length > 0) {
       message += `\n*Opciones:*\n`;
@@ -33,10 +80,10 @@ class MessageFormatter {
       });
     }
     
-    message += `\n*Descripción:*\n`;
-    message += this.truncateDescription(data.description, 500);
+    message += `\n📋 *Descripción:*\n`;
+    message += this.truncateText(data.description, 500);
     
-    message += `\n\n─────────────────\n`;
+    message += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     message += `¿Qué deseas hacer?\n\n`;
     message += `1️⃣ Publicar así\n`;
     message += `2️⃣ Modificar algo\n`;
@@ -49,48 +96,53 @@ class MessageFormatter {
   /**
    * Formatear mensaje de éxito de creación
    */
-  formatProductCreated(product: {
-    id: string;
-    title: string;
-    price: number;
-    stock: number;
-  }): string {
-    return (
-      `✅ *¡Producto creado exitosamente!*\n\n` +
-      `📦 ${product.title}\n` +
-      `💰 $${product.price.toLocaleString()}\n` +
-      `📊 Stock: ${product.stock}\n\n` +
-      `ID: \`${product.id}\`\n\n` +
-      `_Envía una imagen para crear otro producto._`
-    );
+  formatProductCreated(data: ProductCreatedData): string {
+    const isDraft = data.state === 'draft';
+    
+    let message = isDraft 
+      ? `✅ *¡Producto guardado como borrador!*\n\n`
+      : `✅ *¡Producto creado exitosamente!*\n\n`;
+    
+    message += `📦 ${data.title}\n`;
+    message += `💰 $${data.price.toLocaleString()}\n`;
+    message += `📊 Stock: ${data.stock}\n`;
+    message += `📋 Estado: ${isDraft ? 'Borrador' : 'Activo'}\n`;
+    message += `🆔 ID: \`${data.id}\`\n`;
+    
+    if (data.link) {
+      message += `🔗 Link: ${data.link}\n`;
+    }
+    
+    message += `\n_Envía una imagen para crear otro producto._`;
+    
+    return message;
   }
 
   /**
    * Formatear mensaje de ayuda
    */
   formatHelpMessage(): string {
-    return (
-      `📚 *COMANDOS DISPONIBLES*\n\n` +
-      `📷 *Enviar imagen* - Inicia la carga de un producto\n` +
-      `✏️ *nuevo producto* - Inicia el proceso de carga\n` +
-      `❌ *cancelar* - Cancela la operación actual\n` +
-      `❓ *ayuda* - Muestra este mensaje\n\n` +
-      `─────────────────\n\n` +
-      `*DURANTE LA CARGA:*\n\n` +
-      `Puedes enviar los datos en cualquier orden:\n` +
-      `• \`precio 15990\` o \`$15990\`\n` +
-      `• \`stock 10\`\n` +
-      `• \`categoría Ropa\` o nombre de la categoría\n` +
-      `• Cualquier texto adicional como contexto\n\n` +
-      `Escribe \`listo\` cuando termines.\n\n` +
-      `─────────────────\n\n` +
-      `*EN EL PREVIEW:*\n\n` +
-      `• \`1\` o \`publicar\` - Crea el producto\n` +
-      `• \`título: Nuevo título\` - Cambia el título\n` +
-      `• \`precio: 20000\` - Cambia el precio\n` +
-      `• Envía un texto largo para reemplazar la descripción\n` +
-      `• \`cancelar\` - Cancela todo`
-    );
+    return `¡Claro! 💡 Estas son las cosas que puedo hacer por ti:
+
+📷 *Cargar producto nuevo*
+   → Envíame una imagen con el precio y categoría
+
+🔍 *Buscar productos*
+   → Ej: "busca los delineadores" o "productos de Makeup"
+
+📊 *Ver bajo stock*
+   → "qué productos tienen poco stock?"
+
+✏️ *Editar producto*
+   → Busco el producto y puedes cambiar título, descripción, precio, stock, imágenes o estado
+
+🗑️ *Eliminar producto*
+   → "elimina [nombre del producto]"
+
+📦 *Marcar sin stock*
+   → "ya no tengo stock de [producto]"
+
+¿En qué te puedo ayudar?`;
   }
 
   /**
@@ -104,6 +156,79 @@ class MessageFormatter {
     });
     
     message += `\n_Escribe el número de la categoría:_`;
+    
+    return message;
+  }
+
+  /**
+   * Formatear lista de productos
+   */
+  formatProductList(products: ProductListItem[]): string {
+    let list = '';
+    
+    products.forEach((p, i) => {
+      list += `*${i + 1}.* ${p.title}\n`;
+      list += `   💰 $${p.price.toLocaleString()} | 📊 Stock: ${p.stock}\n`;
+      list += `   ${STATE_LABELS[p.state] || p.state}\n\n`;
+    });
+    
+    list += `\n_Escribe el número del producto que deseas seleccionar._`;
+    
+    return list;
+  }
+
+  /**
+   * Formatear producto seleccionado
+   */
+  formatProductSelected(product: ProductListItem, link?: string): string {
+    let message = `✅ Seleccionaste: *${product.title}*\n\n`;
+    message += `💰 Precio: $${product.price.toLocaleString()}\n`;
+    message += `📊 Stock: ${product.stock}\n`;
+    message += `📋 Estado: ${product.state}`;
+    
+    if (link) {
+      message += `\n🔗 ${link}`;
+    }
+    
+    message += `\n\n¿Qué deseas hacer?\n`;
+    message += `• Cambiar precio, título, descripción o stock\n`;
+    message += `• Regenerar descripción con IA\n`;
+    message += `• Publicar (si es borrador)\n`;
+    message += `• Marcar sin stock\n`;
+    message += `• Eliminar`;
+    
+    return message;
+  }
+
+  /**
+   * Formatear información de un producto
+   */
+  formatProductInfo(product: {
+    id: string;
+    title: string;
+    price: number;
+    stock: number;
+    category?: string;
+    createdAt?: Date;
+    link?: string;
+  }): string {
+    let message = `📦 *${product.title}*\n\n`;
+    message += `💰 Precio: $${product.price.toLocaleString()}\n`;
+    message += `📊 Stock: ${product.stock}\n`;
+    
+    if (product.category) {
+      message += `📁 Categoría: ${product.category}\n`;
+    }
+    
+    if (product.createdAt) {
+      message += `📅 Creado: ${product.createdAt.toLocaleDateString('es-AR')}\n`;
+    }
+    
+    message += `🆔 ID: ${product.id}`;
+    
+    if (product.link) {
+      message += `\n🔗 Link: ${product.link}`;
+    }
     
     return message;
   }
@@ -132,48 +257,34 @@ class MessageFormatter {
   /**
    * Formatear mensaje de bienvenida
    */
-  formatWelcomeMessage(): string {
-    return (
-      `👋 *¡Hola! Soy tu asistente de carga de productos.*\n\n` +
-      `Puedo ayudarte a crear productos rápidamente usando IA.\n\n` +
-      `📷 Envíame una imagen para comenzar\n` +
-      `❓ Escribe *ayuda* para ver los comandos\n\n` +
-      `_Tu número está autorizado para usar este servicio._`
-    );
+  formatWelcomeMessage(businessName: string, emojis: string): string {
+    return `¡Hola! 👋 Soy Cleria, tu asistente para gestionar productos en *${businessName}* ${emojis}
+
+¿Qué puedo hacer por ti?
+📷 Cargar un producto nuevo (envía una imagen)
+🔍 Buscar productos
+📊 Ver productos con bajo stock
+✏️ Editar un producto
+🗑️ Eliminar un producto
+
+💡 Escribe "ayuda" en cualquier momento para ver todas las opciones.`;
   }
 
   /**
    * Formatear mensaje de no autorizado
    */
-  formatUnauthorizedMessage(): string {
-    return (
-      `❌ *Número no autorizado*\n\n` +
-      `Tu número de teléfono no está registrado para usar este servicio.\n\n` +
-      `Contacta al administrador para que vincule tu número.`
-    );
-  }
+  formatUnauthorizedMessage(businessName: string): string {
+    return `Hola, soy Cleria el asistente de *${businessName}* 🤖
 
-  /**
-   * Truncar descripción larga
-   */
-  private truncateDescription(description: string, maxLength: number): string {
-    if (description.length <= maxLength) {
-      return description;
-    }
-    
-    return description.substring(0, maxLength - 3) + '...';
+Lamentablemente no puedo atender tu solicitud porque no estás en la lista de remitentes permitidos.
+
+Si formas parte de *${businessName}*, contacta a un administrador para que te agregue a la lista.`;
   }
 
   /**
    * Formatear mensaje de estado de datos recolectados
    */
-  formatCollectionStatus(data: {
-    images: number;
-    price?: number;
-    stock?: number;
-    category?: string;
-    context?: string;
-  }): string {
+  formatCollectionStatus(data: CollectionStatusData): string {
     let message = `📝 *Estado actual*\n\n`;
     
     message += `📷 Imágenes: ${data.images}\n`;
@@ -182,13 +293,47 @@ class MessageFormatter {
     message += `📁 Categoría: ${data.category || '_pendiente_'}\n`;
     
     if (data.context) {
-      message += `\n📄 Contexto: ${this.truncateDescription(data.context, 100)}`;
+      message += `\n📄 Contexto: ${this.truncateText(data.context, 100)}`;
     }
     
     return message;
+  }
+
+  /**
+   * Formatear mensaje de bajo stock
+   */
+  formatLowStockHeader(): string {
+    return `📊 *Productos con bajo stock (< 3 unidades):*\n\n`;
+  }
+
+  /**
+   * Formatear mensaje de recordatorio por inactividad
+   */
+  formatInactivityReminder(): string {
+    return `👋 ¿Sigues ahí? Noté que no has respondido. ¿Necesitas ayuda con algo?
+
+Si no respondes en 30 segundos, cerraré esta conversación para liberar recursos. Puedes iniciar una nueva cuando quieras enviándome una imagen. 📷`;
+  }
+
+  /**
+   * Formatear mensaje de cierre por inactividad
+   */
+  formatSessionClosed(): string {
+    return `👋 He cerrado esta conversación por inactividad.
+
+Cuando quieras cargar un producto, solo envíame una imagen y empezamos de nuevo. ¡Hasta pronto! 📦`;
+  }
+
+  /**
+   * Truncar texto largo
+   */
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength - 3) + '...';
   }
 }
 
 export const messageFormatter = new MessageFormatter();
 export default messageFormatter;
-

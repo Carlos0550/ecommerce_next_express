@@ -64,6 +64,15 @@ export interface WhatsAppConversationSession {
   searchResults?: Array<{ id: string; title: string; price: number; stock: number; state: string }>;
   userTone?: 'argentino' | 'formal' | 'neutral';
   greetingTone?: 'casual' | 'formal';
+  // Acción pendiente que se ejecutará después de seleccionar un producto
+  pendingAction?: {
+    action: 'update_product' | 'delete_product';
+    data?: {
+      update_field?: string;
+      update_value?: string | number;
+      regenerate_with_ai?: boolean;
+    };
+  };
 }
 
 // Respuesta de la IA para el flujo conversacional
@@ -100,11 +109,20 @@ export interface AIConversationResponse {
     update_value?: string | number;
     regenerate_with_ai?: boolean;
     new_images?: string[];
+    product_name?: string; // Nombre del producto mencionado por el usuario
+    user_context?: string; // Correcciones del usuario (ej: "no tiene estrellas de colores")
     updates?: Array<{
       field: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';
       value?: string | number;
       regenerate_with_ai?: boolean;
     }>;
+    // Acción pendiente que se ejecutará después de seleccionar el producto
+    pending_action?: {
+      action: 'update_product' | 'delete_product';
+      update_field?: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';
+      update_value?: string | number;
+      regenerate_with_ai?: boolean;
+    };
   };
   next_state: ConversationState;
 }

@@ -230,119 +230,152 @@ export const analyzeProductImages = async (imageUrls: string[], additionalContex
       throw new Error('No se pudieron procesar las imágenes. Por favor intenta con otras imágenes.');
     }
 
-    const systemPrompt = `Eres un experto copywriter de e-commerce. Genera contenido de venta para productos.
+    // Seleccionar estilo aleatorio para variar las descripciones
+    // Cada estilo tiene una frase de ejemplo que el modelo DEBE usar como inspiración
+    const introStyles = [
+      { name: 'PREGUNTA_RETÓRICA', example: '¿Lista para brillar? ¿Buscas el accesorio perfecto? ¿Quieres destacar?' },
+      { name: 'AFIRMACIÓN_DIRECTA', example: 'Este accesorio es exactamente lo que tu look necesita' },
+      { name: 'STORYTELLING', example: 'Imagina lucir espectacular en cada salida. Piensa en todas las miradas que atraerás' },
+      { name: 'BENEFICIO_PRINCIPAL', example: 'Logra un look único con este increíble diseño' },
+      { name: 'EXCLUSIVIDAD', example: 'Descubre la pieza que está conquistando corazones' },
+    ];
+    
+    const toneStyles = [
+      { name: 'ENTUSIASTA', keywords: '¡increíble! ¡fantástico! ¡espectacular! ¡te va a encantar!' },
+      { name: 'ELEGANTE', keywords: 'sofisticado, refinado, distinguido, exquisito, premium' },
+      { name: 'CERCANO', keywords: 'vas a amar esto, es perfecto para vos, tu nuevo favorito' },
+      { name: 'PROFESIONAL', keywords: 'calidad superior, acabado impecable, materiales selectos' },
+      { name: 'ASPIRACIONAL', keywords: 'eleva tu estilo, transforma tu look, destaca entre todas' },
+    ];
+    
+    const closingStyles = [
+      { name: 'URGENCIA', example: '¡No esperes más, hazlo tuyo!' },
+      { name: 'ASPIRACIONAL', example: 'Dale a tu estilo el upgrade que merece' },
+      { name: 'EMOCIONAL', example: 'Porque vos lo vales, date ese gusto' },
+      { name: 'PRÁCTICO', example: 'Una inversión que vale cada peso' },
+      { name: 'EXCLUSIVO', example: 'Sé parte de quienes ya lo disfrutan' },
+    ];
+    
+    // Formatos de estructura diferentes para las descripciones
+    const structureFormats = [
+      {
+        name: 'CLÁSICO',
+        sections: `**✨ Beneficios:**\n- (3 puntos)\n\n**📦 Características:**\n- (3 puntos)\n\n**💡 Modo de uso:**\n(1-2 oraciones)`
+      },
+      {
+        name: 'NARRATIVO',
+        sections: `(Sin secciones con títulos. Escribe 3-4 párrafos fluidos describiendo el producto de forma conversacional. Mezcla beneficios, características y uso de forma natural.)`
+      },
+      {
+        name: 'DESTACADOS',
+        sections: `**🌟 Lo que te encantará:**\n- (4-5 puntos mezclando beneficios y características)\n\n**📝 Detalles:**\nPárrafo breve con especificaciones y modo de uso.`
+      },
+      {
+        name: 'PREGUNTA_RESPUESTA',
+        sections: `**¿Por qué elegirlo?**\n(Párrafo con beneficios principales)\n\n**¿Qué incluye?**\n- (Lista de características)\n\n**¿Cómo usarlo?**\n(Instrucciones breves)`
+      },
+      {
+        name: 'MINIMALISTA',
+        sections: `**✦ Destacados:**\n- (4-5 puntos concisos con lo más importante)\n\nPárrafo final con detalles adicionales y cierre motivacional.`
+      },
+    ];
+    
+    const selectedIntro = introStyles[Math.floor(Math.random() * introStyles.length)];
+    const selectedTone = toneStyles[Math.floor(Math.random() * toneStyles.length)];
+    const selectedClosing = closingStyles[Math.floor(Math.random() * closingStyles.length)];
+    const selectedStructure = structureFormats[Math.floor(Math.random() * structureFormats.length)];
+    
+    console.log(`🎨 Estilos: Apertura=${selectedIntro.name}, Tono=${selectedTone.name}, Cierre=${selectedClosing.name}, Estructura=${selectedStructure.name}`);
+    
+    const systemPrompt = `Eres un experto copywriter de e-commerce. Tu trabajo es generar descripciones ÚNICAS y VARIADAS.
 
 TAREA: Analiza las imágenes y genera un JSON con title, description y options.
+
+=== ESTILO OBLIGATORIO PARA ESTA DESCRIPCIÓN ===
+⚠️ CRÍTICO: DEBES seguir EXACTAMENTE estos estilos. NO uses otros estilos.
+
+📌 APERTURA: ${selectedIntro.name}
+   → INSPÍRATE EN: "${selectedIntro.example}"
+   → NUNCA empieces con "Presentamos" ni "Descubre" si no es tu estilo asignado
+
+📌 TONO: ${selectedTone.name}  
+   → USA estas palabras/frases: ${selectedTone.keywords}
+
+📌 CIERRE: ${selectedClosing.name}
+   → INSPÍRATE EN: "${selectedClosing.example}"
+
+PROHIBIDO:
+❌ NO uses "Presentamos" a menos que tu estilo sea EXCLUSIVIDAD
+❌ NO uses siempre las mismas estructuras de oración
+❌ NO repitas vocabulario genérico como "alta calidad" sin variación
 
 === TITLE (título) ===
 - Máximo 50 caracteres
 - Profesional y atractivo
 - Sin guiones ni emojis
 - Incluye palabras clave SEO
+- VARÍA la estructura: a veces usa "[Producto] + [Adjetivo]", otras "[Adjetivo] + [Producto]", otras "Kit/Set de [Producto]"
 
 === DESCRIPTION (descripción) ===
-REQUISITO CRÍTICO: La descripción DEBE tener entre 600 y 1200 caracteres. Esto es OBLIGATORIO.
+REQUISITO: La descripción DEBE tener entre 600 y 1200 caracteres.
 
-FORMATO OBLIGATORIO: La descripción debe usar EXACTAMENTE este formato con secciones marcadas:
+📌 ESTRUCTURA ASIGNADA: ${selectedStructure.name}
+USA ESTA ESTRUCTURA:
+${selectedStructure.sections}
 
-1. Párrafo introductorio (2-3 oraciones describiendo el producto)
+FORMATO DE TU DESCRIPCIÓN:
+1. Párrafo introductorio (2-3 oraciones) - USA EL ESTILO DE APERTURA: ${selectedIntro.name}
+2. Cuerpo con la estructura ${selectedStructure.name} indicada arriba
+3. Frase final motivacional - USA EL ESTILO DE CIERRE: ${selectedClosing.name}
 
-**✨ Beneficios:**
-- Beneficio 1
-- Beneficio 2
-- Beneficio 3
-
-**📦 Características:**
-- Característica 1 (materiales, calidad, etc.)
-- Característica 2
-
-**💡 Modo de uso:**
-Instrucciones claras de cómo usar el producto (1-2 oraciones).
-
-Frase final motivacional para la compra.
-
-REGLAS DE FORMATO ESTRICTAS:
-- USA EXACTAMENTE estos subtítulos (copia y pega): "**✨ Beneficios:**", "**📦 Características:**", "**💡 Modo de uso:**"
-- NO uses checkmarks (✅) ni otros símbolos en las listas
-- USA SOLO guiones "-" (guion medio) para los items de lista, NUNCA checkmarks
-- Formato de lista: cada item debe empezar con "- " (guion + espacio)
-- Usa emojis SOLO en los subtítulos, NUNCA en los items de lista
-- Si hay marca visible en la imagen, menciónala en la introducción
-- Evita palabras como "básico", "común", "simple"
-- NO menciones "cabello humano", "uñas humanas" aunque aparezca en etiquetas
-
-EJEMPLO DE FORMATO CORRECTO (copia este formato exacto):
-**✨ Beneficios:**
-- Beneficio 1
-- Beneficio 2
-- Beneficio 3
-
-**📦 Características:**
-- Característica 1
-- Característica 2
-
-**💡 Modo de uso:**
-Texto descriptivo aquí.
-
-FORMATO INCORRECTO (NO uses esto):
-✅ Beneficio 1
-✅ Beneficio 2
+REGLAS:
+- VARÍA el vocabulario: "premium", "excepcional", "superior", "de primera"
+- NO uses checkmarks (✅) en listas, solo guiones "-"
+- Si hay marca visible, menciónala
+- Evita "básico", "común", "simple"
+- NO menciones "cabello humano", "uñas humanas"
 
 === OPTIONS (opciones) ===
 PRIORIDAD 1: Si el contexto adicional menciona opciones de compra explícitas, ÚSALAS DIRECTAMENTE.
-
 PRIORIDAD 2: Si NO hay opciones en el contexto, detecta VARIACIONES REALES Y VISIBLES en las imágenes.
 
-REGLAS ESTRICTAS:
-1. Si el contexto dice "opciones: Color: Rojo, Azul" → USA esas opciones exactas
-2. Si el contexto menciona variantes → Conviértelas al formato: [{"name": "Color", "values": ["Rojo", "Azul"]}]
-3. Si NO hay contexto sobre opciones, solo genera si hay DIFERENCIAS claras visibles:
-   - Colores diferentes (ej: Rojo, Azul, Negro)
-   - Tallas diferentes (ej: S, M, L, XL)
-   - Materiales diferentes (ej: Algodón, Poliéster)
-   - Estilos diferentes (ej: Clásico, Moderno)
-4. NO inventes opciones basadas en la cantidad de productos (ej: "Delineador 1", "Delineador 2")
-5. Si todos los productos son idénticos Y no hay contexto sobre opciones → devuelve []
+REGLAS:
+1. Si el contexto menciona opciones → USA esas opciones exactas
+2. Si NO hay contexto, solo genera si hay DIFERENCIAS claras visibles (colores, tallas, etc.)
+3. NO inventes opciones basadas en cantidad de productos
+4. Si todos son idénticos Y no hay contexto → devuelve []
 
-EJEMPLOS CORRECTOS:
-- Contexto: "opciones: Color: Rojo, Azul, Negro" → [{"name": "Color", "values": ["Rojo", "Azul", "Negro"]}]
-- Contexto: "tallas S, M, L" → [{"name": "Talla", "values": ["S", "M", "L"]}]
-- Sin contexto, 6 delineadores todos negros → [] (sin opciones)
-- Sin contexto, 3 delineadores: rojo, azul, negro → [{"name": "Color", "values": ["Rojo", "Azul", "Negro"]}]
+Formato: [{"name": "Nombre", "values": ["Valor1", "Valor2"]}]
 
-Formato: [{"name": "Nombre de la variante", "values": ["Valor1", "Valor2"]}]
-Si no hay variantes ni contexto, devuelve: []
+=== EJEMPLOS DE VARIEDAD EN APERTURAS ===
 
-=== EJEMPLO DE DESCRIPCIÓN CORRECTA ===
-"Descubre este increíble set de maquillaje profesional de la marca XYZ que transformará tu rutina de belleza. Incluye todo lo que necesitas para lograr looks impactantes.
+PREGUNTA_RETÓRICA + ENTUSIASTA:
+"¿Lista para brillar en cada ocasión? ¡Este increíble set de maquillaje es tu nuevo aliado de belleza!"
 
-**✨ Beneficios:**
-- Pigmentos de alta duración que se mantienen todo el día
-- Fórmula suave que cuida tu piel
-- Colores versátiles para cualquier ocasión
+AFIRMACIÓN_DIRECTA + ELEGANTE:
+"Este sofisticado set de maquillaje reúne todo lo que necesitas para lograr acabados impecables y refinados."
 
-**📦 Características:**
-- Texturas sedosas y cremosas
-- Acabado profesional y uniforme
-- Incluye 12 tonos diferentes
+STORYTELLING + CERCANO:
+"Imagina empezar cada mañana con todo lo que necesitas a la mano. Este set va a ser tu nuevo favorito, ¡te lo aseguro!"
 
-**💡 Modo de uso:**
-Aplica con brocha o esponja para mejores resultados. Ideal para uso diario o eventos especiales.
+BENEFICIO_PRINCIPAL + PROFESIONAL:
+"Consigue resultados de salón en casa con este completo set que incluye herramientas de calidad profesional."
 
-¡Eleva tu rutina de maquillaje con este set profesional!"
+EXCLUSIVIDAD + ASPIRACIONAL:
+"Descubre la nueva colección que está transformando rutinas de belleza. Eleva tu experiencia a otro nivel."
 
 === FORMATO DE SALIDA ===
 Responde SOLO con JSON válido, sin markdown ni explicaciones.
-
-IMPORTANTE: 
-- Todas las strings JSON deben tener caracteres especiales escapados (\\n para saltos de línea, \\t para tabs)
-- NO uses saltos de línea reales dentro de las strings JSON
-- El JSON debe ser una sola línea o usar \\n dentro de las strings
-
-Formato:
 {"title":"...","description":"...","options":[]}
 
-RECUERDA: La descripción DEBE tener mínimo 600 caracteres y usar el formato con subtítulos.`;
+⚠️ RECORDATORIO FINAL - LEE ANTES DE GENERAR:
+- Descripción DEBE tener mínimo 600 caracteres
+- ESTRUCTURA: ${selectedStructure.name} - sigue el formato indicado arriba
+- APERTURA: ${selectedIntro.name} → "${selectedIntro.example}"
+- TONO: usa palabras como ${selectedTone.keywords}
+- CIERRE: ${selectedClosing.name} → "${selectedClosing.example}"
+- Si tu estilo NO es EXCLUSIVIDAD, NO empieces con "Presentamos"
+- VARÍA el vocabulario`;
 
     const response = await groq.chat.completions.create({
       model: VISION_MODEL,
@@ -356,25 +389,47 @@ RECUERDA: La descripción DEBE tener mínimo 600 caracteres y usar el formato co
           content: [
             {
               type: "text",
-              text: `Analiza estas imágenes y genera título, descripción y opciones de compra.
+              text: `${additionalContext && additionalContext.includes('CORRECCIONES DEL USUARIO') ? `
+🚨🚨🚨 CORRECCIÓN OBLIGATORIA - LEE ANTES DE VER LAS IMÁGENES 🚨🚨🚨
+
+${additionalContext}
+
+REGLAS ABSOLUTAS:
+1. NO menciones NADA que el usuario haya dicho que NO tiene el producto
+2. Si crees ver "estrellas de colores" pero el usuario dice que NO las tiene, NO LAS MENCIONES
+3. Si crees ver algo diferente a lo que dice el usuario, CONFÍA EN EL USUARIO
+4. El usuario CONOCE su producto mejor que cualquier análisis de imagen
+
+PROHIBIDO EN ESTA DESCRIPCIÓN:
+- Mencionar elementos que el usuario dijo que NO existen
+- Inventar características basándote solo en la imagen
+- Ignorar las correcciones del usuario
+
+Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
+
+` : ''}Analiza estas imágenes y genera título, descripción y opciones de compra.
 
         CRÍTICO sobre OPCIONES:
-        ${additionalContext ? `- El contexto adicional contiene información sobre opciones de compra. DEBES usar esas opciones explícitamente.
+        ${additionalContext && !additionalContext.includes('CORRECCIONES DEL USUARIO') ? `- El contexto adicional contiene información sobre opciones de compra. DEBES usar esas opciones explícitamente.
         - Si el contexto menciona opciones (ej: "Color: Rojo, Azul" o "tallas S, M, L"), conviértelas al formato JSON requerido.
         - El contexto tiene PRIORIDAD sobre la detección automática en las imágenes.
         ` : `- Solo genera opciones si hay VARIACIONES REALES visibles entre los productos (colores diferentes, tallas, etc.)
         - NO inventes opciones basadas en la cantidad de productos
         - Si todos los productos son idénticos, devuelve options: []
-        `}${additionalContext ? `\n\nCONTEXTO ADICIONAL DEL USUARIO (LEE CUIDADOSAMENTE Y USA LAS OPCIONES SI SE MENCIONAN):
+        `}${additionalContext && !additionalContext.includes('CORRECCIONES DEL USUARIO') ? `\n\nCONTEXTO ADICIONAL DEL USUARIO:
         ${additionalContext}
 
-        IMPORTANTE: Si el contexto menciona opciones de compra, variables, variantes, colores, tallas, etc., DEBES incluirlas en el campo "options" del JSON.` : ''}`
+        IMPORTANTE: Si el contexto menciona opciones de compra, variables, variantes, colores, tallas, etc., DEBES incluirlas en el campo "options" del JSON.` : ''}${additionalContext && additionalContext.includes('CORRECCIONES DEL USUARIO') ? `
+
+🚨 RECORDATORIO FINAL: El usuario dijo que el producto ${additionalContext.replace(/.*CORRECCIONES DEL USUARIO.*\n/i, '').replace(/\n/g, ' ')} - RESPETA ESTO.` : ''}`
             },
             ...imageMessages
           ]
         }
       ],
-      temperature: 0.1, // Reducida para más consistencia en formato
+      // Temperatura más baja cuando hay correcciones (para ser más preciso)
+      // Más alta cuando no hay correcciones (para más variedad)
+      temperature: additionalContext?.includes('CORRECCIONES DEL USUARIO') ? 0.3 : 0.75,
       max_tokens: 2000
     });
 
@@ -481,6 +536,91 @@ RECUERDA: La descripción DEBE tener mínimo 600 caracteres y usar el formato co
     return { title, description, options };
   } catch (error) {
     console.error('Error al analizar imágenes con Groq:', error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+};
+
+/**
+ * Regenera una descripción de producto aplicando correcciones del usuario.
+ * Usa el modelo de TEXTO (no visión) para evitar que el modelo "vea" cosas incorrectas.
+ */
+export const regenerateDescriptionWithCorrections = async (
+  currentDescription: string,
+  productTitle: string,
+  userCorrections: string
+): Promise<string> => {
+  try {
+    console.log(`🔧 Regenerando descripción con correcciones (modelo de texto)`);
+    console.log(`📝 Correcciones: ${userCorrections}`);
+    
+    const response = await groq.chat.completions.create({
+      model: TEXT_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Eres un experto copywriter de e-commerce. Tu tarea es CORREGIR una descripción de producto existente.
+
+REGLAS ABSOLUTAS:
+1. El usuario ha indicado que la descripción tiene ERRORES
+2. DEBES eliminar todo lo que el usuario diga que es INCORRECTO
+3. DEBES mantener el mismo estilo y formato de la descripción original
+4. NO inventes características nuevas que no estaban en la descripción original
+5. Si el usuario dice que algo NO existe, ELIMÍNALO completamente
+
+FORMATO DE SALIDA CRÍTICO:
+- Devuelve SOLO la descripción corregida, sin explicaciones
+- MANTÉN EL FORMATO MARKDOWN exactamente como está en la descripción original
+- USA SALTOS DE LÍNEA (\\n) para separar párrafos y secciones
+- MANTÉN las secciones con sus títulos en negrita: **✦ Destacados:**, **🌟 Lo que te encantará:**, **📝 Detalles:**, **¿Por qué elegirlo?**, etc.
+- MANTÉN los guiones (-) para las listas
+- MANTÉN la misma estructura de párrafos y secciones
+- Mantén la misma longitud aproximada
+
+EJEMPLO DE FORMATO CORRECTO:
+Párrafo introductorio aquí.
+
+**🌟 Lo que te encantará:**
+- Punto 1
+- Punto 2
+- Punto 3
+
+**📝 Detalles:**
+Párrafo con detalles aquí.
+
+Frase de cierre.`
+        },
+        {
+          role: "user",
+          content: `PRODUCTO: ${productTitle}
+
+DESCRIPCIÓN ACTUAL (CON ERRORES) - MANTÉN ESTE FORMATO:
+${currentDescription}
+
+CORRECCIONES DEL USUARIO:
+${userCorrections}
+
+IMPORTANTE: 
+1. El usuario dice que ${userCorrections}. DEBES eliminar cualquier mención a lo que el usuario dice que NO tiene el producto.
+2. MANTÉN el formato markdown con saltos de línea, secciones en negrita (**), y listas con guiones (-)
+3. NO pongas todo en una sola línea
+
+Genera la descripción CORREGIDA manteniendo el formato:`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1500
+    });
+
+    const correctedDescription = response.choices[0]?.message?.content?.trim();
+    
+    if (!correctedDescription) {
+      throw new Error('No se recibió respuesta del modelo');
+    }
+
+    console.log(`✅ Descripción corregida exitosamente`);
+    return correctedDescription;
+  } catch (error) {
+    console.error('Error regenerando descripción con correcciones:', error);
     throw error instanceof Error ? error : new Error(String(error));
   }
 };

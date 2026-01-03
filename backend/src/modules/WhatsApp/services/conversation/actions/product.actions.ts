@@ -1,0 +1,403 @@
+/**
+ * Acciones de productos para el flujo conversacional
+ * Maneja crear, actualizar y eliminar productos
+ */
+
+import { prisma } from '@/config/prisma';
+import { analyzeProductImages } from '@/config/groq';
+import { messageService } from '../../message.service';
+import { sessionManager } from '../session.manager';
+import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
+
+// ============================================================================
+// CONFIGURACIÓN
+// ============================================================================
+
+const STORE_URL = process.env.STORE_URL || process.env.FRONTEND_URL || '';
+
+// ============================================================================
+// ACCIONES
+// ============================================================================
+
+class ProductActions {
+  /**
+   * Procesa imágenes con IA para generar título y descripción
+   */
+  async processWithAI(session: WhatsAppConversationSession): Promise<void> {
+    try {
+      if (session.productData.images.length === 0) {
+        session.lastError = 'No hay imágenes para procesar';
+        return;
+      }
+      
+      const aiResult = await analyzeProductImages(
+        session.productData.images,
+        session.productData.additionalContext
+      );
+      
+      session.productData.aiResult = aiResult;
+      session.lastError = undefined;
+      
+      // Agregar mensaje con el preview al historial
+      const previewMessage = this.formatProductPreview(session);
+      session.messageHistory.push({
+        role: 'assistant',
+        content: `[SISTEMA: Producto procesado con IA]\n${previewMessage}`,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      console.error('Error procesando con IA:', error);
+      session.lastError = 'Error al procesar las imágenes con IA';
+      throw error;
+    }
+  }
+
+  /**
+   * Crea el producto en la base de datos
+   */
+  async createProduct(session: WhatsAppConversationSession): Promise<void> {
+    const { productData } = session;
+    
+    if (!productData.aiResult || !productData.categoryId) {
+      throw new Error('Faltan datos para crear el producto');
+    }
+    
+    try {
+      const productState = productData.draft ? 'draft' : 'active';
+      
+      const product = await prisma.products.create({
+        data: {
+          title: productData.aiResult.title,
+          description: productData.aiResult.description,
+          price: productData.price || 0,
+          stock: productData.stock || 1,
+          images: productData.images,
+          options: productData.aiResult.options,
+          categoryId: productData.categoryId,
+          state: productState,
+        },
+      });
+      
+      const productLink = STORE_URL ? `${STORE_URL}/producto/${product.id}` : '';
+      const isDraft = productState === 'draft';
+      
+      let successMessage = isDraft 
+        ? `✅ *¡Producto guardado como borrador!*`
+        : `✅ *¡Producto creado exitosamente!*`;
+      
+      successMessage += `
+
+📦 ${product.title}
+💰 $${product.price.toLocaleString()}
+📊 Stock: ${product.stock}
+📋 Estado: ${isDraft ? 'Borrador' : 'Activo'}
+🆔 ID: ${product.id}`;
+
+      if (productLink) {
+        successMessage += `
+🔗 Link: ${productLink}`;
+      }
+      
+      successMessage += `
+
+¿Necesitas hacer algo más con este producto? Puedo editarlo, cambiar su estado, o si prefieres puedes enviar una imagen para crear otro producto 📷`;
+
+      await messageService.sendMessage(session.phone, successMessage);
+      
+      // En lugar de eliminar la sesión, mantenerla con el producto seleccionado
+      // para permitir ediciones inmediatas
+      session.selectedProductId = product.id;
+      session.searchResults = [{
+        id: product.id,
+        title: product.title,
+        price: Number(product.price),
+        stock: product.stock,
+        state: product.state,
+      }];
+      session.state = 'editing';
+      session.productData = { images: [] }; // Limpiar datos del producto nuevo
+      await sessionManager.saveSession(session);
+    } catch (error) {
+      console.error('Error creando producto:', error);
+      session.lastError = 'Error al crear el producto en la base de datos';
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza un producto existente
+   * @param userContext - Correcciones o contexto adicional del usuario (ej: "no tiene estrellas de colores")
+   */
+  async updateProduct(
+    session: WhatsAppConversationSession,
+    field: string,
+    value: string | number | undefined,
+    regenerateWithAI?: boolean,
+    userContext?: string
+  ): Promise<void> {
+    if (!session.selectedProductId) {
+      await messageService.sendMessage(
+        session.phone,
+        '❌ No hay producto seleccionado. Primero busca y selecciona un producto.'
+      );
+      return;
+    }
+    
+    try {
+      const product = await prisma.products.findUnique({
+        where: { id: session.selectedProductId },
+        include: { category: true },
+      });
+      
+      if (!product) {
+        await messageService.sendMessage(session.phone, '❌ Producto no encontrado.');
+        return;
+      }
+      
+      const updateData: Record<string, any> = {};
+      let successMessage = '';
+      
+      switch (field) {
+        case 'title':
+          updateData.title = value;
+          successMessage = `✅ Título actualizado a: *${value}*`;
+          break;
+          
+        case 'description':
+          if (regenerateWithAI) {
+            await messageService.sendMessage(session.phone, '🤖 Regenerando descripción con IA...');
+            
+            if (userContext && product.description) {
+              console.log(`📝 Usando modelo de TEXTO para aplicar correcciones: ${userContext}`);
+              const { regenerateDescriptionWithCorrections } = await import('@/config/groq');
+              const correctedDescription = await regenerateDescriptionWithCorrections(
+                product.description,
+                product.title,
+                userContext
+              );
+              updateData.description = correctedDescription;
+              successMessage = `✅ Descripción corregida y guardada:\n\n${correctedDescription}`;
+            } else {
+              const images = Array.isArray(product.images) ? product.images as string[] : [];
+              if (images.length === 0) {
+                await messageService.sendMessage(
+                  session.phone,
+                  '❌ El producto no tiene imágenes para regenerar la descripción.'
+                );
+                return;
+              }
+              
+              const aiResult = await analyzeProductImages(images, product.title);
+              updateData.description = aiResult.description;
+              successMessage = `✅ Descripción regenerada y guardada:\n\n${aiResult.description}`;
+            }
+          } else {
+            updateData.description = value;
+            successMessage = `✅ Descripción actualizada y guardada.`;
+          }
+          break;
+          
+        case 'price':
+          updateData.price = Number(value);
+          successMessage = `✅ Precio actualizado a: $${Number(value).toLocaleString()}`;
+          break;
+          
+        case 'stock':
+          updateData.stock = Number(value);
+          if (product.state === 'out_stock' && Number(value) > 0) {
+            updateData.state = 'active';
+            successMessage = `✅ Stock actualizado a: ${value} unidades y producto reactivado.`;
+          } else {
+            successMessage = `✅ Stock actualizado a: ${value} unidades`;
+          }
+          break;
+          
+        case 'state':
+          if (value === 'out_stock') {
+            updateData.state = 'out_stock';
+            updateData.stock = 0;
+            successMessage = '📦 Producto marcado como sin stock.';
+          } else if (value === 'active') {
+            updateData.state = 'active';
+            successMessage = '✅ Producto publicado correctamente.';
+          } else if (value === 'draft') {
+            updateData.state = 'draft';
+            successMessage = '📝 Producto guardado como borrador.';
+          }
+          break;
+          
+        case 'images':
+          if (session.productData.images.length > 0) {
+            updateData.images = session.productData.images;
+            successMessage = `✅ Imágenes actualizadas (${session.productData.images.length} imagen(es)).`;
+            session.productData.images = [];
+          } else {
+            await messageService.sendMessage(
+              session.phone,
+              '❌ Primero envía las nuevas imágenes y luego pídeme que las actualice.'
+            );
+            return;
+          }
+          break;
+      }
+      
+      await prisma.products.update({
+        where: { id: session.selectedProductId },
+        data: updateData,
+      });
+      
+      // Actualizar el producto en los resultados de búsqueda
+      const updatedProduct = await prisma.products.findUnique({
+        where: { id: session.selectedProductId },
+        select: { id: true, title: true, price: true, stock: true, state: true },
+      });
+      
+      if (updatedProduct && session.searchResults) {
+        const idx = session.searchResults.findIndex(p => p.id === session.selectedProductId);
+        if (idx !== -1) {
+          session.searchResults[idx] = {
+            id: updatedProduct.id,
+            title: updatedProduct.title,
+            price: Number(updatedProduct.price),
+            stock: updatedProduct.stock,
+            state: updatedProduct.state,
+          };
+        }
+      }
+      
+      await messageService.sendMessage(
+        session.phone, 
+        `${successMessage}\n\n¿Deseas hacer algún otro cambio o terminamos?`
+      );
+      
+    } catch (error) {
+      console.error('Error actualizando producto:', error);
+      await messageService.sendMessage(
+        session.phone,
+        '❌ Error al actualizar el producto. Intenta de nuevo.'
+      );
+    }
+  }
+
+  /**
+   * Elimina un producto (marca como eliminado)
+   */
+  async deleteProduct(session: WhatsAppConversationSession): Promise<void> {
+    if (!session.selectedProductId) {
+      await messageService.sendMessage(
+        session.phone,
+        '❌ No hay producto seleccionado. Primero busca y selecciona un producto.'
+      );
+      return;
+    }
+    
+    try {
+      const product = await prisma.products.findUnique({
+        where: { id: session.selectedProductId },
+      });
+      
+      if (!product) {
+        await messageService.sendMessage(session.phone, '❌ Producto no encontrado.');
+        return;
+      }
+      
+      await prisma.products.update({
+        where: { id: session.selectedProductId },
+        data: { state: 'deleted' },
+      });
+      
+      await messageService.sendMessage(
+        session.phone,
+        `🗑️ Producto *${product.title}* eliminado correctamente.`
+      );
+      
+      session.selectedProductId = undefined;
+      session.searchResults = undefined;
+      session.state = 'idle';
+      
+    } catch (error) {
+      console.error('Error eliminando producto:', error);
+      await messageService.sendMessage(
+        session.phone,
+        '❌ Error al eliminar el producto. Intenta de nuevo.'
+      );
+    }
+  }
+
+  /**
+   * Busca y envía información de un producto por ID
+   */
+  async getAndSendProductInfo(phone: string, productId: string): Promise<void> {
+    try {
+      const product = await prisma.products.findUnique({
+        where: { id: productId },
+        include: { category: true },
+      });
+      
+      if (!product) {
+        await messageService.sendMessage(
+          phone,
+          `❌ No encontré ningún producto con el ID: ${productId}`
+        );
+        return;
+      }
+      
+      const productLink = STORE_URL ? `${STORE_URL}/producto/${product.id}` : '';
+      
+      let message = `📦 *${product.title}*
+
+💰 Precio: $${product.price.toLocaleString()}
+📊 Stock: ${product.stock}
+📁 Categoría: ${product.category?.title || 'Sin categoría'}
+📅 Creado: ${product.created_at.toLocaleDateString('es-AR')}
+🆔 ID: ${product.id}`;
+
+      if (productLink) {
+        message += `
+🔗 Link: ${productLink}`;
+      }
+      
+      await messageService.sendMessage(phone, message);
+    } catch (error) {
+      console.error('Error buscando producto:', error);
+      await messageService.sendMessage(
+        phone,
+        '❌ Error al buscar el producto. Por favor intenta de nuevo.'
+      );
+    }
+  }
+
+  /**
+   * Formatea el preview del producto
+   */
+  formatProductPreview(session: WhatsAppConversationSession): string {
+    const { productData } = session;
+    
+    if (!productData.aiResult) {
+      return '❌ No hay datos del producto para mostrar.';
+    }
+    
+    return `📦 *PREVIEW DEL PRODUCTO*
+
+📝 *Título:* ${productData.aiResult.title}
+
+📋 *Descripción:*
+${productData.aiResult.description}
+
+💰 *Precio:* $${(productData.price || 0).toLocaleString()}
+📊 *Stock:* ${productData.stock || 1} unidad(es)
+📁 *Categoría:* ${productData.categoryName || 'Sin categoría'}
+🖼️ *Imágenes:* ${productData.images.length}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿Qué deseas hacer?
+1️⃣ Publicar así
+2️⃣ Cambiar algo (ej: "título: Nuevo título")
+3️⃣ Cancelar`;
+  }
+}
+
+export const productActions = new ProductActions();
+export default productActions;
+

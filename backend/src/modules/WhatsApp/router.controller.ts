@@ -1,5 +1,14 @@
+/**
+ * Controlador de rutas de WhatsApp
+ * Simplificado con manejo de errores centralizado
+ */
+
 import { Request, Response } from 'express';
-import whatsAppServices from './services/whatsapp.services';
+import { configService } from './services/config.service';
+import { sessionService } from './services/session.service';
+import { messageService } from './services/message.service';
+import { webhookHandler } from './services/webhook.handler';
+import { WhatsAppError } from './utils/business.utils';
 import {
   WhatsAppConfigSchema,
   CreateSessionSchema,
@@ -7,186 +16,196 @@ import {
   WebhookEvent,
 } from './schemas/whatsapp.schemas';
 
-class WhatsAppController {
+// ============================================================================
+// HELPERS DE ERROR
+// ============================================================================
 
-  async getConfig(req: Request, res: Response) {
+interface ErrorMapping {
+  code: string;
+  status: number;
+  message: string;
+}
+
+const ERROR_MAPPINGS: ErrorMapping[] = [
+  { code: 'BUSINESS_NOT_FOUND', status: 404, message: 'Negocio no encontrado' },
+  { code: 'ACCESS_TOKEN_NOT_CONFIGURED', status: 400, message: 'Access Token no configurado' },
+  { code: 'SESSION_NOT_CREATED', status: 400, message: 'Sesión no creada' },
+  { code: 'SESSION_NOT_CONNECTED', status: 400, message: 'WhatsApp no está conectado' },
+];
+
+function handleError(error: unknown, res: Response, defaultMessage: string): Response {
+  console.error(defaultMessage + ':', error);
+
+  // Manejar errores conocidos de WhatsApp
+  if (error instanceof WhatsAppError) {
+    const mapping = ERROR_MAPPINGS.find(e => e.code === error.code);
+    if (mapping) {
+      return res.status(mapping.status).json({ ok: false, error: mapping.message });
+    }
+  }
+
+  // Manejar errores con mensaje específico
+  if (error instanceof Error) {
+    const msg = error.message;
+    
+    // Errores de validación de teléfono
+    if (msg.includes('phone number') && msg.includes('valid')) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Número de teléfono inválido. Usa formato internacional: +5491123456789' 
+      });
+    }
+    
+    // Número ya en uso
+    if (msg.includes('phone number') && msg.includes('taken')) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Este número ya tiene una sesión activa en WasenderAPI. Elimínala primero desde el panel de WasenderAPI.' 
+      });
+    }
+    
+    // Error de webhook URL
+    if (msg.includes('webhook') && (msg.includes('localhost') || msg.includes('publicly accessible'))) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Se requiere una URL pública para el webhook. Configura WEBHOOK_BASE_URL en las variables de entorno con tu dominio público (ej: https://tu-dominio.com)' 
+      });
+    }
+
+    // Si tiene mensaje específico, usarlo
+    if (msg && msg !== 'Error') {
+      return res.status(500).json({ ok: false, error: msg });
+    }
+  }
+
+  return res.status(500).json({ ok: false, error: defaultMessage });
+}
+
+function validateRequest<T>(
+  schema: { safeParse: (data: unknown) => { success: boolean; data?: T; error?: { issues: { message?: string }[] } } },
+  data: unknown,
+  res: Response
+): T | null {
+  const validation = schema.safeParse(data);
+  
+  if (!validation.success) {
+    res.status(400).json({
+      ok: false,
+      error: validation.error?.issues[0]?.message || 'Datos inválidos',
+    });
+    return null;
+  }
+  
+  return validation.data as T;
+}
+
+// ============================================================================
+// CONTROLADOR
+// ============================================================================
+
+class WhatsAppController {
+  /**
+   * Obtiene la configuración de WhatsApp
+   */
+  async getConfig(_req: Request, res: Response) {
     try {
-      const config = await whatsAppServices.getConfig();
+      const config = await configService.getConfig();
       return res.status(200).json({ ok: true, data: config });
     } catch (error) {
-      console.error('Error obteniendo config de WhatsApp:', error);
-      return res.status(500).json({ ok: false, error: 'Error al obtener configuración' });
+      return handleError(error, res, 'Error al obtener configuración');
     }
   }
 
-
+  /**
+   * Actualiza la configuración de WhatsApp
+   */
   async updateConfig(req: Request, res: Response) {
     try {
-      const validation = WhatsAppConfigSchema.safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({
-          ok: false,
-          error: validation.error.issues[0]?.message || 'Datos inválidos',
-        });
-      }
+      const data = validateRequest(WhatsAppConfigSchema, req.body, res);
+      if (!data) return;
 
-      const config = await whatsAppServices.updateConfig(validation.data);
+      const config = await configService.updateConfig(data);
       return res.status(200).json({ ok: true, data: config });
-    } catch (error: any) {
-      console.error('Error actualizando config de WhatsApp:', error);
-      
-      if (error.message === 'BUSINESS_NOT_FOUND') {
-        return res.status(404).json({ ok: false, error: 'Negocio no encontrado' });
-      }
-      
-      return res.status(500).json({ ok: false, error: 'Error al actualizar configuración' });
+    } catch (error) {
+      return handleError(error, res, 'Error al actualizar configuración');
     }
   }
 
+  /**
+   * Crea una nueva sesión de WhatsApp
+   */
   async createSession(req: Request, res: Response) {
     try {
-      const validation = CreateSessionSchema.safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({
-          ok: false,
-          error: validation.error.issues[0]?.message || 'Datos inválidos',
-        });
-      }
+      const data = validateRequest(CreateSessionSchema, req.body, res);
+      if (!data) return;
 
-      const webhookBaseUrl = process.env.WEBHOOK_BASE_URL!
-
-      const result = await whatsAppServices.createSession(
-        validation.data.name,
-        validation.data.phone_number,
+      const webhookBaseUrl = process.env.WEBHOOK_BASE_URL!;
+      const result = await sessionService.createSession(
+        data.name,
+        data.phone_number,
         webhookBaseUrl
       );
 
       return res.status(201).json({ ok: true, data: result });
-    } catch (error: any) {
-      console.error('Error creando sesión de WhatsApp:', error);
-      
-      if (error.message === 'BUSINESS_NOT_FOUND') {
-        return res.status(404).json({ ok: false, error: 'Negocio no encontrado' });
-      }
-      if (error.message === 'ACCESS_TOKEN_NOT_CONFIGURED') {
-        return res.status(400).json({ ok: false, error: 'Access Token no configurado' });
-      }
-      
-      const msg = error.message || '';
-      if (msg.includes('phone number') && msg.includes('valid')) {
-        return res.status(400).json({ 
-          ok: false, 
-          error: 'Número de teléfono inválido. Usa formato internacional: +5491123456789' 
-        });
-      }
-      if (msg.includes('phone number') && msg.includes('taken')) {
-        return res.status(400).json({ 
-          ok: false, 
-          error: 'Este número ya tiene una sesión activa en WasenderAPI. Elimínala primero desde el panel de WasenderAPI.' 
-        });
-      }
-      if (msg.includes('webhook') && (msg.includes('localhost') || msg.includes('publicly accessible'))) {
-        return res.status(400).json({ 
-          ok: false, 
-          error: 'Se requiere una URL pública para el webhook. Configura WEBHOOK_BASE_URL en las variables de entorno con tu dominio público (ej: https://tu-dominio.com)' 
-        });
-      }
-      
-      return res.status(500).json({ 
-        ok: false, 
-        error: error.message || 'Error al crear sesión' 
-      });
+    } catch (error) {
+      return handleError(error, res, 'Error al crear sesión');
     }
   }
 
-  async getQRCode(req: Request, res: Response) {
+  /**
+   * Obtiene el código QR para escanear
+   */
+  async getQRCode(_req: Request, res: Response) {
     try {
-      const result = await whatsAppServices.getQRCode();
-      return res.status(200).json({ ok: true, data: result });
-    } catch (error: any) {
-      console.error('Error obteniendo QR code:', error);
-      
-      if (error.message === 'BUSINESS_NOT_FOUND') {
-        return res.status(404).json({ ok: false, error: 'Negocio no encontrado' });
-      }
-      if (error.message === 'ACCESS_TOKEN_NOT_CONFIGURED') {
-        return res.status(400).json({ ok: false, error: 'Access Token no configurado' });
-      }
-      if (error.message === 'SESSION_NOT_CREATED') {
-        return res.status(400).json({ ok: false, error: 'Sesión no creada' });
-      }
-      
-      return res.status(500).json({ 
-        ok: false, 
-        error: error.message || 'Error al obtener código QR' 
-      });
-    }
-  }
-
-  async getSessionStatus(req: Request, res: Response) {
-    try {
-      const result = await whatsAppServices.getSessionStatus();
+      const result = await sessionService.getQRCode();
       return res.status(200).json({ ok: true, data: result });
     } catch (error) {
-      console.error('Error obteniendo estado de sesión:', error);
-      return res.status(500).json({ ok: false, error: 'Error al obtener estado' });
+      return handleError(error, res, 'Error al obtener código QR');
     }
   }
 
-  async disconnectSession(req: Request, res: Response) {
+  /**
+   * Obtiene el estado de la sesión
+   */
+  async getSessionStatus(_req: Request, res: Response) {
     try {
-      const result = await whatsAppServices.disconnectSession();
+      const result = await sessionService.getSessionStatus();
       return res.status(200).json({ ok: true, data: result });
-    } catch (error: any) {
-      console.error('Error desconectando sesión:', error);
-      
-      if (error.message === 'BUSINESS_NOT_FOUND') {
-        return res.status(404).json({ ok: false, error: 'Negocio no encontrado' });
-      }
-      if (error.message === 'SESSION_NOT_CREATED') {
-        return res.status(400).json({ ok: false, error: 'No hay sesión activa' });
-      }
-      
-      return res.status(500).json({ ok: false, error: 'Error al desconectar' });
+    } catch (error) {
+      return handleError(error, res, 'Error al obtener estado');
     }
   }
 
+  /**
+   * Desconecta la sesión de WhatsApp
+   */
+  async disconnectSession(_req: Request, res: Response) {
+    try {
+      const result = await sessionService.disconnectSession();
+      return res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+      return handleError(error, res, 'Error al desconectar');
+    }
+  }
+
+  /**
+   * Envía un mensaje de prueba
+   */
   async sendTestMessage(req: Request, res: Response) {
     try {
-      const validation = TestMessageSchema.safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({
-          ok: false,
-          error: validation.error.issues[0]?.message || 'Datos inválidos',
-        });
-      }
+      const data = validateRequest(TestMessageSchema, req.body, res);
+      if (!data) return;
 
-      const result = await whatsAppServices.sendTestMessage(
-        validation.data.to,
-        validation.data.message
-      );
-
+      const result = await messageService.sendTestMessage(data.to, data.message);
       return res.status(200).json({ ok: true, data: result });
-    } catch (error: any) {
-      console.error('Error enviando mensaje de prueba:', error);
-      
-      if (error.message === 'BUSINESS_NOT_FOUND') {
-        return res.status(404).json({ ok: false, error: 'Negocio no encontrado' });
-      }
-      if (error.message === 'SESSION_NOT_CONNECTED') {
-        return res.status(400).json({ ok: false, error: 'WhatsApp no está conectado' });
-      }
-      
-      return res.status(500).json({ 
-        ok: false, 
-        error: error.message || 'Error al enviar mensaje' 
-      });
+    } catch (error) {
+      return handleError(error, res, 'Error al enviar mensaje');
     }
   }
 
+  /**
+   * Maneja los webhooks de WasenderAPI
+   */
   async handleWebhook(req: Request, res: Response) {
     try {
       console.log('🔔 Webhook recibido:', JSON.stringify(req.body, null, 2));
@@ -194,11 +213,13 @@ class WhatsAppController {
       const event = req.body as WebhookEvent;
       const signature = req.headers['x-webhook-signature'] as string | undefined;
       
+      // Responder inmediatamente para evitar timeouts
       res.status(200).json({ received: true });
       
+      // Procesar en background
       setImmediate(async () => {
         try {
-          await whatsAppServices.handleWebhook(event, signature);
+          await webhookHandler.handleWebhook(event, signature);
         } catch (error) {
           console.error('Error procesando webhook:', error);
         }
@@ -211,4 +232,3 @@ class WhatsAppController {
 }
 
 export default new WhatsAppController();
-
