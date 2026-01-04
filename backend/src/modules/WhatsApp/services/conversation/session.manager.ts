@@ -93,7 +93,8 @@ class SessionManager {
    */
   async markReminderSent(phone: string, ttl: number): Promise<void> {
     const key = getReminderSentKey(phone);
-    await redis.setex(key, ttl, Date.now().toString());
+    // Usamos un TTL largo (igual al de la conversación) para evitar que caduque antes de cerrar la sesión
+    await redis.setex(key, CONVERSATION_TTL, Date.now().toString());
   }
 
   /**

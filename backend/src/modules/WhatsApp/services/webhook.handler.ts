@@ -58,11 +58,8 @@ class WebhookHandler {
     );
   }
 
-  /**
-   * Maneja eventos de mensajes entrantes (messages.upsert)
-   */
+
   private async handleMessageUpsertEvent(event: WebhookMessageUpsert): Promise<void> {
-    console.log('📩 Webhook messages.upsert recibido:', JSON.stringify(event, null, 2));
     
     const messages = (event.data as any)?.messages;
     if (!messages) {
@@ -72,12 +69,10 @@ class WebhookHandler {
 
     const key = messages.key;
     
-    // Ignorar mensajes propios y broadcasts
     if (key?.fromMe || messages.broadcast) {
       return;
     }
 
-    // Extraer número de teléfono del remitente
     const fromPhone = key?.cleanedSenderPn || 
                       key?.senderPn?.split('@')[0] || 
                       messages.remoteJid?.split('@')[0];
@@ -89,7 +84,6 @@ class WebhookHandler {
     
     const messageId = key?.id || messages.id;
     
-    // Verificar si el mensaje ya fue procesado (evitar duplicados)
     if (messageId) {
       const processedKey = getProcessedMessageKey(messageId);
       const alreadyProcessed = await redis.get(processedKey);
@@ -104,13 +98,11 @@ class WebhookHandler {
 
     const msgContent = messages.message;
     
-    // Ignorar mensajes "albumMessage" sin contenido real
     if (msgContent?.albumMessage && !msgContent?.imageMessage && !msgContent?.videoMessage) {
       console.log(`⏭️ Ignorando anuncio de álbum (expectedImageCount: ${msgContent.albumMessage.expectedImageCount})`);
       return;
     }
     
-    // Detectar si es parte de un álbum
     const msgContextInfo = msgContent?.messageContextInfo;
     const isPartOfAlbum = msgContextInfo?.messageAssociation?.associationType === 'MEDIA_ALBUM';
     const albumParentId = msgContextInfo?.messageAssociation?.parentMessageKey?.id;
@@ -118,7 +110,6 @@ class WebhookHandler {
     const business = await getBusiness();
     const apiKey = business?.whatsapp_api_key;
 
-    // Si es imagen de álbum, delegar a albumService
     if (isPartOfAlbum && albumParentId && msgContent?.imageMessage) {
       console.log(`📸 Imagen parte de álbum (parent: ${albumParentId})`);
       const alternativeCaption = messages.messageBody || msgContent.imageMessage?.caption;
@@ -135,7 +126,6 @@ class WebhookHandler {
       return;
     }
 
-    // Procesar mensaje normal
     const messageData = await this.parseMessageContent(
       messages,
       msgContent,
@@ -147,14 +137,11 @@ class WebhookHandler {
 
     console.log(`📝 Mensaje procesado: tipo=${messageData.type}, body="${messageData.body?.substring(0, 50)}..."`);
 
-    // Importar dinámicamente para evitar dependencia circular
     const { conversationProcessor } = await import('./conversation/conversation.processor');
     await conversationProcessor.processMessage(0, fromPhone, messageData);
   }
 
-  /**
-   * Parsea el contenido del mensaje y extrae los datos relevantes
-   */
+
   private async parseMessageContent(
     messages: any,
     msgContent: any,
@@ -218,9 +205,7 @@ class WebhookHandler {
     };
   }
 
-  /**
-   * Intenta desencriptar media si hay API key disponible
-   */
+
   private async decryptMediaIfNeeded(
     apiKey: string | null | undefined,
     accessToken: string | null | undefined,

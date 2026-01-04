@@ -175,7 +175,30 @@ function isLocalhostUrl(url: string): boolean {
   }
 }
 
-export const analyzeProductImages = async (imageUrls: string[], additionalContext?: string): Promise<{ title: string; description: string; options: { name: string; values: string[] }[] }> => {
+/**
+ * Tipo de retorno para el análisis de imágenes de producto
+ */
+export type ProductAnalysisResult = {
+  title: string;
+  description: string;
+  options: { name: string; values: string[] }[];
+  suggestedCategory?: {
+    name: string;
+    confidence: 'high' | 'medium' | 'low';
+  };
+};
+
+/**
+ * Analiza imágenes de producto y genera título, descripción, opciones y categoría sugerida
+ * @param imageUrls - URLs de las imágenes a analizar
+ * @param additionalContext - Contexto adicional del usuario
+ * @param availableCategories - Lista de categorías disponibles en el sistema
+ */
+export const analyzeProductImages = async (
+  imageUrls: string[],
+  additionalContext?: string,
+  availableCategories?: { id: string; title: string }[]
+): Promise<ProductAnalysisResult> => {
   try {
     const imageMessagesRaw = await Promise.all(
       imageUrls.map(async (url) => {
@@ -287,9 +310,26 @@ export const analyzeProductImages = async (imageUrls: string[], additionalContex
     
     console.log(`🎨 Estilos: Apertura=${selectedIntro.name}, Tono=${selectedTone.name}, Cierre=${selectedClosing.name}, Estructura=${selectedStructure.name}`);
     
+    // Construir sección de categorías disponibles si se proporcionaron
+    const categoriesSection = availableCategories && availableCategories.length > 0
+      ? `
+=== CATEGORÍAS DISPONIBLES ===
+Las siguientes categorías existen en el sistema:
+${availableCategories.map((c, i) => `${i + 1}. ${c.title}`).join('\n')}
+
+IMPORTANTE sobre CATEGORÍA:
+- Analiza el producto en las imágenes y determina a qué categoría pertenece
+- DEBES elegir UNA de las categorías de la lista anterior
+- Si el producto claramente pertenece a una categoría (ej: labial = makeup, pulsera = accesorios), indica confianza "high"
+- Si tienes algo de duda pero puedes inferir, indica confianza "medium"
+- Si realmente no puedes determinar la categoría, indica confianza "low"
+- NUNCA inventes categorías que no estén en la lista
+`
+      : '';
+
     const systemPrompt = `Eres un experto copywriter de e-commerce. Tu trabajo es generar descripciones ÚNICAS y VARIADAS.
 
-TAREA: Analiza las imágenes y genera un JSON con title, description y options.
+TAREA: Analiza las imágenes y genera un JSON con title, description, options${availableCategories ? ' y suggestedCategory' : ''}.
 
 === ESTILO OBLIGATORIO PARA ESTA DESCRIPCIÓN ===
 ⚠️ CRÍTICO: DEBES seguir EXACTAMENTE estos estilos. NO uses otros estilos.
@@ -366,8 +406,8 @@ EXCLUSIVIDAD + ASPIRACIONAL:
 
 === FORMATO DE SALIDA ===
 Responde SOLO con JSON válido, sin markdown ni explicaciones.
-{"title":"...","description":"...","options":[]}
-
+${availableCategories ? `{"title":"...","description":"...","options":[],"suggestedCategory":{"name":"nombre_categoria_exacto","confidence":"high|medium|low"}}` : `{"title":"...","description":"...","options":[]}`}
+${categoriesSection}
 ⚠️ RECORDATORIO FINAL - LEE ANTES DE GENERAR:
 - Descripción DEBE tener mínimo 600 caracteres
 - ESTRUCTURA: ${selectedStructure.name} - sigue el formato indicado arriba
@@ -449,6 +489,16 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
     if (jsonMatch) {
       jsonContent = jsonMatch[0];
     }
+
+    // Sanea escapes Unicode inválidos o barras invertidas sueltas que rompen JSON.parse
+    const sanitizeInvalidEscapes = (str: string): string => {
+      // \u que no tenga 4 dígitos hex → escapar la barra para que quede literal
+      let fixed = str.replace(/\\u(?![0-9a-fA-F]{4})/g, '\\\\u');
+      // Barra invertida seguida de un caracter no escapable en JSON → duplicar barra
+      fixed = fixed.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+      return fixed;
+    };
+    jsonContent = sanitizeInvalidEscapes(jsonContent);
 
     const escapeControlChars = (str: string): string => {
       let result = '';
@@ -533,7 +583,22 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
     const description = parsed.description?.substring(0, 1200) || 'Descripción generada automáticamente por IA.';
     const options = Array.isArray(parsed.options) ? parsed.options : [];
 
-    return { title, description, options };
+    // Extraer categoría sugerida si existe
+    let suggestedCategory: ProductAnalysisResult['suggestedCategory'] = undefined;
+    if (parsed.suggestedCategory && typeof parsed.suggestedCategory === 'object') {
+      const { name, confidence } = parsed.suggestedCategory;
+      if (name && typeof name === 'string') {
+        const validConfidences = ['high', 'medium', 'low'] as const;
+        const normalizedConfidence = validConfidences.includes(confidence) ? confidence : 'low';
+        suggestedCategory = {
+          name: name.toLowerCase().trim(),
+          confidence: normalizedConfidence,
+        };
+        console.log(`📂 Categoría sugerida: ${suggestedCategory.name} (confianza: ${suggestedCategory.confidence})`);
+      }
+    }
+
+    return { title, description, options, suggestedCategory };
   } catch (error) {
     console.error('Error al analizar imágenes con Groq:', error);
     throw error instanceof Error ? error : new Error(String(error));

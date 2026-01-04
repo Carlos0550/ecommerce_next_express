@@ -17,7 +17,7 @@ import { getBusinessEmojis } from './tone.detector';
 // ============================================================================
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const TEXT_MODEL = 'llama-3.3-70b-versatile';
+const TEXT_MODEL = 'openai/gpt-oss-120b';
 const WHISPER_MODEL = 'whisper-large-v3';
 
 const groq = new OpenAI({

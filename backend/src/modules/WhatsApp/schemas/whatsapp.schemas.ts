@@ -48,6 +48,10 @@ export interface ProductData {
     title: string;
     description: string;
     options: { name: string; values: string[] }[];
+    suggestedCategory?: {
+      name: string;
+      confidence: 'high' | 'medium' | 'low';
+    };
   };
 }
 
@@ -64,6 +68,8 @@ export interface WhatsAppConversationSession {
   searchResults?: Array<{ id: string; title: string; price: number; stock: number; state: string }>;
   userTone?: 'argentino' | 'formal' | 'neutral';
   greetingTone?: 'casual' | 'formal';
+  hasGreeted?: boolean; // Indica si el agente ya envió un saludo inicial
+  categoryPromptShown?: boolean; // Indica si ya se mostró el prompt de categorías
   // Acción pendiente que se ejecutará después de seleccionar un producto
   pendingAction?: {
     action: 'update_product' | 'delete_product';
@@ -88,6 +94,7 @@ export interface AIConversationResponse {
     | 'show_help' 
     | 'get_product'
     | 'search_products'
+    | 'list_all_products'
     | 'list_low_stock'
     | 'select_product'
     | 'update_product'

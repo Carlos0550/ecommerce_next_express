@@ -5,6 +5,7 @@
 
 import { prisma } from '@/config/prisma';
 import { analyzeProductImages } from '@/config/groq';
+import { uploadImage } from '@/config/minio';
 import { messageService } from '../../message.service';
 import { sessionManager } from '../session.manager';
 import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
@@ -21,9 +22,14 @@ const STORE_URL = process.env.STORE_URL || process.env.FRONTEND_URL || '';
 
 class ProductActions {
   /**
-   * Procesa imágenes con IA para generar título y descripción
+   * Procesa imágenes con IA para generar título, descripción y sugerir categoría
+   * @param session - Sesión de conversación
+   * @param availableCategories - Categorías disponibles para inferencia
    */
-  async processWithAI(session: WhatsAppConversationSession): Promise<void> {
+  async processWithAI(
+    session: WhatsAppConversationSession,
+    availableCategories?: { id: string; title: string }[]
+  ): Promise<void> {
     try {
       if (session.productData.images.length === 0) {
         session.lastError = 'No hay imágenes para procesar';
@@ -32,11 +38,19 @@ class ProductActions {
       
       const aiResult = await analyzeProductImages(
         session.productData.images,
-        session.productData.additionalContext
+        session.productData.additionalContext,
+        availableCategories
       );
       
       session.productData.aiResult = aiResult;
       session.lastError = undefined;
+      
+      // Log de categoría inferida
+      if (aiResult.suggestedCategory) {
+        console.log(`📂 Categoría inferida por IA: ${aiResult.suggestedCategory.name} (confianza: ${aiResult.suggestedCategory.confidence})`);
+      } else {
+        console.log(`📂 La IA no pudo inferir una categoría`);
+      }
       
       // Agregar mensaje con el preview al historial
       const previewMessage = this.formatProductPreview(session);
@@ -65,13 +79,16 @@ class ProductActions {
     try {
       const productState = productData.draft ? 'draft' : 'active';
       
+      // Subir imágenes externas al storage y usar URLs finales
+      const storedImages = await this.storeImagesToBucket(productData.images);
+
       const product = await prisma.products.create({
         data: {
           title: productData.aiResult.title,
           description: productData.aiResult.description,
           price: productData.price || 0,
           stock: productData.stock || 1,
-          images: productData.images,
+          images: storedImages,
           options: productData.aiResult.options,
           categoryId: productData.categoryId,
           state: productState,
@@ -97,12 +114,20 @@ class ProductActions {
         successMessage += `
 🔗 Link: ${productLink}`;
       }
-      
-      successMessage += `
-
-¿Necesitas hacer algo más con este producto? Puedo editarlo, cambiar su estado, o si prefieres puedes enviar una imagen para crear otro producto 📷`;
-
+    
       await messageService.sendMessage(session.phone, successMessage);
+
+      // Enviar preview del producto publicado
+      const previewMessage = this.formatPersistedPreview(productLink, product);
+      await messageService.sendMessage(session.phone, previewMessage);
+
+      // Registrar en historial que el producto fue creado/publicado (contexto para la IA)
+      session.messageHistory.push({
+        role: 'system',
+        content: `[SISTEMA: Producto creado y publicado]\nID: ${product.id}\nTítulo: ${product.title}${productLink ? `\nLink: ${productLink}` : ''}`,
+        timestamp: new Date(),
+      });
+      session.lastError = undefined;
       
       // En lugar de eliminar la sesión, mantenerla con el producto seleccionado
       // para permitir ediciones inmediatas
@@ -115,7 +140,8 @@ class ProductActions {
         state: product.state,
       }];
       session.state = 'editing';
-      session.productData = { images: [] }; // Limpiar datos del producto nuevo
+      // Limpiar datos del producto nuevo para evitar arrastres en siguientes cargas
+      session.productData = { images: [] };
       await sessionManager.saveSession(session);
     } catch (error) {
       console.error('Error creando producto:', error);
@@ -395,6 +421,63 @@ ${productData.aiResult.description}
 1️⃣ Publicar así
 2️⃣ Cambiar algo (ej: "título: Nuevo título")
 3️⃣ Cancelar`;
+  }
+
+  /**
+   * Formatea la preview del producto persistido (ya publicado/guardado)
+   */
+  private formatPersistedPreview(productLink: string, product: { id: string; title: string; description: string; price: any; stock: number; state: string; categoryId: string | null; images: any }): string {
+    return `📦 *PREVIEW PUBLICADA*
+
+📝 *Título:* ${product.title}
+
+📋 *Descripción:*
+${product.description}
+
+💰 *Precio:* $${Number(product.price).toLocaleString()}
+📊 *Stock:* ${product.stock}
+📁 *Estado:* ${product.state}
+🖼️ *Imágenes:* ${Array.isArray(product.images) ? product.images.length : 0}
+🔗 *URL:* ${productLink || '(sin URL configurada)'}
+
+¿Necesitas hacer algo más con este producto? Puedo:
+• Editar título, descripción, precio, stock, imágenes o estado
+• Enviarlo a borrador, eliminarlo o regenerar descripción con IA
+• Crear otro producto si me envías una imagen`;
+  }
+
+  /**
+   * Sube imágenes externas (ej. URLs de WhatsApp/Wasender) al bucket de productos y devuelve las URLs finales
+   */
+  private async storeImagesToBucket(imageUrls: string[]): Promise<string[]> {
+    const results = await Promise.all(
+      (imageUrls || []).map(async (url, idx) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            console.error(`❌ No se pudo descargar la imagen (${response.status})`, url);
+            return url; // fallback
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const mimeType = response.headers.get('content-type') || 'image/jpeg';
+          const ext = mimeType.split('/')[1] || 'jpg';
+          const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}-${idx}.${ext}`;
+
+          const uploadResult = await uploadImage(buffer, fileName, 'products', mimeType);
+          if (uploadResult.url) {
+            return uploadResult.url;
+          }
+          console.error('❌ Upload fallido, usando URL original', url);
+          return url;
+        } catch (error) {
+          console.error('❌ Error subiendo imagen externa:', error);
+          return url; // fallback a la URL original para no romper el flujo
+        }
+      })
+    );
+
+    return results.filter((u) => !!u);
   }
 }
 

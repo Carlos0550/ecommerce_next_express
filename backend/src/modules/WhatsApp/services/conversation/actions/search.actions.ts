@@ -150,6 +150,74 @@ class SearchActions {
   }
 
   /**
+   * Lista todos los productos del inventario (activos y borradores)
+   */
+  async listAllProducts(session: WhatsAppConversationSession): Promise<void> {
+    try {
+      const products = await prisma.products.findMany({
+        where: { 
+          state: { notIn: ['deleted'] },
+        },
+        take: 15,
+        orderBy: { created_at: 'desc' },
+        include: { category: true },
+      });
+      
+      if (products.length === 0) {
+        await messageService.sendMessage(
+          session.phone,
+          '📦 No tienes productos registrados aún. ¡Envía una imagen para crear el primero!'
+        );
+        session.state = 'idle';
+        return;
+      }
+      
+      session.searchResults = products.map(p => ({
+        id: p.id,
+        title: p.title,
+        price: Number(p.price),
+        stock: p.stock,
+        state: p.state,
+      }));
+      
+      // Contar totales por estado
+      const totalActive = products.filter(p => p.state === 'active').length;
+      const totalDraft = products.filter(p => p.state === 'draft').length;
+      const totalOutStock = products.filter(p => p.state === 'out_stock').length;
+      
+      let message = `📦 *Actualmente tienes los siguientes productos en tu inventario:*\n\n`;
+      
+      products.forEach((p, i) => {
+        const link = STORE_URL ? `${STORE_URL}/producto/${p.id}` : '';
+        message += `*${i + 1}.* ${p.title}\n`;
+        message += `   - Precio: $${Number(p.price).toLocaleString()}\n`;
+        message += `   - Stock: ${p.stock} unidades\n`;
+        message += `   - Estado: ${p.state}\n`;
+        message += `   - Categoría: ${p.category?.title || 'Sin categoría'}\n`;
+        if (link) {
+          message += `   - Enlace: ${link}\n`;
+        }
+        message += '\n';
+      });
+      
+      message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      message += `📊 *Resumen:* ${products.length} producto(s)\n`;
+      message += `✅ Activos: ${totalActive} | 📝 Borradores: ${totalDraft} | 📦 Sin stock: ${totalOutStock}\n\n`;
+      message += `¿Hay algo más en lo que pueda ayudarte?`;
+      
+      await messageService.sendMessage(session.phone, message);
+      session.state = 'selecting';
+      
+    } catch (error) {
+      console.error('Error listando todos los productos:', error);
+      await messageService.sendMessage(
+        session.phone,
+        '❌ Error al obtener el inventario. Intenta de nuevo.'
+      );
+    }
+  }
+
+  /**
    * Lista productos con bajo stock
    */
   async listLowStockProducts(session: WhatsAppConversationSession): Promise<void> {

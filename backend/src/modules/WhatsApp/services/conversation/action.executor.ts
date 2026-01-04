@@ -41,7 +41,7 @@ class ActionExecutor {
         
       case 'process_ai':
         await this.handleProcessAI(session, data);
-        return false; // El mensaje se envía después (preview)
+        return true; // Mensajes gestionados en la acción (publicación + preview)
         
       case 'create_product':
         await this.handleCreateProduct(session, data);
@@ -84,6 +84,10 @@ class ActionExecutor {
         }
         return false;
         
+      case 'list_all_products':
+        await searchActions.listAllProducts(session);
+        return true;
+
       case 'list_low_stock':
         await searchActions.listLowStockProducts(session);
         return true;
@@ -128,26 +132,24 @@ class ActionExecutor {
     if (data.stock !== undefined && data.stock !== null) {
       session.productData.stock = data.stock;
     }
+    // Resolver categoría (ID o crearla si no existe y viene por nombre)
     if (data.category_id) {
       session.productData.categoryId = data.category_id;
     }
     
-    // Manejar category_name o category
     const categoryNameFromAI = data.category_name || data.category;
     if (categoryNameFromAI) {
       session.productData.categoryName = categoryNameFromAI;
-      
-      // Buscar ID si no lo tenemos
-      if (!session.productData.categoryId) {
-        const category = await prisma.categories.findFirst({
-          where: { 
-            title: { contains: categoryNameFromAI, mode: 'insensitive' },
-            status: 'active',
-          },
-        });
-        if (category) {
-          session.productData.categoryId = category.id;
-        }
+
+      // Asegurar categoría activa (crea si no existe)
+      const { id: ensuredCategoryId, created } = await this.ensureCategoryExists(categoryNameFromAI);
+      session.productData.categoryId = ensuredCategoryId;
+
+      if (created) {
+        await messageService.sendMessage(
+          session.phone,
+          `🆕 Creé la categoría "${categoryNameFromAI.trim()}" y la dejaré activa para este producto.`
+        );
       }
     }
     
@@ -185,7 +187,73 @@ class ActionExecutor {
     data: ActionData
   ): Promise<void> {
     await this.saveDataToSession(session, data);
-    await productActions.processWithAI(session);
+    
+    // Obtener categorías disponibles para pasarlas al análisis
+    const availableCategories = await prisma.categories.findMany({
+      where: { status: 'active' },
+      select: { id: true, title: true },
+      orderBy: { title: 'asc' },
+    });
+    
+    // Procesar con IA pasando las categorías disponibles
+    await productActions.processWithAI(session, availableCategories);
+    
+    // Si hubo error, no continuar
+    if (session.lastError) {
+      return;
+    }
+    
+    // Verificar si la IA infirió una categoría
+    const aiResult = session.productData.aiResult;
+    const suggestedCategory = aiResult?.suggestedCategory;
+    
+    // Si ya tiene categoría asignada, publicar directamente
+    if (session.productData.categoryId) {
+      await productActions.createProduct(session);
+      return;
+    }
+    
+    // Si la IA sugirió una categoría con confianza alta o media, asignarla automáticamente
+    if (suggestedCategory && (suggestedCategory.confidence === 'high' || suggestedCategory.confidence === 'medium')) {
+      const matchedCategory = availableCategories.find(
+        c => c.title.toLowerCase() === suggestedCategory.name.toLowerCase()
+      );
+      
+      if (matchedCategory) {
+        session.productData.categoryId = matchedCategory.id;
+        session.productData.categoryName = matchedCategory.title;
+        console.log(`✅ Categoría asignada automáticamente: ${matchedCategory.title} (confianza: ${suggestedCategory.confidence})`);
+        await productActions.createProduct(session);
+        return;
+      }
+    }
+    
+    // Si no hay categoría o la confianza es baja, pedir al usuario que elija
+    if (availableCategories.length > 0) {
+      const list = availableCategories.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
+      const priceStr = session.productData.price ? `$${Number(session.productData.price).toLocaleString()}` : '';
+      
+      const uncertaintyMessage = suggestedCategory 
+        ? `No estoy seguro/a de la categoría (podría ser "${suggestedCategory.name}").`
+        : `No pude identificar la categoría automáticamente.`;
+      
+      const message = `📷 Ya tengo la imagen${priceStr ? ` y el precio (${priceStr})` : ''}. ${uncertaintyMessage}\n\n📂 *Categorías disponibles:*\n${list}\n\n¿En cuál lo dejamos? Puedes escribir el número o el nombre.`;
+      
+      await messageService.sendMessage(session.phone, message);
+      session.messageHistory.push({
+        role: 'assistant',
+        content: message,
+        timestamp: new Date(),
+      });
+      session.categoryPromptShown = true;
+      await sessionManager.saveSession(session);
+    } else {
+      // No hay categorías disponibles, crear una genérica o informar
+      await messageService.sendMessage(
+        session.phone,
+        '⚠️ No hay categorías configuradas en el sistema. Por favor, crea una categoría desde el panel administrativo antes de continuar.'
+      );
+    }
   }
 
   /**
@@ -334,6 +402,35 @@ class ActionExecutor {
     await messageService.sendMessage(session.phone, message);
     await sessionManager.saveSession(session);
     return false;
+  }
+
+  /**
+   * Garantiza que exista una categoría activa para el nombre dado.
+   * Si no existe, la crea como activa y retorna su ID junto con un flag de creación.
+   */
+  private async ensureCategoryExists(categoryName: string): Promise<{ id: string; created: boolean }> {
+    const normalized = categoryName.trim().toLowerCase();
+
+    const existing = await prisma.categories.findFirst({
+      where: { 
+        title: { equals: normalized, mode: 'insensitive' },
+        status: 'active',
+      },
+    });
+
+    if (existing) {
+      return { id: existing.id, created: false };
+    }
+
+    const createdCategory = await prisma.categories.create({
+      data: {
+        title: normalized,
+        status: 'active',
+        is_active: true,
+      },
+    });
+
+    return { id: createdCategory.id, created: true };
   }
 }
 
