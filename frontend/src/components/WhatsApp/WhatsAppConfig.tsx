@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Paper,
   Title,
@@ -22,7 +22,6 @@ import {
   FaQrcode,
   FaUnlink,
   FaPaperPlane,
-  FaKey,
   FaPhone,
   FaCheckCircle,
   FaTimesCircle,
@@ -43,7 +42,7 @@ import {
 import QRCode from "qrcode";
 
 function normalizePhoneNumber(phone: string): string {
-  let cleaned = phone.replace(/\s+/g, "").replace(/-/g, "");
+  const cleaned = phone.replace(/\s+/g, "").replace(/-/g, "");
   
   if (cleaned.startsWith("+")) {
     return cleaned;
@@ -80,7 +79,7 @@ export default function WhatsAppConfig() {
   const [testNumber, setTestNumber] = useState("");
   const [testMessage, setTestMessage] = useState("¡Hola! Este es un mensaje de prueba desde Cinnamon.");
   const [newRemitent, setNewRemitent] = useState("");
-  const [allowedRemitents, setAllowedRemitents] = useState<string[]>([]);
+  const [localRemitents, setLocalRemitents] = useState<string[] | null>(null);
 
   const [qrModalOpened, { open: openQrModal, close: closeQrModal }] = useDisclosure(false);
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
@@ -92,6 +91,16 @@ export default function WhatsAppConfig() {
 
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
 
+  // Derive allowed remitents from config or local state
+  const allowedRemitents = localRemitents !== null 
+    ? localRemitents 
+    : config?.whatsapp_allowed_remitents
+      ? config.whatsapp_allowed_remitents.split(",").map((r) => r.trim()).filter(Boolean)
+      : [];
+
+  // Track previous connection status to detect changes
+  const prevStatusRef = useRef<string | undefined>(undefined);
+
   // Generate QR code image when data changes
   useEffect(() => {
     if (qrData?.qr_code) {
@@ -101,25 +110,21 @@ export default function WhatsAppConfig() {
     }
   }, [qrData?.qr_code]);
 
-  // Close modal when connected
+  // Close modal when connection status changes to connected
   useEffect(() => {
-    if (statusData?.status === "connected") {
-      setIsConnecting(false);
-      closeQrModal();
+    const currentStatus = statusData?.status;
+    const wasConnecting = prevStatusRef.current !== "connected";
+    
+    if (currentStatus === "connected" && wasConnecting && isConnecting) {
+      // Schedule state updates for next tick to avoid cascading renders
+      queueMicrotask(() => {
+        setIsConnecting(false);
+        closeQrModal();
+      });
     }
-  }, [statusData?.status, closeQrModal]);
-
-  // Load allowed remitents from config
-  useEffect(() => {
-    if (config?.whatsapp_allowed_remitents) {
-      setAllowedRemitents(
-        config.whatsapp_allowed_remitents
-          .split(",")
-          .map((r) => r.trim())
-          .filter(Boolean)
-      );
-    }
-  }, [config?.whatsapp_allowed_remitents]);
+    
+    prevStatusRef.current = currentStatus;
+  }, [statusData?.status, closeQrModal, isConnecting]);
 
   const handleToggleEnabled = async (enabled: boolean) => {
     await updateConfig.mutateAsync({ whatsapp_enabled: enabled });
@@ -164,14 +169,14 @@ export default function WhatsAppConfig() {
       return;
     }
     const newList = [...allowedRemitents, normalized];
-    setAllowedRemitents(newList);
+    setLocalRemitents(newList);
     setNewRemitent("");
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
 
   const handleRemoveRemitent = async (remitent: string) => {
     const newList = allowedRemitents.filter((r) => r !== remitent);
-    setAllowedRemitents(newList);
+    setLocalRemitents(newList);
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
 
