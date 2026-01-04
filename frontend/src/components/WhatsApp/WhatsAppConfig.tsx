@@ -13,7 +13,6 @@ import {
   Center,
   Loader,
   Alert,
-  PasswordInput,
   Divider,
   Box,
 } from "@mantine/core";
@@ -76,7 +75,6 @@ export default function WhatsAppConfig() {
   const disconnectSession = useDisconnectWhatsAppSession();
   const sendTest = useSendTestMessage();
 
-  const [accessToken, setAccessToken] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sessionName, setSessionName] = useState("Cinnamon Shop");
   const [testNumber, setTestNumber] = useState("");
@@ -125,12 +123,6 @@ export default function WhatsAppConfig() {
 
   const handleToggleEnabled = async (enabled: boolean) => {
     await updateConfig.mutateAsync({ whatsapp_enabled: enabled });
-  };
-
-  const handleSaveToken = async () => {
-    if (!accessToken.trim()) return;
-    await updateConfig.mutateAsync({ whatsapp_access_token: accessToken });
-    setAccessToken("");
   };
 
   const handleConnect = async () => {
@@ -244,47 +236,7 @@ export default function WhatsAppConfig() {
             )}
           </Group>
 
-          {/* Access Token */}
-          <Box>
-            <Group gap="xs" mb="xs">
-              <FaKey size={14} />
-              <Text size="sm" fw={500}>
-                Personal Access Token
-              </Text>
-              {config?.has_access_token && (
-                <Badge size="xs" color="green">
-                  Configurado
-                </Badge>
-              )}
-            </Group>
-            <Group>
-              <PasswordInput
-                placeholder="Ingresa tu token de WasenderAPI"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.currentTarget.value)}
-                style={{ flex: 1 }}
-              />
-              <Button
-                onClick={handleSaveToken}
-                loading={updateConfig.isPending}
-                disabled={!accessToken.trim()}
-              >
-                Guardar
-              </Button>
-            </Group>
-            <Text size="xs" c="dimmed" mt={4}>
-              Obtén tu token en{" "}
-              <a
-                href="https://wasenderapi.com/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                wasenderapi.com
-              </a>
-            </Text>
-          </Box>
 
-          {/* Conexión */}
           {config?.has_access_token && !config?.whatsapp_connected && (
             <Box>
               <Text size="sm" fw={500} mb="xs">
@@ -318,7 +270,6 @@ export default function WhatsAppConfig() {
             </Box>
           )}
 
-          {/* Acciones cuando está conectado */}
           {config?.whatsapp_connected && (
             <Group>
               <Button
@@ -340,7 +291,6 @@ export default function WhatsAppConfig() {
             </Group>
           )}
 
-          {/* Remitentes permitidos */}
           {config?.whatsapp_connected && (
             <Box>
               <Divider my="md" />
@@ -402,21 +352,19 @@ export default function WhatsAppConfig() {
             </Box>
           )}
 
-          {/* Alerta si no hay token */}
           {!config?.has_access_token && (
             <Alert
               color="yellow"
               icon={<FaExclamationTriangle />}
               title="Token no configurado"
             >
-              Para usar la integración de WhatsApp, primero debes configurar tu 
-              Personal Access Token de WasenderAPI.
+              Para usar la integración de WhatsApp, debes configurar la variable de entorno 
+              WASENDER_API_KEY en el servidor con tu Personal Access Token de WasenderAPI.
             </Alert>
           )}
         </Stack>
       </Paper>
 
-      {/* Modal QR Code */}
       <Modal
         opened={qrModalOpened}
         onClose={handleCloseQrModal}

@@ -61,7 +61,6 @@ class ConversationProcessor {
         this.handleImageMessage(session, messageData);
         textContent = messageData.caption || '';
         
-        // IMPORTANTE: Extraer precio, stock y contexto del caption ANTES de enviar saludo
         if (textContent) {
           const extracted = this.extractProductDataFromCaption(textContent);
           

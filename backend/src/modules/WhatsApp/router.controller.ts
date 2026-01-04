@@ -99,14 +99,8 @@ function validateRequest<T>(
   return validation.data as T;
 }
 
-// ============================================================================
-// CONTROLADOR
-// ============================================================================
-
 class WhatsAppController {
-  /**
-   * Obtiene la configuración de WhatsApp
-   */
+
   async getConfig(_req: Request, res: Response) {
     try {
       const config = await configService.getConfig();
@@ -116,9 +110,6 @@ class WhatsAppController {
     }
   }
 
-  /**
-   * Actualiza la configuración de WhatsApp
-   */
   async updateConfig(req: Request, res: Response) {
     try {
       const data = validateRequest(WhatsAppConfigSchema, req.body, res);

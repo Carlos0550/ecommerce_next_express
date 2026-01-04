@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
-// Schema para configuración de WhatsApp
+
 export const WhatsAppConfigSchema = z.object({
   whatsapp_enabled: z.boolean().optional(),
-  whatsapp_access_token: z.string().min(1, 'Access Token es requerido').optional(),
   whatsapp_allowed_remitents: z.string().optional(),
 });
 

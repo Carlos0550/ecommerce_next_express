@@ -5,6 +5,26 @@
 
 import { prisma } from '@/config/prisma';
 
+// API Key de WasenderAPI desde variable de entorno
+const WASENDER_API_KEY = process.env.WASENDER_API_KEY || '';
+
+/**
+ * Obtiene el API key de WasenderAPI desde la variable de entorno
+ */
+export function getWasenderApiKey(): string {
+  if (!WASENDER_API_KEY) {
+    throw new WhatsAppError('ACCESS_TOKEN_NOT_CONFIGURED', 'WASENDER_API_KEY no configurado en variables de entorno');
+  }
+  return WASENDER_API_KEY;
+}
+
+/**
+ * Verifica si el API key de WasenderAPI está configurado
+ */
+export function hasWasenderApiKey(): boolean {
+  return !!WASENDER_API_KEY;
+}
+
 // Tipo para los datos del negocio
 export interface BusinessData {
   id: string;
@@ -15,7 +35,6 @@ export interface BusinessData {
   whatsapp_connected: boolean;
   whatsapp_phone_number: string | null;
   whatsapp_session_id: number | null;
-  whatsapp_access_token: string | null;
   whatsapp_api_key: string | null;
   whatsapp_webhook_secret: string | null;
   whatsapp_allowed_remitents: string | null;
@@ -56,13 +75,14 @@ export async function getBusiness(): Promise<BusinessData | null> {
 }
 
 /**
- * Obtiene el negocio y valida que tenga access token configurado
+ * Obtiene el negocio y valida que tenga access token configurado (variable de entorno)
  */
 export async function getBusinessWithAccessToken(): Promise<BusinessData> {
   const business = await getBusinessOrThrow();
   
-  if (!business.whatsapp_access_token) {
-    throw new WhatsAppError('ACCESS_TOKEN_NOT_CONFIGURED', 'Access Token no configurado');
+  // Verificar que el API key esté configurado en variables de entorno
+  if (!hasWasenderApiKey()) {
+    throw new WhatsAppError('ACCESS_TOKEN_NOT_CONFIGURED', 'WASENDER_API_KEY no configurado en variables de entorno');
   }
   
   return business;
@@ -104,7 +124,6 @@ export async function updateBusinessWhatsApp(
     whatsapp_connected: boolean;
     whatsapp_phone_number: string | null;
     whatsapp_session_id: number | null;
-    whatsapp_access_token: string | null;
     whatsapp_api_key: string | null;
     whatsapp_webhook_secret: string | null;
     whatsapp_allowed_remitents: string | null;

@@ -42,13 +42,12 @@ export function useGetWhatsAppConfig() {
   });
 }
 
-// Update WhatsApp config
 export function useUpdateWhatsAppConfig() {
   const queryClient = useQueryClient();
   const { auth: { token } } = useAppContext();
   
   return useMutation({
-    mutationFn: async (payload: { whatsapp_enabled?: boolean; whatsapp_access_token?: string; whatsapp_allowed_remitents?: string }) => {
+    mutationFn: async (payload: { whatsapp_enabled?: boolean; whatsapp_allowed_remitents?: string }) => {
       const res = await fetchWithTimeout(`${baseUrl}/whatsapp/config`, {
         method: "PUT",
         headers: {

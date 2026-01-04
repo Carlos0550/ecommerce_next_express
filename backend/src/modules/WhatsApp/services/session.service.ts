@@ -3,13 +3,13 @@
  * Maneja la creación, conexión y desconexión de sesiones con WasenderAPI
  */
 
-import { prisma } from '@/config/prisma';
 import {
   getBusinessWithAccessToken,
   getBusinessWithSession,
-  getBusinessOrThrow,
   getBusiness,
   updateBusinessWhatsApp,
+  getWasenderApiKey,
+  hasWasenderApiKey,
 } from '../utils/business.utils';
 import { normalizePhoneNumber } from '../utils/phone.utils';
 import WasenderClient from './wasender.client';
@@ -30,18 +30,19 @@ class SessionService {
   ): Promise<SessionCreateResponse> {
     const business = await getBusinessWithAccessToken();
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    const apiKey = getWasenderApiKey();
 
     // Si ya hay una sesión, eliminarla primero
     if (business.whatsapp_session_id) {
       try {
-        const client = new WasenderClient(business.whatsapp_access_token!);
+        const client = new WasenderClient(apiKey);
         await client.deleteSession(business.whatsapp_session_id);
       } catch (error) {
         console.warn('Error eliminando sesión anterior:', error);
       }
     }
 
-    const client = new WasenderClient(business.whatsapp_access_token!);
+    const client = new WasenderClient(apiKey);
     
     const result = await client.createSession({
       name,
@@ -84,8 +85,9 @@ class SessionService {
    */
   async getQRCode(): Promise<QRCodeResponse> {
     const business = await getBusinessWithSession();
+    const apiKey = getWasenderApiKey();
 
-    const client = new WasenderClient(business.whatsapp_access_token!);
+    const client = new WasenderClient(apiKey);
     const result = await client.getQRCode(business.whatsapp_session_id!);
 
     return {
@@ -104,7 +106,7 @@ class SessionService {
       return { success: true, status: 'no_session' };
     }
 
-    if (!business.whatsapp_session_id || !business.whatsapp_access_token) {
+    if (!business.whatsapp_session_id || !hasWasenderApiKey()) {
       return { success: true, status: 'no_session' };
     }
 
@@ -113,7 +115,8 @@ class SessionService {
     }
 
     try {
-      const client = new WasenderClient(business.whatsapp_access_token);
+      const apiKey = getWasenderApiKey();
+      const client = new WasenderClient(apiKey);
       const result = await client.getSessionStatusWithApiKey(business.whatsapp_api_key);
 
       // Mapear estados de WasenderAPI a nuestros estados internos
@@ -159,8 +162,9 @@ class SessionService {
    */
   async disconnectSession(): Promise<{ success: boolean; message: string }> {
     const business = await getBusinessWithSession();
+    const apiKey = getWasenderApiKey();
 
-    const client = new WasenderClient(business.whatsapp_access_token!);
+    const client = new WasenderClient(apiKey);
     
     try {
       await client.deleteSession(business.whatsapp_session_id!);

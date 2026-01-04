@@ -6,8 +6,8 @@
 import { prisma } from '@/config/prisma';
 import { 
   getBusiness, 
-  getBusinessOrThrow, 
-  updateBusinessWhatsApp 
+  getBusinessOrThrow,
+  hasWasenderApiKey,
 } from '../utils/business.utils';
 import { normalizeRemitentsList } from '../utils/phone.utils';
 import { 
@@ -28,7 +28,7 @@ class ConfigService {
         whatsapp_connected: false,
         whatsapp_phone_number: null,
         whatsapp_session_id: null,
-        has_access_token: false,
+        has_access_token: hasWasenderApiKey(),
         whatsapp_allowed_remitents: null,
       };
     }
@@ -38,7 +38,7 @@ class ConfigService {
       whatsapp_connected: business.whatsapp_connected,
       whatsapp_phone_number: business.whatsapp_phone_number,
       whatsapp_session_id: business.whatsapp_session_id,
-      has_access_token: !!business.whatsapp_access_token,
+      has_access_token: hasWasenderApiKey(),
       whatsapp_allowed_remitents: business.whatsapp_allowed_remitents,
     };
   }
@@ -55,9 +55,8 @@ class ConfigService {
       updateData.whatsapp_enabled = config.whatsapp_enabled;
     }
     
-    if (config.whatsapp_access_token !== undefined) {
-      updateData.whatsapp_access_token = config.whatsapp_access_token;
-    }
+    // whatsapp_access_token ya no se acepta desde el request
+    // Se debe configurar en la variable de entorno WASENDER_API_KEY
     
     if (config.whatsapp_allowed_remitents !== undefined) {
       updateData.whatsapp_allowed_remitents = config.whatsapp_allowed_remitents 

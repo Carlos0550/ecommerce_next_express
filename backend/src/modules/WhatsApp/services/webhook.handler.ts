@@ -1,10 +1,6 @@
-/**
- * Manejador de webhooks de WhatsApp
- * Procesa los eventos recibidos de WasenderAPI
- */
 
 import { redis } from '@/config/redis';
-import { getBusiness } from '../utils/business.utils';
+import { getBusiness, getWasenderApiKey, hasWasenderApiKey } from '../utils/business.utils';
 import { sessionService } from './session.service';
 import { albumService } from './album.service';
 import { 
@@ -109,6 +105,7 @@ class WebhookHandler {
     
     const business = await getBusiness();
     const apiKey = business?.whatsapp_api_key;
+    const wasenderToken = hasWasenderApiKey() ? getWasenderApiKey() : undefined;
 
     if (isPartOfAlbum && albumParentId && msgContent?.imageMessage) {
       console.log(`📸 Imagen parte de álbum (parent: ${albumParentId})`);
@@ -120,7 +117,7 @@ class WebhookHandler {
         messages.pushName,
         albumParentId,
         apiKey,
-        business?.whatsapp_access_token,
+        wasenderToken,
         alternativeCaption
       );
       return;
@@ -132,7 +129,7 @@ class WebhookHandler {
       fromPhone,
       messageId,
       apiKey,
-      business?.whatsapp_access_token
+      wasenderToken
     );
 
     console.log(`📝 Mensaje procesado: tipo=${messageData.type}, body="${messageData.body?.substring(0, 50)}..."`);

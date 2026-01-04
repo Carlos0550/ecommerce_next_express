@@ -3,7 +3,7 @@
  * Maneja el envío de mensajes de texto e imágenes
  */
 
-import { getBusinessConnected, getBusiness } from '../utils/business.utils';
+import { getBusinessConnected, getBusiness, getWasenderApiKey } from '../utils/business.utils';
 import WasenderClient from './wasender.client';
 
 class MessageService {
@@ -12,8 +12,9 @@ class MessageService {
    */
   async sendMessage(to: string, message: string): Promise<void> {
     const business = await getBusinessConnected();
+    const apiKey = getWasenderApiKey();
 
-    const client = new WasenderClient(business.whatsapp_access_token || '');
+    const client = new WasenderClient(apiKey);
     await client.sendTextMessage(business.whatsapp_api_key!, { to, message });
   }
 
@@ -41,8 +42,9 @@ class MessageService {
     caption?: string
   ): Promise<void> {
     const business = await getBusinessConnected();
+    const apiKey = getWasenderApiKey();
 
-    const client = new WasenderClient(business.whatsapp_access_token || '');
+    const client = new WasenderClient(apiKey);
     await client.sendImageMessage(business.whatsapp_api_key!, {
       to,
       image_url: imageUrl,
@@ -70,7 +72,8 @@ class MessageService {
     }
 
     try {
-      const client = new WasenderClient(business.whatsapp_access_token || '');
+      const apiKey = getWasenderApiKey();
+      const client = new WasenderClient(apiKey);
       const decrypted = await client.decryptMedia(business.whatsapp_api_key, {
         key: { id: messageId },
         message: messageData,
