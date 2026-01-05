@@ -45,19 +45,24 @@ export default function AddToCartButton({ productId, options = [] }: { productId
     <Stack gap="sm">
       {options.length > 0 && (
         <Stack gap="xs">
-          {options.map((opt, idx) => (
-            <Group key={idx} justify="space-between">
-              <Text size="sm" fw={500}>{opt.name}:</Text>
-              <Select
-                data={opt.values}
-                value={selectedOptions.find(o => o.name === opt.name)?.value || ""}
-                onChange={(val) => handleOptionChange(opt.name, val)}
-                allowDeselect={false}
-                size="sm"
-                w={150}
-              />
-            </Group>
-          ))}
+          {options.map((opt, idx) => {
+            // Filtrar valores duplicados
+            const uniqueValues = Array.from(new Set(opt.values))
+            
+            return (
+              <Group key={idx} justify="space-between">
+                <Text size="sm" fw={500}>{opt.name}:</Text>
+                <Select
+                  data={uniqueValues}
+                  value={selectedOptions.find(o => o.name === opt.name)?.value || ""}
+                  onChange={(val) => handleOptionChange(opt.name, val)}
+                  allowDeselect={false}
+                  size="sm"
+                  w={150}
+                />
+              </Group>
+            )
+          })}
         </Stack>
       )}
       {isMobile ? (
