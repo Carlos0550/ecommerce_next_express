@@ -1,3 +1,4 @@
+'use client'
 import { useAppContext } from "@/providers/AppContext";
 import { useState, useEffect, useCallback } from "react";
 import useBankInfo from "@/Api/useBankInfo";
@@ -102,7 +103,14 @@ export default function useCart(onClose: () => void) {
                 try {
                     const fd = new FormData();
                     fd.append('file', receiptFile);
-                    const up = await fetch(`${utils.baseUrl}/orders/${rs.order_id}/receipt`, { method: 'POST', body: fd });
+                    
+                    const headers = utils.getTenantHeaders();
+                    delete headers['Content-Type']; // FormData sets its own boundary
+                    if (auth?.state?.token) {
+                        headers['Authorization'] = `Bearer ${auth.state.token}`;
+                    }
+
+                    const up = await fetch(`${utils.baseUrl}/orders/${rs.order_id}/receipt`, { method: 'POST', headers, body: fd });
                     const j = await up.json().catch(() => null);
                     if (!up.ok || !j?.ok) {
                         alert('La orden fue creada, pero el comprobante no se pudo subir.');

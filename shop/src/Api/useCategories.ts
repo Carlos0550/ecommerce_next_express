@@ -23,7 +23,7 @@ export const useCategories = (initialData?: CategoriesResponse) => {
         }
     } = useAppContext()
     return useQuery<CategoriesResponse>({
-        queryKey: ['categories'],
+        queryKey: ['categories', tenantSlug],
         enabled: !!tenantSlug, 
         initialData,
         queryFn: async (): Promise<CategoriesResponse> => {

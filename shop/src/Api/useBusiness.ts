@@ -27,30 +27,21 @@ function getTenantSlugFromCookie(): string | null {
 
 export const getBusinessInfo = async (tenantSlug?: string): Promise<BusinessData | null> => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
-  
-  
-  
+
   let slug = tenantSlug;
   if (!slug && typeof document !== 'undefined') {
     slug = getTenantSlugFromCookie()!;
   }
-  
-  
-  console.log('[getBusinessInfo] tenantSlug param:', tenantSlug, '| final slug:', slug);
-  
-  
+
   if (!slug) {
-    console.warn('[getBusinessInfo] No tenant slug available, skipping API call');
     return null;
   }
-  
+
   try {
     const headers: Record<string, string> = {
       'x-tenant-slug': slug
     };
-    
-    console.log('[getBusinessInfo] Making request with headers:', headers);
-    
+
     const res = await fetch(`${baseUrl}/business/public`, { 
       next: { revalidate: 60 },
       headers

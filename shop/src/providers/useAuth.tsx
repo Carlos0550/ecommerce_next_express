@@ -14,8 +14,10 @@ type AuthState = {
   loading: boolean;
 };
 
+import { useUtils } from './useUtils';
+
 export function useAuth() {
-  const [baseUrl] = useState(() => process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api");
+  const { baseUrl, getTenantHeaders } = useUtils();
 
   const [state, setState] = useState<AuthState>({ token: null, user: null, loading: false });
 
@@ -25,8 +27,12 @@ export function useAuth() {
     (async () => {
       try {
         setState((s) => ({ ...s, loading: true }));
+        const headers = getTenantHeaders();
+        if (!headers['x-tenant-slug']) return; // Wait for slug
+        headers['Authorization'] = `Bearer ${token}`;
+
         const res = await fetchWithTimeout(`${baseUrl}/shop/validate-token`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
           timeout: 5000,
         });
         if (!res.ok) throw new Error('invalid_token');
@@ -44,13 +50,17 @@ export function useAuth() {
         setState({ token: null, user: null, loading: false });
       }
     })();
-  }, [baseUrl]);
+  }, [baseUrl, getTenantHeaders]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setState((s) => ({ ...s, loading: true }));
+    const headers = getTenantHeaders();
+    if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+    headers['Content-Type'] = 'application/json';
+
     const res = await fetchWithTimeout(`${baseUrl}/shop/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ email, password }),
       timeout: 10000,
     });
@@ -71,13 +81,17 @@ export function useAuth() {
     try { document.cookie = `auth_token=${token}; Max-Age=${60 * 60 * 24}; Path=/`; } catch {}
     setState({ token, user, loading: false });
     return { token, user };
-  }, [baseUrl]);
+  }, [baseUrl, getTenantHeaders]);
 
   const signUp = useCallback(async (name: string, email: string, password: string) => {
     setState((s) => ({ ...s, loading: true }));
+    const headers = getTenantHeaders();
+    if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+    headers['Content-Type'] = 'application/json';
+
     const res = await fetchWithTimeout(`${baseUrl}/shop/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ name, email, password }),
       timeout: 10000,
     });
@@ -98,7 +112,7 @@ export function useAuth() {
     try { document.cookie = `auth_token=${token}; Max-Age=${60 * 60 * 24}; Path=/`; } catch {}
     setState({ token, user, loading: false });
     return { token, user };
-  }, [baseUrl]);
+  }, [baseUrl, getTenantHeaders]);
 
   const signOut = useCallback(async () => {
     localStorage.removeItem('auth_token');

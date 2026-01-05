@@ -173,18 +173,8 @@ function Cart({ opened = true, onClose }: CartProps) {
         <Divider my="md" />
 
         <Stack gap="xs">
-          {cart.discount && cart.discount > 0 && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Subtotal:</Text>
-              <Text size="sm" c="dimmed">{formatCurrency(cart.items.reduce((acc, item) => acc + item.price * item.quantity, 0))}</Text>
-            </Group>
-          )}
-          {cart.discount && cart.discount > 0 && (
-            <Group justify="space-between">
-              <Text size="sm" c="green">Descuento:</Text>
-              <Text size="sm" fw={600} c="green">-{formatCurrency(cart.discount)}</Text>
-            </Group>
-          )}
+   
+          
           <Group justify="space-between" align="center">
             <Text fw={700} size="lg">Total: {formatCurrency(cart.total)}</Text>
             <Group>

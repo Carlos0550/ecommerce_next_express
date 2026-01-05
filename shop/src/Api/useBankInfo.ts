@@ -24,14 +24,21 @@ export type BusinessData = {
 export default function useBankInfo() {
     const {
         utils: {
-            baseUrl
+            baseUrl,
+            getTenantHeaders,
+            tenantSlug
         }
     } = useAppContext();
 
     return useQuery<BusinessData | null>({
         queryKey: ['business-info'],
+        enabled: !!tenantSlug,
         queryFn: async () => {
-            const res = await fetch(`${baseUrl}/business/public`);
+            const headers = getTenantHeaders();
+            if (!headers['x-tenant-slug']) {
+                throw new Error('No tenant slug available');
+            }
+            const res = await fetch(`${baseUrl}/business/public`, { headers });
             if (!res.ok) {
                 if (res.status === 404) return null;
                 throw new Error("Error fetching business info");

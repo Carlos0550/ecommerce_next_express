@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { showNotification } from "@mantine/notifications"
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout"
+import { useUtils } from "./useUtils"
 
 export type SelectedOption = { name: string; value: string }
 
@@ -54,6 +55,7 @@ export type CheckoutFormValues = {
 }
 
 function useCart(baseUrl: string, token: string | null) {
+    const { getTenantHeaders } = useUtils();
     const [cart, setCart] = useState<Cart>(() => {
         if (typeof window === 'undefined') return { items: [], total: 0, promo_code: "", discount: 0 }
         try {
@@ -123,9 +125,14 @@ function useCart(baseUrl: string, token: string | null) {
         if (token) {
             try {
                 log('Syncing add to server')
+                const headers = getTenantHeaders();
+                if (!headers['x-tenant-slug']) return;
+                headers['Content-Type'] = 'application/json';
+                headers['Authorization'] = `Bearer ${token}`;
+
                 await fetchWithTimeout(`${baseUrl}/cart/items`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    headers,
                     body: JSON.stringify({ product_id: product.product_id, quantity: qtyToAdd, options: product.options }),
                     timeout: 5000,
                 })
@@ -133,7 +140,7 @@ function useCart(baseUrl: string, token: string | null) {
                 log('Error syncing add', e)
             }
         }
-    }, [cart, token, baseUrl])
+    }, [cart, token, baseUrl, getTenantHeaders])
 
     const removeProductFromCart = useCallback(async (product_id: string) => {
         log('Removing product', product_id)
@@ -150,16 +157,20 @@ function useCart(baseUrl: string, token: string | null) {
         if (token) {
             try {
                 log('Syncing remove to server')
+                const headers = getTenantHeaders();
+                if (!headers['x-tenant-slug']) return;
+                headers['Authorization'] = `Bearer ${token}`;
+
                 await fetchWithTimeout(`${baseUrl}/cart/items/${product_id}`, {
                     method: 'DELETE',
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers,
                     timeout: 5000,
                 })
             } catch (e) {
                 log('Error syncing remove', e)
             }
         }
-    }, [cart, token, baseUrl])
+    }, [cart, token, baseUrl, getTenantHeaders])
 
     const validatePromoCode = useCallback(async (code: string, baseUrl: string) => {
         if (!code || code.trim().length === 0) {
@@ -167,9 +178,13 @@ function useCart(baseUrl: string, token: string | null) {
         }
         try {
             const items = cart.items.map(it => ({ product_id: it.product_id, quantity: it.quantity }))
+            const headers = getTenantHeaders();
+            if (!headers['x-tenant-slug']) return { ok: false, error: 'no_tenant' };
+            headers['Content-Type'] = 'application/json';
+
             const res = await fetchWithTimeout(`${baseUrl}/promos/validate`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     code: code.trim().toUpperCase(),
                     items,
@@ -185,7 +200,7 @@ function useCart(baseUrl: string, token: string | null) {
         } catch {
             return { ok: false, error: 'network_error' }
         }
-    }, [cart])
+    }, [cart, getTenantHeaders])
 
     const applyPromoCode = useCallback(async (code: string, baseUrl: string) => {
         const result = await validatePromoCode(code, baseUrl)
@@ -230,16 +245,20 @@ function useCart(baseUrl: string, token: string | null) {
         if (token) {
             try {
                 log('Syncing clear to server')
+                const headers = getTenantHeaders();
+                if (!headers['x-tenant-slug']) return;
+                headers['Authorization'] = `Bearer ${token}`;
+
                 await fetchWithTimeout(`${baseUrl}/cart`, {
                     method: 'DELETE',
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers,
                     timeout: 5000,
                 })
             } catch (e) {
                 log('Error syncing clear', e)
             }
         }
-    }, [cart, token, baseUrl])
+    }, [cart, token, baseUrl, getTenantHeaders])
 
     const updateQuantity = useCallback(async (product_id: string, quantity: number, options?: SelectedOption[]) => {
         log('Updating quantity', { product_id, quantity, options })
@@ -257,9 +276,14 @@ function useCart(baseUrl: string, token: string | null) {
             if (token) {
                 try {
                     log('Syncing remove (qty <= 0) to server')
+                    const headers = getTenantHeaders();
+                    if (!headers['x-tenant-slug']) return;
+                    headers['Content-Type'] = 'application/json';
+                    headers['Authorization'] = `Bearer ${token}`;
+
                     await fetchWithTimeout(`${baseUrl}/cart/items/${product_id}`, {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        headers,
                         body: JSON.stringify({ options }),
                         timeout: 5000,
                     })
@@ -281,9 +305,14 @@ function useCart(baseUrl: string, token: string | null) {
             if (token) {
                 try {
                     log('Syncing update to server')
+                    const headers = getTenantHeaders();
+                    if (!headers['x-tenant-slug']) return;
+                    headers['Content-Type'] = 'application/json';
+                    headers['Authorization'] = `Bearer ${token}`;
+
                     await fetchWithTimeout(`${baseUrl}/cart/items/${product_id}`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        headers,
                         body: JSON.stringify({ quantity, options }),
                         timeout: 5000,
                     })
@@ -292,7 +321,7 @@ function useCart(baseUrl: string, token: string | null) {
                 }
             }
         }
-    }, [cart, token, baseUrl])
+    }, [cart, token, baseUrl, getTenantHeaders])
 
     useEffect(() => {
         try {
@@ -322,9 +351,14 @@ function useCart(baseUrl: string, token: string | null) {
             }
         }
         try {
+            const headers = getTenantHeaders();
+            if (!headers['x-tenant-slug']) throw new Error('no_tenant');
+            headers['Content-Type'] = 'application/json';
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const res = await fetchWithTimeout(`${baseUrl}/orders/create`, { 
                 method: 'POST', 
-                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, 
+                headers, 
                 body: JSON.stringify(payload),
                 timeout: 15000,
             })
@@ -342,22 +376,33 @@ function useCart(baseUrl: string, token: string | null) {
             showNotification({ title: 'Error de conexión', message: 'No se pudo contactar al servidor.', color: 'red', autoClose: 3000 })
             return { ok: false }
         }
-    }, [cart.items, formValues, clearCart, cart.promo_code])
+    }, [cart.items, formValues, clearCart, cart.promo_code, getTenantHeaders])
 
     const syncWithServer = useCallback(async (baseUrl: string, token: string | null) => {
         if (!token) return
         const items = cart.items.map(it => ({ product_id: it.product_id, quantity: it.quantity, price: it.price, options: it.options }))
         try {
+            const headers = getTenantHeaders();
+            if (!headers['x-tenant-slug']) return;
+            
             if (items.length > 0) {
+                const mergeHeaders = { ...headers };
+                mergeHeaders['Content-Type'] = 'application/json';
+                mergeHeaders['Authorization'] = `Bearer ${token}`;
+
                 await fetchWithTimeout(`${baseUrl}/cart/merge`, { 
                     method: 'POST', 
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, 
+                    headers: mergeHeaders, 
                     body: JSON.stringify({ items }),
                     timeout: 5000,
                 })
             }
+            
+            const getHeaders = { ...headers };
+            getHeaders['Authorization'] = `Bearer ${token}`;
+            
             const res = await fetchWithTimeout(`${baseUrl}/cart`, { 
-                headers: { Authorization: `Bearer ${token}` },
+                headers: getHeaders,
                 timeout: 5000,
             })
             const json = await res.json().catch(() => null)
@@ -369,7 +414,7 @@ function useCart(baseUrl: string, token: string | null) {
                 setCart({ items: mappedItems, total, promo_code: cart.promo_code, discount: cart.discount, promo_title: cart.promo_title })
             }
         } catch {}
-    }, [cart])
+    }, [cart, getTenantHeaders])
 
   return {
     cart,

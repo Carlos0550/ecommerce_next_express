@@ -4,16 +4,22 @@ import { Products } from "@/Api/useProducts"
 import { useAppContext } from "@/providers/AppContext"
 import { showNotification } from "@mantine/notifications"
 import type { SelectedOption } from "@/providers/useCart"
+import { useUtils } from "@/providers/useUtils"
 
 export function useCartActions() {
   const {
     cart: { addProductIntoCart },
     utils: { baseUrl },
   } = useAppContext()
+  const { getTenantHeaders } = useUtils()
 
   const validateProductStock = async (product_id: string): Promise<Products | null> => {
     try {
-      const res = await fetch(`${baseUrl}/products/public/${product_id}`, { next: { revalidate: 60 } })
+      const headers = getTenantHeaders()
+      const res = await fetch(`${baseUrl}/products/public/${product_id}`, { 
+        headers: { ...headers },
+        next: { revalidate: 60 } 
+      })
       if (!res.ok) {
         showNotification({
           title: "Producto no encontrado",

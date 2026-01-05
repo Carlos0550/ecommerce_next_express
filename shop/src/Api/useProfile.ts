@@ -24,27 +24,36 @@ type UpdatePayload = Partial<{
 }>;
 
 export function useGetProfile() {
-  const { utils: { baseUrl }, auth: { state } } = useAppContext();
+  const { utils: { baseUrl, getTenantHeaders, tenantSlug }, auth: { state } } = useAppContext();
   return useQuery<{ ok: boolean; user: Profile | null }, Error>({
     queryKey: ['profile'],
     queryFn: async () => {
-      const res = await fetch(`${baseUrl}/profile/me`, { headers: { Authorization: `Bearer ${state.token}` } });
+      const headers = getTenantHeaders();
+      if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+      headers['Authorization'] = `Bearer ${state.token}`;
+      
+      const res = await fetch(`${baseUrl}/profile/me`, { headers });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'profile_fetch_failed');
       return json;
     },
-    enabled: !!state.token,
+    enabled: !!state.token && !!tenantSlug,
   });
 }
 
 export function useUpdateProfile() {
-  const { utils: { baseUrl }, auth: { state } } = useAppContext();
+  const { utils: { baseUrl, getTenantHeaders }, auth: { state } } = useAppContext();
   return useMutation<{ ok: boolean; user: Profile }, Error, UpdatePayload>({
     mutationKey: ['profile_update'],
     mutationFn: async (payload) => {
+      const headers = getTenantHeaders();
+      if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+      headers['Content-Type'] = 'application/json';
+      headers['Authorization'] = `Bearer ${state.token}`;
+
       const res = await fetch(`${baseUrl}/profile/me`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        headers,
         body: JSON.stringify(payload),
       });
       const json = await res.json();
@@ -61,13 +70,20 @@ export function useUpdateProfile() {
 }
 
 export function useUploadAvatar() {
-  const { utils: { baseUrl }, auth: { state } } = useAppContext();
+  const { utils: { baseUrl, getTenantHeaders }, auth: { state } } = useAppContext();
   return useMutation<{ ok: boolean; user: Pick<Profile, 'id'|'email'|'name'|'profile_image'>; url: string }, Error, File>({
     mutationKey: ['profile_avatar'],
     mutationFn: async (file) => {
       const fd = new FormData();
       fd.append('image', file);
-      const res = await fetch(`${baseUrl}/profile/avatar`, { method: 'POST', headers: { Authorization: `Bearer ${state.token}` }, body: fd });
+      
+      const headers = getTenantHeaders();
+      if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+      // Content-Type is set automatically by fetch when using FormData
+      delete headers['Content-Type']; 
+      headers['Authorization'] = `Bearer ${state.token}`;
+
+      const res = await fetch(`${baseUrl}/profile/avatar`, { method: 'POST', headers, body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'avatar_upload_failed');
       return json;
@@ -76,13 +92,18 @@ export function useUploadAvatar() {
 }
 
 export function useChangePassword() {
-  const { utils: { baseUrl }, auth: { state } } = useAppContext();
+  const { utils: { baseUrl, getTenantHeaders }, auth: { state } } = useAppContext();
   return useMutation<{ ok: boolean }, Error, { old_password: string; new_password: string }>({
     mutationKey: ['profile_change_password'],
     mutationFn: async (payload) => {
+      const headers = getTenantHeaders();
+      if (!headers['x-tenant-slug']) throw new Error('No tenant slug available');
+      headers['Content-Type'] = 'application/json';
+      headers['Authorization'] = `Bearer ${state.token}`;
+
       const res = await fetch(`${baseUrl}/shop/password/change`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+        headers,
         body: JSON.stringify(payload),
       });
       type ChangePasswordResponse = { ok: boolean; error?: string };
