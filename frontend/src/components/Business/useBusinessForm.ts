@@ -10,6 +10,8 @@ export interface FormErrors {
   city?: string;
   state?: string;
   type?: string;
+  description?: string;
+  slug?: string;
   bankData?: {
     bank_name?: string;
     account_number?: string;
@@ -28,6 +30,7 @@ const INITIAL_STATE: BusinessData = {
   description: "",
   business_image: "",
   favicon: "",
+  slug: "",
   bankData: [{ bank_name: "", account_number: "", account_holder: "" }]
 };
 
@@ -58,6 +61,7 @@ export function useBusinessForm() {
         description: data.description || "",
         business_image: data.business_image || "",
         favicon: data.favicon || "",
+        slug: (data as any)?.tenant?.slug || (data as any)?.slug || "", 
         bankData: Array.isArray(data.bankData) && data.bankData.length 
           ? data.bankData 
           : [{ bank_name: "", account_number: "", account_holder: "" }]
@@ -72,6 +76,14 @@ export function useBusinessForm() {
     if (!data.name.trim()) {
       newErrors.name = "El nombre es obligatorio";
       isValid = false;
+    }
+
+    if (!data.slug?.trim()) {
+        newErrors.slug = "El slug es obligatorio";
+        isValid = false;
+    } else if (!/^[a-z0-9-]+$/.test(data.slug)) {
+        newErrors.slug = "El slug solo puede contener letras minúsculas, números y guiones";
+        isValid = false;
     }
 
     if (!data.email.trim()) {
@@ -189,9 +201,40 @@ export function useBusinessForm() {
         await createMutation.mutateAsync(form);
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
+      if (error instanceof Error && error.message.includes("slug")) {
+          setErrors(prev => ({ ...prev, slug: error.message }));
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUseBusinessName = () => {
+    if (form.name) {
+      const slug = form.name.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      handleChange("slug", slug);
+    }
+  };
+
+  const suggestSlugWithAI = async () => {
+    if (!form.name || !form.type) return;
+    try {
+        const res = await generateDescriptionMutation.mutateAsync({ 
+            name: form.name, 
+            city: form.city, 
+            province: form.state, 
+            type: form.type, 
+            actualDescription: `Suggest a short, unique, and catchy URL slug for a business named "${form.name}" of type "${form.type}". Return ONLY the slug, nothing else. Lowercase, dashes instead of spaces.` 
+        });
+        const suggestedSlug = res.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+        handleChange("slug", suggestedSlug);
+    } catch (e) {
+        console.error(e);
     }
   };
 
@@ -209,6 +252,8 @@ export function useBusinessForm() {
     isGeneratingDescription: generateDescriptionMutation.isPending,
     handleImageUpload,
     isUploadingImage,
-    isUploadingFavicon
+    isUploadingFavicon,
+    handleUseBusinessName,
+    suggestSlugWithAI
   };
 }

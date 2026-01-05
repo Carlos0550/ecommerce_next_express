@@ -21,6 +21,7 @@ export type BusinessData = {
   description?: string;
   business_image?: string;
   favicon?: string;
+  slug?: string;
   bankData: BankData[];
 };
 
@@ -35,24 +36,13 @@ export const useGetBusiness = () => {
       });
       if (res.status === 404) return null;
       const json = await res.json();
+      console.log(json)
       if (!res.ok) throw new Error(json?.error || "Error obteniendo negocio");
       return json as BusinessData;
     }
   });
 };
 
-export const getPublicBusiness = async (): Promise<BusinessData | null> => {
-  try {
-    const res = await fetch(`${baseUrl}/business/public`);
-    if (res.status === 404) return null;
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || "Error obteniendo negocio");
-    return json as BusinessData;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
 
 export const useCreateBusiness = () => {
   const queryClient = useQueryClient();

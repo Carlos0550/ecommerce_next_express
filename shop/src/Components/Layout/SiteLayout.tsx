@@ -118,7 +118,7 @@ export default function SiteLayout({ children }: Props) {
                 <Group align="center">
                   <Avatar src={business?.favicon || business?.business_image || ""} radius="xl" />
                   <Stack gap={2}>
-                    <Text fw={600}>{business?.name || "Tu Tienda"}</Text>
+                    <Text fw={600}>{business?.name || "Pragmatienda"}</Text>
                   </Stack>
                 </Group>
                 <ColorSchemeToggle />

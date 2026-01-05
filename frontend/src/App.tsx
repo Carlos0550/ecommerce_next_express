@@ -11,19 +11,7 @@ import FAQ from './pages/FAQ'
 import { Sales } from './pages/Sales'
 import Business from './pages/Business'
 import Colors from './pages/Colors'
-import { useEffect } from 'react'
-import { getPublicBusiness } from './components/Api/BusinessApi'
-
 export default function App() {
-
-  useEffect(() => {
-    getPublicBusiness().then(data => {
-      if (data?.name) {
-        document.title = `${data.name} - Panel`;
-      }
-    });
-  }, []);
-
   return (
       <Routes>
         <Route path='/auth' element={<Login />} />

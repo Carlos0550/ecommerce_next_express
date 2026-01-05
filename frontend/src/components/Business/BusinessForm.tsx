@@ -18,7 +18,9 @@ export default function BusinessForm() {
     isGeneratingDescription,
     handleImageUpload,
     isUploadingImage,
-    isUploadingFavicon
+    isUploadingFavicon,
+    handleUseBusinessName,
+    suggestSlugWithAI
   } = useBusinessForm();
 
   if (isLoading) {
@@ -36,14 +38,10 @@ export default function BusinessForm() {
           <Title order={3}>Información del negocio</Title>
           
           <Group grow align="flex-start">
-            <TextInput 
-              label="Nombre" 
-              placeholder="Nombre del negocio"
-              value={form.name} 
-              onChange={(e) => handleChange("name", e.currentTarget.value)} 
-              error={errors.name}
-              leftSection={<FaUser size={14} />}
-              withAsterisk
+            <Divider
+              my="sm"
+              label="Información de contacto"
+              labelPosition="center"
             />
             <TextInput 
               label="Email" 
@@ -97,17 +95,57 @@ export default function BusinessForm() {
             />
           </Group>
 
-          <TextInput
-            label="Rubro / Tipo de negocio"
-            placeholder="Ej.: tienda de ropa, restaurante, servicios IT"
-            required
-            value={form.type || ""}
-            onChange={(e) => handleChange("type", e.currentTarget.value)}
-            error={errors.type}
-            leftSection={<FaBriefcase size={14} />}
-          />
+          <Divider my="sm" label="Información de tu negocio" labelPosition="center" />
 
-          <Divider my="sm" label="Imágenes" labelPosition="center" />
+          <Group grow align="flex-start">
+
+            <TextInput 
+              label="Nombre" 
+              placeholder="Nombre del negocio"
+              value={form.name} 
+              onChange={(e) => handleChange("name", e.currentTarget.value)} 
+              error={errors.name}
+              leftSection={<FaUser size={14} />}
+              withAsterisk
+            />
+            <TextInput 
+              label="Rubro / Tipo de negocio"
+              placeholder="Ej.: tienda de ropa, restaurante, servicios IT"
+              required
+              value={form.type || ""}
+              onChange={(e) => handleChange("type", e.currentTarget.value)}
+              error={errors.type}
+              leftSection={<FaBriefcase size={14} />}
+            />
+          </Group>
+
+          <Group grow align="flex-start">
+            <TextInput 
+              label="Slug"
+              placeholder="Ej: blanqueria, vittoria"
+              required
+              value={form.slug || ""}
+              onChange={(e) => handleChange("slug", e.currentTarget.value)}
+              error={errors.slug ? (
+                  <Stack gap={2}>
+                      <Text size="xs">{errors.slug}</Text>
+                      {errors.slug.includes("en uso") && (
+                          <Button 
+                              variant="subtle" 
+                              size="xs"
+                              onClick={suggestSlugWithAI}
+                              leftSection={<FaMagic />}
+                          >
+                              Sugerir otro con IA
+                          </Button>
+                      )}
+                  </Stack>
+              ) : null}
+              leftSection={<FaBriefcase size={14} />}
+            />
+
+            <Button onClick={handleUseBusinessName} variant="light" mt={24}>Usar el mismo nombre que el del negocio</Button>
+          </Group>
 
           <Group grow align="flex-start">
             <Stack gap={5}>

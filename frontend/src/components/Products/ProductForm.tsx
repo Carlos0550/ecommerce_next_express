@@ -163,7 +163,10 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
             label="Completar con IA"
             description="La IA analizará las imágenes para generar título y descripción automáticamente"
             checked={fillWithAI}
-            onChange={(event) => setFormValues(prev => ({ ...prev, fillWithAI: event.currentTarget.checked }))}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              setFormValues(prev => ({ ...prev, fillWithAI: checked }));
+            }}
           />
         </Group>
       )}

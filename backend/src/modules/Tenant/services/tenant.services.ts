@@ -27,7 +27,7 @@ export interface RegisterTenantResult {
   slugWasModified: boolean;
 }
 
-class TenantServices {
+export class TenantServices {
   /**
    * Normaliza un nombre de tienda para convertirlo en slug
    * "Cinnamon Makeup" -> "cinnamon-makeup"

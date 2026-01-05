@@ -127,6 +127,9 @@ class BusinessController {
             if (error instanceof Error && error.message === "BUSINESS_NOT_FOUND") {
                 return res.status(404).json({ error: "Negocio no encontrado" });
             }
+            if (error instanceof Error && error.message === "SLUG_ALREADY_EXISTS") {
+                return res.status(400).json({ error: "Este slug ya está en uso. Por favor elige otro." });
+            }
             return res.status(500).json({ error: "Error al actualizar los datos del negocio" });
         }
     }

@@ -1,10 +1,9 @@
 import { Box, Flex, Paper, Tabs, Title } from "@mantine/core";
 import LoginForm from "../components/Auth/LoginForm";
 import RegisterForm from "../components/Auth/RegisterForm";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRegister } from "@/components/Api/AuthApi";
 import { showNotification } from "@mantine/notifications";
-import { getPublicBusiness, type BusinessData } from "@/components/Api/BusinessApi";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/Context/AppContext";
 
@@ -12,13 +11,8 @@ import { useAppContext } from "@/Context/AppContext";
 export default function Login() {
   const [formType, setFormType] = useState<"register" | "login">("login");
   const registerHook = useRegister();
-  const [business, setBusiness] = useState<BusinessData | null>(null);
   const navigate = useNavigate();
   const { auth } = useAppContext();
-
-  useEffect(() => {
-    getPublicBusiness().then(setBusiness);
-  }, []);
   
   return (
     <Flex
@@ -27,7 +21,7 @@ export default function Login() {
       style={{ height: "100vh" }}
     >
       <Box m="auto">
-        <Title mb="md">Bienvenido a {business?.name || "Tu tienda online"}</Title>
+        <Title mb="md">Bienvenido a <strong>Pragmatienda</strong> </Title>
         <Paper withBorder p="md" radius="md">
           <Tabs defaultValue="login" value={formType} onChange={(v) => setFormType(v as "register" | "login")}>
             <Tabs.List>
@@ -58,14 +52,14 @@ export default function Login() {
                         if (result.data.slugWasModified) {
                           showNotification({ 
                             title: "¡Tienda creada!", 
-                            message: `Tu tienda estará en: ${result.data.tenant.slug}. Puedes cambiarlo desde configuración.`, 
+                            message: `Pragmatienda estará en: ${result.data.tenant.slug}. Puedes cambiarlo desde configuración.`, 
                             color: "blue",
                             autoClose: 8000
                           });
                         } else {
                           showNotification({ 
                             title: "¡Tienda creada!", 
-                            message: "Tu tienda está lista. Configura tu negocio para comenzar.", 
+                            message: "Pragmatienda está lista. Configura tu negocio para comenzar.", 
                             color: "green" 
                           });
                         }

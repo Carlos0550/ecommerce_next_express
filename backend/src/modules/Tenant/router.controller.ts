@@ -104,7 +104,7 @@ class TenantController {
           slugWasModified: result.slugWasModified,
         },
         message: result.slugWasModified 
-          ? `Tu tienda estará disponible en: ${result.tenant.slug}. Puedes cambiarlo desde configuración.`
+          ? `Pragmatienda estará disponible en: ${result.tenant.slug}. Puedes cambiarlo desde configuración.`
           : 'Registro exitoso'
       });
     } catch (error) {

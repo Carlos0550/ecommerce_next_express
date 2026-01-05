@@ -111,7 +111,7 @@ export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values
         </Text>
         
         <TextInput
-          label="Nombre de tu tienda"
+          label="Nombre de Pragmatienda"
           placeholder="Mi Tienda Online"
           description="Este nombre se usará para crear tu subdominio"
           value={values.storeName}
@@ -125,7 +125,7 @@ export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values
         
         {previewSlug && (
           <Group gap="xs">
-            <Text size="sm" c="dimmed">Tu tienda estará en:</Text>
+            <Text size="sm" c="dimmed">Pragmatienda estará en:</Text>
             <Badge 
               color={slugPreview.available ? "green" : slugPreview.loading ? "gray" : "orange"}
               variant="light"
