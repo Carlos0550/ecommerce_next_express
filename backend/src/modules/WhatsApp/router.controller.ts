@@ -16,9 +16,9 @@ import {
   WebhookEvent,
 } from './schemas/whatsapp.schemas';
 
-// ============================================================================
-// HELPERS DE ERROR
-// ============================================================================
+
+
+
 
 interface ErrorMapping {
   code: string;
@@ -36,7 +36,7 @@ const ERROR_MAPPINGS: ErrorMapping[] = [
 function handleError(error: unknown, res: Response, defaultMessage: string): Response {
   console.error(defaultMessage + ':', error);
 
-  // Manejar errores conocidos de WhatsApp
+  
   if (error instanceof WhatsAppError) {
     const mapping = ERROR_MAPPINGS.find(e => e.code === error.code);
     if (mapping) {
@@ -44,11 +44,11 @@ function handleError(error: unknown, res: Response, defaultMessage: string): Res
     }
   }
 
-  // Manejar errores con mensaje específico
+  
   if (error instanceof Error) {
     const msg = error.message;
     
-    // Errores de validación de teléfono
+    
     if (msg.includes('phone number') && msg.includes('valid')) {
       return res.status(400).json({ 
         ok: false, 
@@ -56,7 +56,7 @@ function handleError(error: unknown, res: Response, defaultMessage: string): Res
       });
     }
     
-    // Número ya en uso
+    
     if (msg.includes('phone number') && msg.includes('taken')) {
       return res.status(400).json({ 
         ok: false, 
@@ -64,7 +64,7 @@ function handleError(error: unknown, res: Response, defaultMessage: string): Res
       });
     }
     
-    // Error de webhook URL
+    
     if (msg.includes('webhook') && (msg.includes('localhost') || msg.includes('publicly accessible'))) {
       return res.status(400).json({ 
         ok: false, 
@@ -72,7 +72,7 @@ function handleError(error: unknown, res: Response, defaultMessage: string): Res
       });
     }
 
-    // Si tiene mensaje específico, usarlo
+    
     if (msg && msg !== 'Error') {
       return res.status(500).json({ ok: false, error: msg });
     }
@@ -204,10 +204,10 @@ class WhatsAppController {
       const event = req.body as WebhookEvent;
       const signature = req.headers['x-webhook-signature'] as string | undefined;
       
-      // Responder inmediatamente para evitar timeouts
+      
       res.status(200).json({ received: true });
       
-      // Procesar en background
+      
       setImmediate(async () => {
         try {
           await webhookHandler.handleWebhook(event, signature);

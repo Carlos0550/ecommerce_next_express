@@ -28,11 +28,17 @@ class ConversationProcessor {
   async processMessage(
     adminId: number,
     phone: string,
-    messageData: WebhookMessageReceived['data'] & { media_urls?: string[]; isAlbum?: boolean }
+    messageData: WebhookMessageReceived['data'] & { media_urls?: string[]; isAlbum?: boolean },
+    tenantId?: string
   ): Promise<void> {
     try {
       const authorized = await this.checkAuthorization(phone);
       if (!authorized) return;
+      
+      
+      if (tenantId) {
+        (messageData as any).tenantId = tenantId;
+      }
 
       let textContent = messageData.body || '';
       let messageType: 'text' | 'image' | 'audio' = 'text';
@@ -80,8 +86,8 @@ class ConversationProcessor {
 
       this.detectToneChanges(session, textContent);
 
-      // Extraer precio del texto si está en estado collecting y no tiene precio
-      // (para mensajes de texto posteriores)
+      
+      
       if (session.state === 'collecting' && !session.productData.price && textContent && messageType === 'text') {
         const price = this.extractPrice(textContent);
         if (price !== null && price > 10) {
@@ -220,7 +226,7 @@ class ConversationProcessor {
       session.selectedProductId = undefined;
       session.searchResults = undefined;
       session.pendingAction = undefined;
-      session.categoryPromptShown = false; // Resetear flag al iniciar nuevo flujo
+      session.categoryPromptShown = false; 
       session.state = 'collecting';
     }
 
@@ -248,16 +254,16 @@ class ConversationProcessor {
     phone: string,
     textContent: string
   ): Promise<void> {
-    // Si ya saludamos, no repetir
+    
     if (session.hasGreeted) return;
     
-    // Si el usuario ya saludó en el caption, marcar como saludado pero no enviar saludo
+    
     if (textContent && isGreeting(textContent)) {
       session.hasGreeted = true;
       return;
     }
     
-    // Verificar si es la primera interacción (no hay mensajes del asistente)
+    
     const hasAssistantMessages = session.messageHistory.some(msg => msg.role === 'assistant');
     if (!hasAssistantMessages) {
       const business = await getBusiness();
@@ -270,16 +276,16 @@ class ConversationProcessor {
       let greeting: string;
       
       if (hasImages && hasPrice) {
-        // Usuario envió imagen CON precio -> saludo + confirmación de que procesaremos
+        
         const priceStr = `$${session.productData.price!.toLocaleString()}`;
         const stockStr = hasStock ? `, stock: ${session.productData.stock}` : '';
         const contextStr = hasContext ? ` (${session.productData.additionalContext})` : '';
         greeting = `¡Hola! Soy Cleria, asistente de *${businessName}* 📸\n\nYa tengo tu imagen${contextStr}, precio ${priceStr}${stockStr}. Procesando...`;
       } else if (hasImages) {
-        // Usuario envió imagen SIN precio -> saludo + preguntar precio
+        
         greeting = `¡Hola! Soy Cleria, asistente de *${businessName}* 📸\n\nYa tengo tu imagen. ¿Cuál es el precio?`;
       } else {
-        // Saludo genérico
+        
         greeting = `¡Hola! Soy Cleria, asistente de *${businessName}*`;
       }
       
@@ -366,11 +372,11 @@ class ConversationProcessor {
     let stock: number | null = null;
     let context: string | null = null;
     
-    // Normalizar texto (quitar puntos de miles pero mantener estructura)
+    
     const normalized = text.trim();
     
-    // Detectar stock con patrones explícitos
-    // "24 en stock", "stock: 24", "stock 24", "x24", "24 unidades", "24 uni", "24u"
+    
+    
     const stockPatterns = [
       /(\d+)\s*(?:en\s*stock|unidades?|uni\.?|u\b)/i,
       /stock[:\s]*(\d+)/i,
@@ -385,29 +391,29 @@ class ConversationProcessor {
       }
     }
     
-    // Encontrar todos los números en el texto
+    
     const numberMatches = normalized.replace(/\./g, '').match(/\d+(?:[.,]\d+)?/g);
     
     if (numberMatches) {
-      // El primer número grande (> 100) suele ser el precio
-      // o el primer número si no hay ninguno grande
+      
+      
       for (const numStr of numberMatches) {
         const num = Number(numStr.replace(',', '.'));
         if (Number.isFinite(num) && num > 10) {
-          // Si este número ya fue detectado como stock, saltarlo
+          
           if (stock !== null && num === stock) continue;
           price = num;
           break;
         }
       }
       
-      // Si hay exactamente 2 números y no detectamos stock explícitamente,
-      // el segundo podría ser el stock (ej: "5000 24")
+      
+      
       if (stock === null && numberMatches.length >= 2 && price !== null) {
         for (const numStr of numberMatches) {
           const num = parseInt(numStr, 10);
           if (num !== price && num > 0 && num <= 9999) {
-            // Números pequeños (<=9999) que no son el precio podrían ser stock
+            
             stock = num;
             break;
           }
@@ -415,20 +421,20 @@ class ConversationProcessor {
       }
     }
     
-    // Extraer contexto adicional (texto que no sea números ni palabras de stock)
+    
     let contextText = normalized
-      // Quitar patrones de stock
+      
       .replace(/\d+\s*(?:en\s*stock|unidades?|uni\.?|u\b)/gi, '')
       .replace(/stock[:\s]*\d+/gi, '')
       .replace(/x\d+\b/gi, '')
-      // Quitar números sueltos (precio y stock)
+      
       .replace(/\b\d+(?:[.,]\d+)?\b/g, '')
-      // Limpiar espacios extra y puntuación suelta
+      
       .replace(/[,.:;]+\s*/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Si queda algo de contexto útil (más de 2 caracteres), guardarlo
+    
     if (contextText && contextText.length > 2) {
       context = contextText;
     }

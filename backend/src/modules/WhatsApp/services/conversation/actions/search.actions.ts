@@ -7,15 +7,15 @@ import { prisma } from '@/config/prisma';
 import { messageService } from '../../message.service';
 import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
 
-// ============================================================================
-// CONFIGURACIÓN
-// ============================================================================
+
+
+
 
 const STORE_URL = process.env.STORE_URL || '';
 
-// ============================================================================
-// CONSTANTES DE FORMATO
-// ============================================================================
+
+
+
 
 const STATE_LABELS: Record<string, string> = {
   active: '✅ Activo',
@@ -24,9 +24,9 @@ const STATE_LABELS: Record<string, string> = {
   deleted: '🗑️ Eliminado',
 };
 
-// ============================================================================
-// ACCIONES
-// ============================================================================
+
+
+
 
 class SearchActions {
   /**
@@ -39,10 +39,10 @@ class SearchActions {
     query: string,
     searchBy: 'name' | 'category'
   ): Promise<boolean> {
-    // Validar que el query no esté vacío
+    
     if (!query || query.trim().length === 0) {
       console.log('⚠️ Query de búsqueda vacío, no se ejecuta búsqueda');
-      return false; // No se ejecutó la búsqueda
+      return false; 
     }
 
     try {
@@ -60,7 +60,7 @@ class SearchActions {
           `🔍 No encontré productos ${searchBy === 'category' ? `en la categoría "${query}"` : `que coincidan con "${query}"`}.`
         );
         session.state = 'idle';
-        return true; // Se ejecutó pero sin resultados
+        return true; 
       }
       
       session.searchResults = products.map(p => ({
@@ -71,7 +71,7 @@ class SearchActions {
         state: p.state,
       }));
       
-      // Si hay solo 1 resultado O hay coincidencia exacta por título, seleccionar automáticamente
+      
       const normalizedQuery = query.toLowerCase().trim();
       const exactMatch = products.find(p => p.title.toLowerCase().trim() === normalizedQuery);
       
@@ -82,11 +82,11 @@ class SearchActions {
         
         console.log(`✅ Producto seleccionado automáticamente: ${productToSelect.title} (coincidencia ${exactMatch ? 'exacta' : 'única'})`);
         
-        // Si hay una acción pendiente, ejecutarla inmediatamente
+        
         if (session.pendingAction) {
           await this.executePendingAction(session);
         } else {
-          // Mostrar info del producto seleccionado
+          
           const productLink = STORE_URL ? `${STORE_URL}/producto/${productToSelect.id}` : '';
           let message = `✅ Encontré: *${productToSelect.title}*\n\n`;
           message += `💰 Precio: $${Number(productToSelect.price).toLocaleString()}\n`;
@@ -102,11 +102,11 @@ class SearchActions {
         return true;
       }
       
-      // Si hay múltiples resultados sin coincidencia exacta, mostrar lista
+      
       const productList = this.formatProductList(session.searchResults);
       await messageService.sendMessage(session.phone, productList);
       session.state = 'selecting';
-      return true; // Búsqueda exitosa
+      return true; 
       
     } catch (error) {
       console.error('Error buscando productos:', error);
@@ -114,7 +114,7 @@ class SearchActions {
         session.phone,
         '❌ Error al buscar productos. Intenta de nuevo.'
       );
-      return true; // Se intentó ejecutar (aunque falló)
+      return true; 
     }
   }
 
@@ -129,7 +129,7 @@ class SearchActions {
     
     if (action === 'update_product' && data) {
       if (data.regenerate_with_ai && data.update_field === 'description') {
-        // Importamos productActions aquí para evitar dependencia circular
+        
         const { productActions } = await import('./product.actions');
         await messageService.sendMessage(
           session.phone,
@@ -145,7 +145,7 @@ class SearchActions {
       await productActions.deleteProduct(session);
     }
     
-    // Limpiar la acción pendiente
+    
     session.pendingAction = undefined;
   }
 
@@ -180,7 +180,7 @@ class SearchActions {
         state: p.state,
       }));
       
-      // Contar totales por estado
+      
       const totalActive = products.filter(p => p.state === 'active').length;
       const totalDraft = products.filter(p => p.state === 'draft').length;
       const totalOutStock = products.filter(p => p.state === 'out_stock').length;
@@ -290,7 +290,7 @@ class SearchActions {
     session.selectedProductId = selected.id;
     session.state = 'editing';
     
-    // Si hay una acción pendiente, ejecutarla
+    
     if (session.pendingAction) {
       await this.executePendingAction(session);
       return;
@@ -313,9 +313,9 @@ class SearchActions {
     );
   }
 
-  // ============================================================================
+  
   // MÉTODOS PRIVADOS
-  // ============================================================================
+  
 
   /**
    * Busca productos por categoría
@@ -385,7 +385,7 @@ class SearchActions {
       include: { category: true },
     });
     
-    // Ordenar por relevancia
+    
     const matchScores = products.map(p => {
       const titleLower = p.title.toLowerCase();
       const matches = words.filter(w => titleLower.includes(w)).length;

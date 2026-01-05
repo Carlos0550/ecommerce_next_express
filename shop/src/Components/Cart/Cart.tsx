@@ -127,7 +127,7 @@ function Cart({ opened = true, onClose }: CartProps) {
 
         <Divider my="md" />
 
-        {/* Código de promoción */}
+        {}
         {cart.items.length > 0 && (
           <Box>
             {cart.promo_code ? (

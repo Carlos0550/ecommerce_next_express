@@ -10,7 +10,6 @@ import UserRouter from '@/modules/User/routes';
 import AdminAuthRouter from '@/modules/AuthAdmin/routes';
 import ShopAuthRouter from '@/modules/AuthShop/routes';
 import ProductRouter from '@/modules/Products/routes';
-import PromoRouter from '@/modules/Promos/routes';
 import SalesRouter from '@/modules/Sales/routes';
 import CartRouter from '@/modules/Cart/routes';
 import OrdersRouter from '@/modules/Orders/routes';
@@ -19,6 +18,7 @@ import BusinessRouter from '@/modules/Business/router';
 import FaqRouter from '@/modules/FAQ/routes';
 import PaletteRouter from '@/modules/Palettes/routes';
 import WhatsAppRouter from '@/modules/WhatsApp/routes';
+import TenantRouter from '@/modules/Tenant/routes';
 import { initUploadsCleanupJob } from './jobs/cleanupUploads';
 import swaggerUi from 'swagger-ui-express';
 import spec from './docs/openapi';
@@ -68,7 +68,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-tenant-id'],
 }));
 
 app.use(express.json());
@@ -89,13 +89,13 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
+app.use('/api/tenant', TenantRouter);
 app.use('/api/admin', AdminAuthRouter);
 app.use('/api/shop', ShopAuthRouter);
 app.use('/api', UserRouter);
 app.use('/api', ProfileRouter);
 app.use('/api/faqs', FaqRouter);
 app.use("/api/products", ProductRouter)
-app.use("/api/promos", PromoRouter)
 app.use("/api/sales", SalesRouter)
 app.use("/api/cart", CartRouter)
 app.use("/api/orders", OrdersRouter)
@@ -155,26 +155,26 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(spec));
 app.get('/docs.json', (_req, res) => res.json(spec));
 
-// Middleware global de manejo de errores
+
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error no manejado:', err);
   
-  // Errores de CORS
+  
   if (err.message && err.message.includes('CORS')) {
     return res.status(403).json({ ok: false, error: 'cors_error', message: err.message });
   }
   
-  // Errores de validación
+  
   if (err.name === 'ValidationError' || err.name === 'ZodError') {
     return res.status(400).json({ ok: false, error: 'validation_error', message: err.message });
   }
   
-  // Errores de autenticación
+  
   if (err.status === 401 || err.name === 'UnauthorizedError') {
     return res.status(401).json({ ok: false, error: 'unauthorized', message: err.message });
   }
   
-  // Error genérico
+  
   const status = err.status || err.statusCode || 500;
   const message = process.env.NODE_ENV === 'production' 
     ? 'Error interno del servidor' 
@@ -206,7 +206,7 @@ app.listen(PORT, () => {
   initUploadsCleanupJob();
   initProductsCacheSyncJob();
   
-  // Iniciar worker de timeout para sesiones de WhatsApp
+  
   import('./modules/WhatsApp/services/whatsapp.services').then(({ whatsAppServices }) => {
     whatsAppServices.startTimeoutWorker();
   }).catch(err => {

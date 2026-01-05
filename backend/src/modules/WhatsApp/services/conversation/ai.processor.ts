@@ -12,9 +12,9 @@ import {
 import { buildSystemPrompt, buildStateContext } from './prompt.builder';
 import { getBusinessEmojis } from './tone.detector';
 
-// ============================================================================
-// CONFIGURACIÓN
-// ============================================================================
+
+
+
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const TEXT_MODEL = 'openai/gpt-oss-120b';
@@ -25,9 +25,9 @@ const groq = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
 });
 
-// ============================================================================
-// PROCESADOR DE IA
-// ============================================================================
+
+
+
 
 class AIProcessor {
   /**
@@ -127,7 +127,7 @@ class AIProcessor {
       session.greetingTone
     );
     
-    // Preparar historial de mensajes
+    
     const conversationHistory = session.messageHistory.slice(-6).map(msg => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
@@ -170,7 +170,7 @@ class AIProcessor {
     categoryList: { id: string; title: string }[]
   ): AIConversationResponse {
     try {
-      // Intentar extraer JSON del contenido
+      
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No se encontró JSON en la respuesta');
@@ -178,12 +178,12 @@ class AIProcessor {
       
       const parsed = JSON.parse(jsonMatch[0]);
       
-      // Validar campos requeridos
+      
       if (!parsed.message || !parsed.action || !parsed.next_state) {
         throw new Error('Respuesta incompleta');
       }
       
-      // Mapear nombre de categoría a ID si es necesario
+      
       if (parsed.data?.category_name && !parsed.data?.category_id) {
         const matchedCategory = categoryList.find(
           c => c.title.toLowerCase() === parsed.data.category_name.toLowerCase()

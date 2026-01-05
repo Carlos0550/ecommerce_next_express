@@ -11,9 +11,9 @@ import {
   TIMEOUT_WORKER_INTERVAL,
 } from '../../constants/timeouts';
 
-// ============================================================================
-// MENSAJES
-// ============================================================================
+
+
+
 
 const REMINDER_MESSAGE = 
   '👋 ¿Sigues ahí? Noté que no has respondido. ¿Necesitas ayuda con algo?\n\n' +
@@ -24,9 +24,9 @@ const CLOSE_SESSION_MESSAGE =
   '👋 He cerrado esta conversación por inactividad.\n\n' +
   'Cuando quieras cargar un producto, solo envíame una imagen y empezamos de nuevo. ¡Hasta pronto! 📦';
 
-// ============================================================================
-// WORKER
-// ============================================================================
+
+
+
 
 class TimeoutWorker {
   private intervalId: NodeJS.Timeout | null = null;
@@ -84,7 +84,7 @@ class TimeoutWorker {
       const session = await sessionManager.getSession(phone);
       if (!session) return;
 
-      // Solo verificar si la sesión tiene actividad
+      
       if (session.state === 'idle' && session.productData.images.length === 0) {
         return;
       }

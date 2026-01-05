@@ -29,7 +29,7 @@ export default function LoginForm(){
 
   useEffect(() => {
     if (loginHook.isSuccess && loginHook.data) {
-      // La sesión se deriva automáticamente de la validación del token
+      
       setToken(loginHook.data.token)
       navigate("/");
       showNotification({

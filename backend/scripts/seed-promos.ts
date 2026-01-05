@@ -1,4 +1,4 @@
-/// <reference types="node" />
+
 
 import 'dotenv/config';
 import { PrismaClient, PromoType } from '@prisma/client';
@@ -50,7 +50,7 @@ function pickMany<T>(arr: T[], count: number): T[] {
 
 async function readTestImageBuffer(): Promise<Buffer | null> {
   try {
-    // Imagen de testing ubicada en la raíz del backend
+    
     const imgPath = path.resolve(__dirname, '..', '-enIbPNsTdmLfGuLg1AeKA.jpg');
     if (!fs.existsSync(imgPath)) {
       console.warn('⚠️ Imagen de testing no encontrada en:', imgPath);
@@ -92,7 +92,7 @@ async function seedPromos() {
       console.log('👤 Usando adminId para createdById:', adminId);
     }
 
-    // Cargar imagen de testing (se reutiliza para todas las promos)
+    
     const testImageBuffer = await readTestImageBuffer();
 
     const TOTAL = 10;
@@ -104,15 +104,15 @@ async function seedPromos() {
       const title = promoTitles[i % promoTitles.length];
       const description = pick(promoDescriptions);
 
-      // Tipo y valor
+      
       const type = Math.random() < 0.55 ? PromoType.percentage : PromoType.fixed;
       const value = type === PromoType.percentage ? randInt(5, 50) : randInt(5, 100);
 
-      // Fechas
+      
       const start = dayjs().subtract(randInt(0, 15), 'day').startOf('day').toDate();
       const end = dayjs(start).add(randInt(7, 20), 'day').endOf('day').toDate();
 
-      // Límites y montos
+      
       const usage_limit = Math.random() < 0.6 ? randInt(20, 300) : null;
       const per_user_limit = Math.random() < 0.5 ? randInt(1, 5) : null;
       const min_order_amount = Math.random() < 0.5 ? randInt(50, 300) : null;
@@ -121,14 +121,14 @@ async function seedPromos() {
       const is_active = Math.random() < 0.85;
       const show_in_home = Math.random() < 0.4;
 
-      // Asignaciones aleatorias de categorías y productos
+      
       const useAllCategories = categories.length > 0 ? Math.random() < 0.25 : false;
       const useAllProducts = products.length > 0 ? Math.random() < 0.25 : false;
 
       const selectedCategories = !useAllCategories ? pickMany(categories.map(c => c.id), randInt(0, Math.min(3, categories.length))) : [];
       const selectedProducts = !useAllProducts ? pickMany(products.map(p => p.id), randInt(0, Math.min(5, products.length))) : [];
 
-      // Subir imagen a Supabase si hay buffer
+      
       let imageUrl: string | undefined = undefined;
       if (testImageBuffer) {
         const fileName = `seed-promo-${Date.now()}-${i}.jpg`;

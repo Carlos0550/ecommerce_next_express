@@ -16,7 +16,10 @@ export const saveSale = async (req: Request, res: Response) => {
                 message: "Faltan datos obligatorios para guardar la venta."
             })
         }
-        const response = await SalesServices.saveSale(request);
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        if (!tenantId) return res.status(400).json({ success: false, message: "tenant_required" });
+
+        const response = await SalesServices.saveSale(request, tenantId);
         if(response === true || typeof response === 'string'){
             res.status(200).json({
                 success: true,

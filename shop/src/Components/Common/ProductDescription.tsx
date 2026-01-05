@@ -8,22 +8,22 @@ interface ProductDescriptionProps {
   description: string;
 }
 
-// Función para renderizar texto con formato markdown inline (negrita)
+
 function renderTextWithFormatting(text: string): ReactNode {
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   
-  // Regex para encontrar **texto** (negrita)
+  
   const boldRegex = /\*\*(.+?)\*\*/g;
   let match;
   
   while ((match = boldRegex.exec(text)) !== null) {
-    // Agregar texto antes del match
+    
     if (match.index > lastIndex) {
       parts.push(text.substring(lastIndex, match.index));
     }
     
-    // Agregar texto en negrita
+    
     parts.push(
       <Text component="span" fw={700} key={match.index}>
         {match[1]}
@@ -33,7 +33,7 @@ function renderTextWithFormatting(text: string): ReactNode {
     lastIndex = match.index + match[0].length;
   }
   
-  // Agregar el resto del texto
+  
   if (lastIndex < text.length) {
     parts.push(text.substring(lastIndex));
   }
@@ -77,7 +77,7 @@ export default function ProductDescription({ description }: ProductDescriptionPr
   lines.forEach((line, index) => {
     const trimmed = line.trim();
     
-    // Patrón 1: **Título:** (con dos puntos al final)
+    
     const subtitleWithColonMatch = trimmed.match(/^\*\*(.+?):\*\*$/);
     if (subtitleWithColonMatch) {
       flushList();
@@ -89,7 +89,7 @@ export default function ProductDescription({ description }: ProductDescriptionPr
       return;
     }
     
-    // Patrón 2: **Título** o **¿Pregunta?** (sin dos puntos)
+    
     const subtitleMatch = trimmed.match(/^\*\*(.+?)\*\*$/);
     if (subtitleMatch) {
       flushList();
@@ -101,13 +101,13 @@ export default function ProductDescription({ description }: ProductDescriptionPr
       return;
     }
     
-    // Listas con guion
+    
     if (trimmed.startsWith('- ')) {
       currentList.push(trimmed.substring(2));
       return;
     }
     
-    // Texto normal (puede contener **negrita** inline)
+    
     flushList();
     elements.push(
       <Text key={`text-${index}`} size="sm" mb="xs">

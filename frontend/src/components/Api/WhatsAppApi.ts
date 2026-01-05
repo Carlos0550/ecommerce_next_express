@@ -4,7 +4,7 @@ import { fetchWithTimeout } from "@/Utils/fetchWithTimeout";
 import { baseUrl } from ".";
 import { useAppContext } from "@/Context/AppContext";
 
-// Types
+
 export interface WhatsAppConfig {
   whatsapp_enabled: boolean;
   whatsapp_connected: boolean;
@@ -23,7 +23,7 @@ export interface QRCodeData {
   qr_code: string;
 }
 
-// Get WhatsApp config
+
 export function useGetWhatsAppConfig() {
   const { auth: { token } } = useAppContext();
   
@@ -78,7 +78,7 @@ export function useUpdateWhatsAppConfig() {
   });
 }
 
-// Create WhatsApp session
+
 export function useCreateWhatsAppSession() {
   const queryClient = useQueryClient();
   const { auth: { token } } = useAppContext();
@@ -111,7 +111,7 @@ export function useCreateWhatsAppSession() {
   });
 }
 
-// Get QR Code
+
 export function useGetQRCode(enabled: boolean) {
   const { auth: { token } } = useAppContext();
   
@@ -134,7 +134,7 @@ export function useGetQRCode(enabled: boolean) {
   });
 }
 
-// Get session status
+
 export function useGetSessionStatus(enabled: boolean) {
   const queryClient = useQueryClient();
   const { auth: { token } } = useAppContext();
@@ -160,7 +160,7 @@ export function useGetSessionStatus(enabled: boolean) {
   });
 }
 
-// Disconnect session
+
 export function useDisconnectWhatsAppSession() {
   const queryClient = useQueryClient();
   const { auth: { token } } = useAppContext();
@@ -194,7 +194,7 @@ export function useDisconnectWhatsAppSession() {
   });
 }
 
-// Send test message
+
 export function useSendTestMessage() {
   const { auth: { token } } = useAppContext();
   

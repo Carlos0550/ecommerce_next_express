@@ -6,7 +6,7 @@ async function ensureDir(dir) {
   try {
     await fsp.mkdir(dir, { recursive: true });
   } catch (err) {
-    // ignore if exists
+    
   }
 }
 
@@ -36,7 +36,7 @@ async function copyDir(srcDir, destDir) {
 }
 
 async function main() {
-  const root = path.join(__dirname, '..'); // backend directory
+  const root = path.join(__dirname, '..'); 
   const itemsToCopy = [
     { src: path.join(root, 'src', 'templates', 'files'), dest: path.join(root, 'dist', 'templates', 'files') },
   ];

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 extendZodWithOpenApi(z);
 
-// Archivo binario para multipart/form-data
+
 export const BinaryFileSchema = z
   .string()
   .openapi({ type: 'string', format: 'binary', description: 'Archivo binario' });

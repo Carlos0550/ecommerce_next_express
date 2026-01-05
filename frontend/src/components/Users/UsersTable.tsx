@@ -37,7 +37,7 @@ export function UsersTable({
     const { mutate: enableUser } = useEnableUser();
     const { mutate: deleteUser } = useDeleteUser();
 
-    // Derivar users y pagination desde data
+    
     const users: User[] = useMemo(() => data?.users || [], [data?.users]);
     const pagination: PaginationData = useMemo(() => ({
         total: data?.pagination?.total || 0,

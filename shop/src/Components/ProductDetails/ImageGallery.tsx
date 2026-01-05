@@ -14,7 +14,7 @@ export default function ImageGallery({ images = [], title }: Props) {
   const [dragging, setDragging] = useState(false)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const lastPos = useRef<{ x: number; y: number } | null>(null)
-  const main = images?.[selected] || images?.[0] || "/logo.png"
+  const main = images?.[selected] || images?.[0] || ""
 
   return (
     <Stack>

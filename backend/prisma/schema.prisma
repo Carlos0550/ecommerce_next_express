@@ -20,11 +20,6 @@ enum ProductState {
   deleted
 }
 
-enum PromoType {
-  percentage
-  fixed //monto fijo
-}
-
 enum CategoryStatus {
   deleted
   active
@@ -44,6 +39,43 @@ enum PaymentMethod {
   NINGUNO
 }
 
+enum tenantPlan {
+  FREE
+  PREMIUM
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique 
+  name        String
+  plan        tenantPlan   @default(FREE)
+  is_active   Boolean  @default(true)
+
+  primary_domain String? 
+  custom_domains Json?   @default("[]") 
+
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+  updated_at DateTime @updatedAt @db.Timestamptz(3)
+
+  // relaciones
+  users       User[]
+  admins      Admin[]
+  products    Products[]
+  categories  Categories[]
+  sales       Sales[]
+  orders      Orders[]
+  cart        Cart[]
+  orderItems  OrderItems[]
+  faq         FAQ[]
+  business    BusinessData?
+  businessBankData BusinessBankData[]
+  colors      ColorPalette[]
+
+  @@index([is_active])
+  @@index([slug])
+}
+
+
 model User {
   id             Int      @id @default(autoincrement())
   email          String
@@ -54,10 +86,11 @@ model User {
   created_at     DateTime @default(now()) @db.Timestamptz(3)
   updated_at     DateTime @updatedAt @db.Timestamptz(3)
   role           Int      @default(2)
-  created_promos Promos[] @relation("PromosCreatedBy")
 
   sales Sales[]
   orders Orders[]
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
   phone String?
   shipping_street String?
   shipping_postal_code String?
@@ -65,27 +98,32 @@ model User {
   shipping_province String?
   cart Cart?
 
-  @@unique([email])
+  @@unique([email, tenantId])
   @@index([is_active])
   @@index([role])
+  @@index([tenantId])
   @@index([created_at])
 }
 
 model Admin {
   id            Int      @id @default(autoincrement())
-  email         String   @unique
+  email         String
   password      String
   name          String
   is_active     Boolean  @default(true)
   profile_image String?
   role          Int      @default(1)
-  phone         String?  // Número de teléfono vinculado para WhatsApp
+  phone         String?  
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
   created_at    DateTime @default(now()) @db.Timestamptz(3)
   updated_at    DateTime @updatedAt @db.Timestamptz(3)
 
+  @@unique([email, tenantId])
   @@index([is_active])
   @@index([created_at])
   @@index([phone])
+  @@index([tenantId])
 }
 
 model Categories {
@@ -96,11 +134,13 @@ model Categories {
   created_at DateTime       @default(now()) @db.Timestamptz(3)
   status     CategoryStatus @default(active)
   products   Products[]
-  promos     Promos[]
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([status, is_active])
   @@index([created_at])
   @@index([title])
+  @@index([tenantId])
 }
 
 model Products {
@@ -117,48 +157,17 @@ model Products {
   stock       Int          @default(1)
   options     Json         @default("[]")
   category    Categories?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  promos      Promos[]
   sales       Sales[]
   orderItems  OrderItems[]
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([categoryId])
   @@index([categoryId, is_active])
   @@index([is_active, state])
   @@index([created_at])
   @@index([price])
-}
-
-model Promos {
-  id               String       @id @default(cuid())
-  code             String?      @unique
-  title            String
-  description      String?
-  image            String?
-  type             PromoType
-  value            Float
-  max_discount     Float?
-  min_order_amount Float?
-  start_date       DateTime?    @db.Timestamptz(3)
-  end_date         DateTime?    @db.Timestamptz(3)
-  is_active        Boolean      @default(true)
-  usage_limit      Int?
-  usage_count      Int          @default(0)
-  per_user_limit   Int?
-  categories       Categories[]
-  products         Products[]
-  all_products     Boolean      @default(false)
-  all_categories   Boolean      @default(false)
-  show_in_home     Boolean      @default(false)
-  orders           Orders[]
-  created_at       DateTime     @default(now()) @db.Timestamptz(3)
-  updated_at       DateTime     @updatedAt @db.Timestamptz(3)
-  createdById      Int?
-  created_by       User?        @relation("PromosCreatedBy", fields: [createdById], references: [id])
-
-  @@index([is_active])
-  @@index([show_in_home, is_active])
-  @@index([start_date, end_date])
-  @@index([createdById])
+  @@index([tenantId])
 }
 
 model Sales {
@@ -177,6 +186,8 @@ model Sales {
   paymentMethods Json?         @default("[]")
   processed      Boolean       @default(false)
   declined       Boolean       @default(false)
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
   decline_reason String?
 
   orders         Orders[]
@@ -185,6 +196,7 @@ model Sales {
   @@index([userId])
   @@index([source, created_at])
   @@index([payment_method, created_at])
+  @@index([tenantId])
 }
 
 model Cart {
@@ -193,8 +205,11 @@ model Cart {
   userId    Int      @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     OrderItems[]
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([userId])
+  @@index([tenantId])
 }
 
 model OrderItems {
@@ -206,9 +221,12 @@ model OrderItems {
   cartId           Int
   cart             Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product          Products @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([cartId])
   @@index([productId])
+  @@index([tenantId])
 }
 
 model Orders {
@@ -220,8 +238,6 @@ model Orders {
   subtotal       Float?   @default(0.00)
   discount       Float?   @default(0.00)
   promo_code     String?
-  promoId        String?
-  promo          Promos?  @relation(fields: [promoId], references: [id], onDelete: SetNull)
   payment_method String
   created_at     DateTime @default(now()) @db.Timestamptz(3)
   buyer_email    String?
@@ -230,12 +246,14 @@ model Orders {
   saleId         String?
   sale           Sales?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
   transfer_receipt_path String?
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([userId])
   @@index([created_at])
   @@index([saleId])
   @@index([promo_code])
-  @@index([promoId])
+  @@index([tenantId])
 }
 
 model FAQ {
@@ -247,10 +265,13 @@ model FAQ {
   deleted_at   DateTime?
   created_at   DateTime @default(now()) @db.Timestamptz(3)
   updated_at   DateTime @updatedAt @db.Timestamptz(3)
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([is_active, position])
   @@index([deleted_at])
   @@index([created_at])
+  @@index([tenantId])
 }
 
 model BusinessData {
@@ -266,7 +287,8 @@ model BusinessData {
   business_image String?
   favicon        String?
   bankData  BusinessBankData[]
-  
+  tenantId String  @unique
+  tenant Tenant @relation(fields: [tenantId], references: [id])
   // WhatsApp Integration
   whatsapp_enabled        Boolean  @default(false)
   whatsapp_access_token   String?  // Personal Access Token de WasenderAPI
@@ -276,6 +298,8 @@ model BusinessData {
   whatsapp_phone_number   String?  // Número conectado
   whatsapp_connected      Boolean  @default(false)
   whatsapp_allowed_remitents String? // Lista de números permitidos separados por coma
+  
+  @@index([tenantId])
 }
 model BusinessBankData{
   id        String   @id @default(cuid())
@@ -284,6 +308,10 @@ model BusinessBankData{
   account_holder String
   businessId      String
   business       BusinessData @relation(fields: [businessId], references: [id])
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+  @@index([businessId])
 }
 
 model ColorPalette {
@@ -295,8 +323,13 @@ model ColorPalette {
   use_for_shop    Boolean  @default(false)
   created_at      DateTime @default(now()) @db.Timestamptz(3)
   updated_at      DateTime @updatedAt @db.Timestamptz(3)
+  tenantId String
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([is_active])
   @@index([use_for_admin])
   @@index([use_for_shop])
+  @@index([tenantId])
 }
+
+

@@ -2,18 +2,21 @@
 import { Box, Image } from "@mantine/core"
 import { useEffect, useRef } from "react"
 import gsap from "gsap"
+import { useTenant } from "@/providers/TenantProvider"
 
 export default function CinnamonLoader() {
   const shimmerTrackRef = useRef<HTMLDivElement | null>(null)
+  const { tenant } = useTenant()
+  const logoSrc = tenant?.business?.favicon || tenant?.business?.business_image || ""
 
   useEffect(() => {
     const el = shimmerTrackRef.current
     if (!el) return
 
-    // place shimmer off-screen to the left initially
+    
     gsap.set(el, { x: "-120%", opacity: 0.85 })
 
-    // continuous sweep animation to simulate a glossy reflection
+    
     const tl = gsap.timeline({ repeat: -1 })
     tl.to(el, {
       x: "220%",
@@ -21,21 +24,25 @@ export default function CinnamonLoader() {
       ease: "power2.inOut",
     }).set(el, { x: "-120%" })
 
-    // Cleanup must return void; kill the timeline
+    
     return () => { tl.kill(); }
   }, [])
+
+  if (!logoSrc) {
+    return null 
+  }
 
   return (
     <Box pos="relative" w={450} h={450}>
       <Image
-        src="/logo.png"
+        src={logoSrc}
         alt="Logo"
         width={450}
         height={450}
         fit="contain"
       />
 
-      {/* GSAP shimmer/reflection overlay */}
+      {}
       <div
         aria-hidden
         style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}

@@ -1,4 +1,4 @@
-/// <reference types="node" />
+
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -13,7 +13,7 @@ async function backup() {
   console.log('📦 Iniciando backup de la base de datos...');
   
   try {
-    // Fallback dinámico para BusinessData ante drift de columnas
+    
     const businessColumnsRows: { column_name: string }[] = await prisma.$queryRawUnsafe(`
       SELECT column_name
       FROM information_schema.columns
@@ -71,8 +71,8 @@ async function restore() {
   try {
     const data = JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf-8'));
 
-    // Limpiar tablas en orden correcto (por dependencias)
-    // Nota: Prisma migrate reset ya limpia, pero esto asegura si se corre standalone
+    
+    
     console.log('🧹 Limpiando tablas existentes...');
     await prisma.businessBankData.deleteMany();
     await prisma.businessData.deleteMany();
@@ -90,7 +90,7 @@ async function restore() {
 
     console.log('📥 Insertando datos...');
 
-    // Restaurar en orden de dependencias
+    
     if (data.users?.length) await prisma.user.createMany({ data: data.users });
     if (data.admins?.length) await prisma.admin.createMany({ data: data.admins });
     if (data.categories?.length) await prisma.categories.createMany({ data: data.categories });
@@ -103,7 +103,7 @@ async function restore() {
     if (data.faq?.length) await prisma.fAQ.createMany({ data: data.faq });
     if (data.colorPalette?.length) await prisma.colorPalette.createMany({ data: data.colorPalette });
     
-    // Business Data con relaciones anidadas
+    
     if (data.businessData?.length) {
       for (const business of data.businessData) {
         const { bankData, ...businessInfo } = business;

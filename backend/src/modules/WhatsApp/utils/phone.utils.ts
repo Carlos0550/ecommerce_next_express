@@ -9,32 +9,32 @@
 export function normalizePhoneNumber(phone: string): string {
   let cleaned = phone.replace(/\s+/g, '').replace(/-/g, '');
   
-  // Ya tiene formato internacional completo
+  
   if (cleaned.startsWith('+')) {
     return cleaned;
   }
   
-  // Número argentino con código de país y móvil (549)
+  
   if (cleaned.startsWith('549')) {
     return '+' + cleaned;
   }
   
-  // Número argentino con código de país sin móvil (54)
+  
   if (cleaned.startsWith('54')) {
     return '+' + cleaned;
   }
   
-  // Número local argentino de 10 dígitos (agregar +549)
+  
   if (cleaned.length === 10 && /^\d+$/.test(cleaned)) {
     return '+549' + cleaned;
   }
   
-  // Número de 13 dígitos que empieza con 549
+  
   if (cleaned.length === 13 && /^\d+$/.test(cleaned) && cleaned.startsWith('549')) {
     return '+' + cleaned;
   }
   
-  // Por defecto, agregar + si no lo tiene
+  
   return cleaned.startsWith('+') ? cleaned : '+' + cleaned;
 }
 
@@ -63,7 +63,7 @@ export function normalizePhoneForComparison(phone: string): string {
  */
 export function isPhoneAllowed(phone: string, allowedRemitents: string | null): boolean {
   if (!allowedRemitents) {
-    return true; // Si no hay lista, todos están permitidos
+    return true; 
   }
   
   const allowedList = allowedRemitents

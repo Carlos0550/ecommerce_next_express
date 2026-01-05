@@ -9,6 +9,12 @@ import { logger } from "@/utils/logger";
 class BusinessController {
     async uploadImage(req: Request, res: Response) {
         try {
+            const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+            
+            if (!tenantId) {
+                return res.status(400).json({ error: "tenant_required" });
+            }
+            
             const file = (req as any).file as Express.Multer.File | undefined;
             if (!file) {
                 return res.status(400).json({ error: "No se proporcionó ningún archivo" });
@@ -34,7 +40,7 @@ class BusinessController {
 
             let id = idParam;
             if (!id) {
-                const current = await businessServices.getBusiness();
+                const current = await businessServices.getBusinessByTenantId(tenantId);
                 id = current?.id;
             }
             const publicUrl = getPublicUrlFor("business", uploaded.path);
@@ -55,6 +61,12 @@ class BusinessController {
 
     async generateDescription(req: Request, res: Response) {
         try {
+            const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+            
+            if (!tenantId) {
+                return res.status(400).json({ error: "tenant_required" });
+            }
+            
             const { name, city, province, type, actualDescription } = req.body;
             logger.info("generateDescription_body", req.body);
             if (!name || !city) {
@@ -62,7 +74,7 @@ class BusinessController {
             }
             let finalType: string | undefined = type;
             if (!finalType) {
-                const current = await businessServices.getBusiness();
+                const current = await businessServices.getBusinessByTenantId(tenantId);
                 finalType = (current as any)?.type || undefined;
             }
             const description = await generateBusinessDescription(name, city, province, finalType, actualDescription);
@@ -74,6 +86,12 @@ class BusinessController {
     }
 
     async createBusiness(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ error: "tenant_required" });
+        }
+        
         const payload = req.body as BusinessDataRequest;
 
         if(!Array.isArray(payload.bankData) || payload.bankData.length === 0) {
@@ -83,12 +101,18 @@ class BusinessController {
         if(!payload.name || !payload.email || !payload.phone || !payload.city || !payload.state) {
             return res.status(400).json({ error: "Todos los campos son requeridos: Nombre del negocio, email, teléfono, ciudad y estado/provincia" });
         }
-        const business = await businessServices.createBusiness(payload);
+        const business = await businessServices.createBusinessWithTenant(payload, tenantId);
         res.status(201).json(business);
     }
 
     async updateBusiness(req: Request, res: Response) {
         try {
+            const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+            
+            if (!tenantId) {
+                return res.status(400).json({ error: "tenant_required" });
+            }
+            
             const { id } = req.params as { id: string };
             const payload = req.body as BusinessDataRequest;
 
@@ -96,7 +120,7 @@ class BusinessController {
                 return res.status(400).json({ error: "Todos los campos son requeridos: Nombre del negocio, email, teléfono, ciudad y estado/provincia" });
             }
 
-            const business = await businessServices.updateBusiness(id, payload);
+            const business = await businessServices.updateBusinessWithTenant(id, payload, tenantId);
             return res.status(200).json(business);
         } catch (error) {
             console.error('updateBusiness_error', error);
@@ -109,7 +133,31 @@ class BusinessController {
 
     async getBusiness(req: Request, res: Response) {
         try {
-            const data = await businessServices.getBusiness();
+            const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+            
+            if (!tenantId) {
+                return res.status(400).json({ error: "tenant_required" });
+            }
+            
+            const data = await businessServices.getBusinessByTenantId(tenantId);
+            if (!data) {
+                return res.status(404).json({ error: "Negocio no configurado" });
+            }
+            return res.status(200).json(data);
+        } catch {
+            return res.status(500).json({ error: "Error al obtener la información del negocio" });
+        }
+    }
+
+    async getBusinessPublic(req: Request, res: Response) {
+        try {
+            const tenantId = (req as any).tenantId;
+            
+            if (!tenantId) {
+                return res.status(400).json({ error: "tenant_required" });
+            }
+            
+            const data = await businessServices.getBusinessByTenantId(tenantId);
             if (!data) {
                 return res.status(404).json({ error: "Negocio no configurado" });
             }

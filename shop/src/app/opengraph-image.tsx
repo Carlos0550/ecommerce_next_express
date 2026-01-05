@@ -8,19 +8,32 @@ export default async function OG({ searchParams }: { searchParams?: { title?: st
   const catQ = searchParams?.categoryId?.trim() || ''
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
   
-  // Fetch business data to get the dynamic image
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  
   let bizImage = ''
+  let bizFavicon = ''
   let bizDescription = ''
   let bizName = 'Tienda Online'
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/business/public`, { next: { revalidate: 60 } })
-    if (res.ok) {
-        const data = await res.json()
-        bizImage = data.business_image || ''
-        bizDescription = data.description || ''
-        bizName = data.name || bizName
-    }
-  } catch {}
+  
+  if (tenantSlug) {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/business/public`, { 
+        next: { revalidate: 60 },
+        headers: { 'x-tenant-slug': tenantSlug }
+      })
+      if (res.ok) {
+          const data = await res.json()
+          bizImage = data.business_image || ''
+          bizFavicon = data.favicon || ''
+          bizDescription = data.description || ''
+          bizName = data.name || bizName
+      }
+    } catch {}
+  }
 
   return new ImageResponse(
     (
@@ -49,16 +62,18 @@ export default async function OG({ searchParams }: { searchParams?: { title?: st
           />
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 16,
-              backgroundImage: `url(${siteUrl}/logo.png)`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          />
+          {bizFavicon && (
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 16,
+                backgroundImage: `url(${bizFavicon})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            />
+          )}
           <div style={{ fontSize: 56, fontWeight: 800, color: '#111' }}>{bizName}</div>
         </div>
         <div style={{ marginTop: 24, fontSize: 32, color: '#333' }}>{bizDescription}</div>

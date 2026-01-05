@@ -99,7 +99,7 @@ function useCart(baseUrl: string, token: string | null) {
         const qtyToAdd = product.quantity > 0 ? product.quantity : 1
         
         if (existingItem) {
-            // If product already exists, increment quantity
+            
             const updatedItems = cart.items.map(item => (item.product_id === product.product_id && areOptionsEqual(item.options, product.options)) ? { ...item, quantity: item.quantity + qtyToAdd } : item)
             const newSubtotal = updatedItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
             const newTotal = cart.discount ? Math.max(0, newSubtotal - cart.discount) : newSubtotal
@@ -109,7 +109,7 @@ function useCart(baseUrl: string, token: string | null) {
                 total: newTotal
             }
         } else {
-            // If product doesn't exist, add new item
+            
             const newItems = [...cart.items, { ...product, quantity: qtyToAdd }]
             const newTotal = newItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
             newCart = {
@@ -244,7 +244,7 @@ function useCart(baseUrl: string, token: string | null) {
     const updateQuantity = useCallback(async (product_id: string, quantity: number, options?: SelectedOption[]) => {
         log('Updating quantity', { product_id, quantity, options })
         if (quantity <= 0) {
-            // Remove item if quantity is 0 or less
+            
             const items = cart.items.filter(item => !(item.product_id === product_id && (options ? areOptionsEqual(item.options, options) : true)))
             const newSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0)
             const newTotal = cart.discount ? Math.max(0, newSubtotal - cart.discount) : newSubtotal
@@ -268,7 +268,7 @@ function useCart(baseUrl: string, token: string | null) {
                 }
             }
         } else {
-            // Update quantity if greater than 0
+            
             const items = cart.items.map(item => (item.product_id === product_id && (options ? areOptionsEqual(item.options, options) : true)) ? { ...item, quantity } : item)
             const newSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0)
             const newTotal = cart.discount ? Math.max(0, newSubtotal - cart.discount) : newSubtotal

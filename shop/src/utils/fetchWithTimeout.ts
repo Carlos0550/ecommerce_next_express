@@ -8,9 +8,9 @@ export interface FetchOptions extends RequestInit {
   retryDelay?: number;
 }
 
-const DEFAULT_TIMEOUT = 10000; // 10 segundos
+const DEFAULT_TIMEOUT = 10000; 
 const DEFAULT_RETRIES = 2;
-const DEFAULT_RETRY_DELAY = 1000; // 1 segundo
+const DEFAULT_RETRY_DELAY = 1000; 
 
 async function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -44,7 +44,7 @@ export async function fetchWithTimeout(
       } catch (error: unknown) {
         clearTimeout(timeoutId);
         
-        // Si es un abort por timeout, lanzar error específico
+        
         if (error instanceof Error && error.name === 'AbortError') {
           throw new Error(`Request timeout after ${timeout}ms`);
         }

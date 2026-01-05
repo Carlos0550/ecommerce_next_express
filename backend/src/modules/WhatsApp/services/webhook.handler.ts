@@ -1,5 +1,5 @@
-
 import { redis } from '@/config/redis';
+import { prisma } from '@/config/prisma';
 import { getBusiness, getWasenderApiKey, hasWasenderApiKey } from '../utils/business.utils';
 import { sessionService } from './session.service';
 import { albumService } from './album.service';
@@ -16,16 +16,44 @@ import {
 
 class WebhookHandler {
   /**
+   * Resuelve el tenant desde el número de teléfono del remitente.
+   * Busca en BusinessData.whatsapp_phone_number para encontrar a qué negocio pertenece.
+   */
+  async resolveTenantFromPhone(phoneNumber: string): Promise<{ tenantId: string; business: any } | null> {
+    try {
+      
+      const normalizedPhone = phoneNumber.replace(/[+\s-]/g, '');
+      
+      
+      const business = await prisma.businessData.findFirst({
+        where: {
+          OR: [
+            { whatsapp_phone_number: normalizedPhone },
+            { whatsapp_phone_number: `+${normalizedPhone}` },
+            { whatsapp_phone_number: phoneNumber },
+          ]
+        },
+        include: { tenant: true }
+      });
+      
+      if (business && business.tenantId) {
+        return { tenantId: business.tenantId, business };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error resolviendo tenant desde teléfono:', error);
+      return null;
+    }
+  }
+
+  /**
    * Punto de entrada principal para procesar webhooks
    */
   async handleWebhook(event: WebhookEvent, _signature?: string): Promise<void> {
-    const business = await getBusiness();
     
-    if (!business) {
-      console.warn('Webhook recibido pero no hay negocio configurado');
-      return;
-    }
-
+    
+    
     const eventType = event.event;
     
     switch (eventType) {
@@ -92,6 +120,17 @@ class WebhookHandler {
     
     console.log(`📱 Mensaje recibido de: ${fromPhone}`);
 
+    
+    const tenantInfo = await this.resolveTenantFromPhone(fromPhone);
+    
+    if (!tenantInfo) {
+      console.warn(`⚠️ No se encontró tenant para el número: ${fromPhone}`);
+      
+      return;
+    }
+    
+    console.log(`🏪 Tenant resuelto: ${tenantInfo.tenantId} para número: ${fromPhone}`);
+
     const msgContent = messages.message;
     
     if (msgContent?.albumMessage && !msgContent?.imageMessage && !msgContent?.videoMessage) {
@@ -103,7 +142,7 @@ class WebhookHandler {
     const isPartOfAlbum = msgContextInfo?.messageAssociation?.associationType === 'MEDIA_ALBUM';
     const albumParentId = msgContextInfo?.messageAssociation?.parentMessageKey?.id;
     
-    const business = await getBusiness();
+    const business = tenantInfo.business;
     const apiKey = business?.whatsapp_api_key;
     const wasenderToken = hasWasenderApiKey() ? getWasenderApiKey() : undefined;
 
@@ -135,7 +174,8 @@ class WebhookHandler {
     console.log(`📝 Mensaje procesado: tipo=${messageData.type}, body="${messageData.body?.substring(0, 50)}..."`);
 
     const { conversationProcessor } = await import('./conversation/conversation.processor');
-    await conversationProcessor.processMessage(0, fromPhone, messageData);
+    
+    await conversationProcessor.processMessage(0, fromPhone, messageData, tenantInfo.tenantId);
   }
 
 

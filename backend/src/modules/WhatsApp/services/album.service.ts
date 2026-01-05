@@ -17,9 +17,9 @@ import {
 } from '../constants/timeouts';
 import WasenderClient from './wasender.client';
 
-// ============================================================================
-// TIPOS
-// ============================================================================
+
+
+
 
 interface AlbumImage {
   url: string;
@@ -35,16 +35,16 @@ interface AlbumBuffer {
   timestamp: number;
 }
 
-// ============================================================================
-// ALMACENAMIENTO DE TIMEOUTS
-// ============================================================================
 
-// Mapa para almacenar los timeouts de procesamiento de álbumes
+
+
+
+
 const albumProcessingTimeouts = new Map<string, NodeJS.Timeout>();
 
-// ============================================================================
-// SERVICIO
-// ============================================================================
+
+
+
 
 class AlbumService {
   /**
@@ -63,7 +63,7 @@ class AlbumService {
     const albumKey = getAlbumBufferKey(fromPhone, albumParentId);
     const lockKey = getAlbumLockKey(fromPhone, albumParentId);
     
-    // Desencriptar primero (fuera del lock)
+    
     const decryptedUrl = await this.decryptAlbumImage(
       apiKey,
       accessToken,
@@ -71,10 +71,10 @@ class AlbumService {
       msgContent.imageMessage
     );
 
-    // El caption puede venir de imageMessage.caption o de messageBody
+    
     const imageCaption = msgContent.imageMessage?.caption || alternativeCaption;
 
-    // Adquirir lock para evitar condición de carrera
+    
     const acquired = await this.acquireLock(lockKey);
     if (!acquired) {
       console.error('❌ No se pudo obtener lock para álbum');
@@ -82,7 +82,7 @@ class AlbumService {
     }
 
     try {
-      // Obtener o crear buffer
+      
       const existingBuffer = await redis.get(albumKey);
       let buffer: AlbumBuffer;
       
@@ -97,7 +97,7 @@ class AlbumService {
         };
       }
 
-      // Agregar imagen al buffer si no existe
+      
       if (!buffer.images.some(img => img.messageId === messageId)) {
         buffer.images.push({
           url: decryptedUrl || msgContent.imageMessage?.url || '',
@@ -106,7 +106,7 @@ class AlbumService {
         });
       }
 
-      // Guardar el caption del álbum si no tenemos uno
+      
       if (imageCaption && !buffer.caption) {
         buffer.caption = imageCaption;
       }
@@ -117,7 +117,7 @@ class AlbumService {
       await redis.del(lockKey);
     }
 
-    // Manejar timeout fuera del lock
+    
     this.scheduleAlbumProcessing(fromPhone, albumParentId, albumKey);
   }
 
@@ -156,7 +156,7 @@ class AlbumService {
 
     console.log(`📝 Álbum procesado: ${imageUrls.length} imágenes, caption="${buffer.caption?.substring(0, 50)}..."`);
 
-    // Importar dinámicamente para evitar dependencia circular
+    
     const { conversationProcessor } = await import('./conversation/conversation.processor');
     await conversationProcessor.processMessage(0, fromPhone, messageData);
   }
@@ -213,12 +213,12 @@ class AlbumService {
   ): void {
     const timeoutKey = `${fromPhone}:${albumParentId}`;
     
-    // Cancelar timeout anterior si existe
+    
     if (albumProcessingTimeouts.has(timeoutKey)) {
       clearTimeout(albumProcessingTimeouts.get(timeoutKey)!);
     }
 
-    // Programar nuevo timeout
+    
     const timeout = setTimeout(async () => {
       await this.processAlbum(albumKey, fromPhone, albumParentId);
       albumProcessingTimeouts.delete(timeoutKey);

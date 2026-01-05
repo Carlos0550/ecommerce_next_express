@@ -11,10 +11,40 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
   const id = extractIdFromSlug(slug)
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
-  const bizImage = process.env.NEXT_PUBLIC_BUSINESS_IMAGE_URL || ''
+  
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  
+  let bizImage = ''
+  let bizFavicon = ''
+  let bizName = 'Tienda Online'
+  
+  if (tenantSlug) {
+    try {
+      const bizRes = await fetch(`${apiUrl}/business/public`, { 
+        next: { revalidate: 60 },
+        headers: { 'x-tenant-slug': tenantSlug }
+      })
+      if (bizRes.ok) {
+        const bizData = await bizRes.json()
+        bizImage = bizData.business_image || ''
+        bizFavicon = bizData.favicon || ''
+        bizName = bizData.name || bizName
+      }
+    } catch {}
+  }
+  
   let product: { title?: string; category?: { title?: string }; price?: number; images?: string[] } = {}
   try {
-    const res = await fetch(`${apiUrl}/products/public/${id}`, { next: { revalidate: 600 } })
+    const fetchHeaders: Record<string, string> = {}
+    if (tenantSlug) fetchHeaders['x-tenant-slug'] = tenantSlug
+    const res = await fetch(`${apiUrl}/products/public/${id}`, { 
+      next: { revalidate: 600 },
+      headers: fetchHeaders
+    })
     const json = await res.json().catch(() => null)
     product = json?.data?.product || json?.data || json || {}
   } catch {}
@@ -50,17 +80,19 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
           />
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 16,
-              backgroundImage: `url(${siteUrl}/logo.png)`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          />
-          <div style={{ fontSize: 48, fontWeight: 800, color: '#111' }}>Tienda Online</div>
+          {bizFavicon && (
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 16,
+                backgroundImage: `url(${bizFavicon})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            />
+          )}
+          <div style={{ fontSize: 48, fontWeight: 800, color: '#111' }}>{bizName}</div>
         </div>
         <div style={{ marginTop: 24, fontSize: 56, fontWeight: 700, color: '#111' }}>{title}</div>
         <div style={{ marginTop: 8, fontSize: 28, color: '#444' }}>{cat}</div>

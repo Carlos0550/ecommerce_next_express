@@ -33,7 +33,7 @@ function makeName(first: string, last: string): string {
 }
 
 function randomRole(): number {
-  // 95% cliente (2), 5% admin (1)
+  
   return Math.random() < 0.05 ? 1 : 2;
 }
 
@@ -64,7 +64,7 @@ async function seedUsers() {
     console.log(`✅ Insertados: ${result.count}`);
     console.log(`🔑 Password por defecto: ${DEFAULT_PASSWORD}`);
 
-    // Muestra algunos ejemplos
+    
     console.log('\n📌 Ejemplos de usuarios creados:');
     for (let i = 0; i < Math.min(5, usersData.length); i++) {
       console.log(`   - ${usersData[i].email} | role=${usersData[i].role}`);

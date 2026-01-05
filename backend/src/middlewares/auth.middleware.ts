@@ -8,6 +8,7 @@ export type AuthUser = JwtPayload & {
   role?: number;
   profileImage?: string;
   subjectType?: 'admin' | 'user';
+  tenantId?: string;
 };
 
 function getBearerToken(req: Request): string | null {
@@ -34,15 +35,21 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return res.status(401).json({ ok: false, error: 'invalid_token' });
     }
 
-    // Validar sesión en Redis (presencia del token), TTL actúa como sesión
+    
     const sessionKey = `user:${token}`;
     const session = await redis.get(sessionKey);
     if (!session) {
       return res.status(401).json({ ok: false, error: 'session_expired' });
     }
 
-    // Adjuntar usuario al request
+    
     (req as any).user = payload;
+    
+    
+    if (payload.tenantId) {
+      (req as any).tenantId = payload.tenantId;
+    }
+    
     next();
   } catch (error) {
     console.error('auth_middleware_error', error);
@@ -73,8 +80,13 @@ export async function attachAuthIfPresent(req: Request, _res: Response, next: Ne
       const session = await redis.get(`user:${token}`);
       if (!session) return next();
       (req as any).user = payload;
+      
+      
+      if (payload.tenantId) {
+        (req as any).tenantId = payload.tenantId;
+      }
     } catch {
-      // Ignorar errores y continuar sin usuario
+      
     }
     return next();
   } catch {

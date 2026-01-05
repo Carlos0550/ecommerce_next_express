@@ -3,9 +3,9 @@
  * Centraliza todos los prefijos y TTLs para mantener consistencia
  */
 
-// ============================================================================
-// PREFIJOS DE CLAVES REDIS
-// ============================================================================
+
+
+
 
 /** Prefijo para sesiones de conversación */
 export const CONVERSATION_SESSION_PREFIX = 'whatsapp:conversation:';
@@ -22,9 +22,9 @@ export const PROCESSED_MESSAGE_PREFIX = 'whatsapp:processed_msg:';
 /** Prefijo para buffer de álbumes de imágenes */
 export const ALBUM_BUFFER_PREFIX = 'whatsapp:album:';
 
-// ============================================================================
-// TTLs (Time To Live) EN SEGUNDOS
-// ============================================================================
+
+
+
 
 /** TTL para sesiones de conversación (30 minutos) */
 export const CONVERSATION_TTL = 30 * 60;
@@ -35,9 +35,9 @@ export const PROCESSED_MESSAGE_TTL = 60;
 /** TTL para buffer de álbumes (10 segundos para agrupar imágenes) */
 export const ALBUM_BUFFER_TTL = 10;
 
-// ============================================================================
-// HELPERS
-// ============================================================================
+
+
+
 
 /**
  * Genera la clave Redis para una sesión de conversación

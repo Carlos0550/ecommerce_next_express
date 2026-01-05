@@ -1,4 +1,4 @@
-/* From Uiverse.io by Nawsome */ 
+ 
 .pl {
   width: 6em;
   height: 6em;
@@ -27,7 +27,7 @@
   stroke: #f42582;
 }
 
-/* Animations */
+
 @keyframes ringA {
   from, 4% {
     stroke-dasharray: 0 660;

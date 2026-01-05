@@ -3,37 +3,37 @@ import { PrismaClient, ProductState } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Datos de ejemplo para generar productos aleatorios
+
 const productTitles = [
-  // Maquillaje
+  
   'Base de Maquillaje Líquida', 'Corrector Cremoso', 'Polvo Compacto Matificante', 'Rubor en Polvo',
   'Bronceador Natural', 'Iluminador Dorado', 'Sombras de Ojos Paleta', 'Delineador de Ojos Líquido',
   'Máscara de Pestañas Volumen', 'Lápiz de Cejas', 'Labial Mate', 'Gloss Labial Brillante',
   'Primer Facial', 'Fijador de Maquillaje', 'Contorno en Crema', 'Tinta para Labios',
   
-  // Cuidado de la piel
+  
   'Limpiador Facial Suave', 'Tónico Hidratante', 'Serum Vitamina C', 'Crema Hidratante Facial',
   'Protector Solar SPF 50', 'Exfoliante Facial', 'Mascarilla Hidratante', 'Contorno de Ojos',
   'Agua Micelar', 'Aceite Desmaquillante', 'Crema Nocturna Reparadora', 'Serum Ácido Hialurónico',
   
-  // Accesorios
+  
   'Set de Brochas Profesionales', 'Esponja de Maquillaje', 'Espejo Compacto con Luz', 'Organizador de Maquillaje',
   'Rizador de Pestañas', 'Pinzas para Cejas', 'Aplicadores de Sombras', 'Limpiador de Brochas',
   'Bolsa de Maquillaje Viaje', 'Soporte para Brochas', 'Paleta Mezcladora', 'Atomizador Facial',
   
-  // Fragancias
+  
   'Perfume Floral Femenino', 'Eau de Toilette Fresco', 'Body Splash Frutal', 'Perfume Amaderado',
   'Fragancia Cítrica', 'Perfume Oriental', 'Colonia Suave', 'Bruma Corporal Aromática',
   
-  // Cuidado corporal
+  
   'Crema Corporal Hidratante', 'Exfoliante Corporal', 'Aceite Corporal Nutritivo', 'Loción Post-Solar',
   'Gel de Ducha Aromático', 'Manteca Corporal', 'Crema para Manos', 'Bálsamo Labial Hidratante',
   
-  // Uñas
+  
   'Esmalte de Uñas Clásico', 'Base Fortalecedora', 'Top Coat Brillante', 'Removedor de Esmalte',
   'Lima de Uñas Profesional', 'Aceite para Cutículas', 'Kit de Manicura', 'Esmalte Gel UV',
   
-  // Cabello
+  
   'Shampoo Hidratante', 'Acondicionador Reparador', 'Mascarilla Capilar', 'Serum Anti-Frizz',
   'Spray Termoprotector', 'Aceite Capilar Nutritivo', 'Champú Seco', 'Tratamiento Capilar Intensivo'
 ];
@@ -69,34 +69,34 @@ const tags = [
   ['multifuncional', 'todo-en-uno', 'práctico']
 ];
 
-// Función para obtener un elemento aleatorio de un array
+
 function getRandomElement<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-// Función para obtener múltiples elementos aleatorios únicos
+
 function getRandomElements<T>(array: T[], count: number): T[] {
   const shuffled = [...array].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 }
 
-// Función para generar precio aleatorio
+
 function generateRandomPrice(): number {
   const prices = [990, 1490, 1990, 2490, 2990, 3490, 3990, 4490, 4990, 5990, 6990, 7990, 8990, 9990];
   return getRandomElement(prices);
 }
 
-// Función para generar stock aleatorio
+
 function generateRandomStock(): number {
-  return Math.floor(Math.random() * 100) + 1; // Entre 1 y 100
+  return Math.floor(Math.random() * 100) + 1; 
 }
 
-// Función para generar estado aleatorio (mayoría activos)
+
 function generateRandomState(): ProductState {
   const states = [
-    ProductState.active, ProductState.active, ProductState.active, ProductState.active, // 80% activos
+    ProductState.active, ProductState.active, ProductState.active, ProductState.active, 
     ProductState.active, ProductState.active, ProductState.active, ProductState.active,
-    ProductState.draft, ProductState.out_stock // 20% otros estados
+    ProductState.draft, ProductState.out_stock 
   ];
   return getRandomElement(states);
 }
@@ -105,7 +105,7 @@ async function seedProducts() {
   try {
     console.log('🔍 Consultando categorías existentes...');
     
-    // Obtener todas las categorías activas
+    
     const categories = await prisma.categories.findMany({
       where: {
         is_active: true
@@ -146,14 +146,14 @@ async function seedProducts() {
         state: randomState,
         categoryId: randomCategory.id,
         tags: randomTags,
-        images: [], // Sin imágenes por defecto
+        images: [], 
         is_active: randomState === ProductState.active || randomState === ProductState.draft
       };
 
       products.push(product);
     }
 
-    // Insertar productos en lotes para mejor rendimiento
+    
     console.log('💾 Insertando productos en la base de datos...');
     
     const batchSize = 1000;
@@ -175,14 +175,14 @@ async function seedProducts() {
     console.log(`   - Productos creados: ${insertedCount}`);
     console.log(`   - Categorías utilizadas: ${categories.length}`);
     
-    // Mostrar estadísticas por categoría
+    
     console.log('\n📈 Distribución por categoría:');
     for (const category of categories) {
       const count = products.filter(p => p.categoryId === category.id).length;
       console.log(`   - ${category.title}: ${count} productos`);
     }
 
-    // Mostrar estadísticas por estado
+    
     console.log('\n📊 Distribución por estado:');
     const stateStats = products.reduce((acc, product) => {
       acc[product.state] = (acc[product.state] || 0) + 1;
@@ -200,7 +200,7 @@ async function seedProducts() {
   }
 }
 
-// Ejecutar el script
+
 if (require.main === module) {
   seedProducts();
 }

@@ -2,6 +2,7 @@ import { Request, Response, Router } from "express"
 import businessController from "./router.controller"
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware"
 import { uploadSingleImage, handleImageUploadError } from "@/middlewares/image.middleware"
+import { resolveTenantFromSlug } from "@/middlewares/tenant.middleware"
 
 const router = Router()
 
@@ -15,7 +16,8 @@ router.put("/:id", requireAuth, requireRole([1]), (req:Request, res: Response) =
 
 router.get("/", requireAuth, requireRole([1]), (req:Request, res: Response) => businessController.getBusiness(req, res))
 
-router.get("/public", (req:Request, res: Response) => businessController.getBusiness(req, res))
+
+router.get("/public", resolveTenantFromSlug, (req:Request, res: Response) => businessController.getBusinessPublic(req, res))
 
 
 export default router

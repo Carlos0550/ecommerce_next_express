@@ -7,12 +7,12 @@ import PaletteServices from "@/modules/Palettes/services/palette.services"
 import { PaymentMethod } from "@prisma/client"
 import fs from 'fs'
 import { uploadToBucket } from '@/config/minio'
-import PromoServices from "@/modules/Promos/services/promo.services"
+
 type OrderItemInput = { product_id: string; quantity: number; options?: any }
 type CustomerInput = { name: string; email: string; phone?: string; street?: string; postal_code?: string; city?: string; province?: string; pickup?: boolean }
 
 export default class OrdersServices {
-  async createOrder(userId: number | undefined, items: OrderItemInput[], paymentMethod: string, customer: CustomerInput, promo_code?: string) {
+  async createOrder(userId: number | undefined, items: OrderItemInput[], paymentMethod: string, customer: CustomerInput) {
     const productIds = items.map(i => String(i.product_id))
     const products = await prisma.products.findMany({ where: { id: { in: productIds } } })
     const productsMap = new Map(products.map(p => [p.id, p]))
@@ -31,24 +31,17 @@ export default class OrdersServices {
 
     const subtotal = snapshot.reduce((acc, it) => acc + Number(it.price) * Number(it.quantity), 0)
     
-    // Calcular descuento de promoción
-    const { discount, promo_id } = await PromoServices.calculateDiscount(
-      promo_code,
-      subtotal,
-      items,
-      userId
-    )
+    const discount = 0
     
     const total = Math.max(0, subtotal - discount)
 
     const paymentNormalized: PaymentMethod = (String(paymentMethod).toUpperCase() === 'EN_LOCAL') ? 'EFECTIVO' : (String(paymentMethod).toUpperCase() as PaymentMethod)
     
-    // Construir data base
+    
     const orderData: any = {
       total,
       subtotal,
       discount: discount > 0 ? discount : undefined,
-      promo_code: promo_code && promo_id ? promo_code : undefined,
       payment_method: paymentNormalized,
       items: snapshot as any,
       buyer_email: customer.email || undefined,
@@ -56,31 +49,33 @@ export default class OrdersServices {
       buyer_name: customer.name || undefined,
     }
 
-    // Agregar relación con usuario si existe
+    let tenantId: string | undefined;
+
+    
     if (userId && Number.isInteger(userId)) {
       orderData.user = { connect: { id: userId } }
-    }
-
-    // Agregar relación con promoción si existe
-    if (promo_id) {
-      orderData.promo = { connect: { id: promo_id } }
+      
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } })
+      if (user) {
+        tenantId = user.tenantId;
+        orderData.tenant = { connect: { id: user.tenantId } }
+      }
+    } else {
+       
+       
+       if (products.length > 0) {
+         tenantId = products[0].tenantId;
+         orderData.tenant = { connect: { id: products[0].tenantId } }
+       }
     }
 
     const order = await prisma.orders.create({
       data: orderData
     })
 
-    // Incrementar usage_count de la promoción si se aplicó
-    if (promo_id && promo_code) {
-      try {
-        await prisma.promos.update({
-          where: { id: promo_id },
-          data: { usage_count: { increment: 1 } }
-        })
-      } catch (err) {
-        console.error('Error incrementando usage_count de promoción:', err)
-      }
-    }
+
+    
+    
 
     if (userId && Number.isInteger(userId)) {
       await prisma.user.update({ where: { id: userId }, data: {
@@ -96,23 +91,28 @@ export default class OrdersServices {
         await prisma.cart.update({ where: { id: cart.id }, data: { total: 0 } })
       }
     }
+
     const parsed_payment_method = paymentNormalized
     try {
-      const saleId = await salesServices.saveSale({
-        payment_method: parsed_payment_method,
-        source: "WEB",
-        product_ids: productIds,
-        user_sale:{ user_id: userId?.toString() || undefined },
-        items: items.map(i => ({ product_id: i.product_id, quantity: i.quantity, options: (i as any).options }))
-      }) as any;
-      if (typeof saleId === 'string') {
-        await prisma.orders.update({ where: { id: order.id }, data: { saleId } });
+      if (tenantId) {
+        const saleId = await salesServices.saveSale({
+          payment_method: parsed_payment_method,
+          source: "WEB",
+          product_ids: productIds,
+          user_sale:{ user_id: userId?.toString() || undefined },
+          items: items.map(i => ({ product_id: i.product_id, quantity: i.quantity, options: (i as any).options }))
+        }, tenantId) as any;
+        if (typeof saleId === 'string') {
+          await prisma.orders.update({ where: { id: order.id }, data: { saleId } });
+        }
       }
     } catch (err) {
       console.error('order_sale_link_failed', err)
     }
     setImmediate(async () => {
-      await this.notify(order.id, snapshot, total, paymentMethod, customer)
+      if (tenantId) {
+        await this.notify(order.id, snapshot, total, paymentMethod, customer)
+      }
       try {
         for (const it of snapshot) {
           await prisma.$executeRaw`UPDATE "Products" 

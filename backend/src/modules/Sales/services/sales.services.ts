@@ -10,7 +10,7 @@ import PaletteServices from "@/modules/Palettes/services/palette.services";
 
 
 class SalesServices {
-    async saveSale(request: SaleRequest) {
+    async saveSale(request: SaleRequest, tenantId: string) {
         const { payment_method, source, product_ids, user_sale, items } = request;
         const { user_id } = user_sale || {};
 
@@ -78,6 +78,7 @@ class SalesServices {
                     loadedManually: isManual,
                     paymentMethods: paymentBreakdown as any,
                     items: product_data as any,
+                    tenant: { connect: { id: tenantId } }
                 }
             })
 
@@ -85,8 +86,8 @@ class SalesServices {
                 try {
                     const user = parsedUserId ? await prisma.user.findUnique({ where: { id: parsedUserId } }) : null;
                     console.log(user)
-                    const business = await BusinessServices.getBusiness();
-                    const palette = await PaletteServices.getActiveFor("shop");
+                    const business = await BusinessServices.getBusinessByTenantId(tenantId);
+                    const palette = await PaletteServices.getActiveForByTenantId("shop", tenantId);
                     const html = sale_email_html({
                         source,
                         payment_method: primaryPaymentMethod,
@@ -108,7 +109,7 @@ class SalesServices {
                         palette: palette as any,
                     });
                     const admins: any[] = await prisma.admin.findMany({ where: { is_active: true } })
-                    //const admins: any[] = ["carlospelinski03@gmail.com"] //testing
+                    
                     const adminEmails = admins.map((u: { email: string }) => u.email).filter((e: string): e is string => !!e);
                     const configuredRecipient = process.env.SALES_EMAIL_TO;
                     const toRecipients = adminEmails.length > 0

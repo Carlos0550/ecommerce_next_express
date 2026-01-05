@@ -46,7 +46,7 @@ export default function AddToCartButton({ productId, options = [] }: { productId
       {options.length > 0 && (
         <Stack gap="xs">
           {options.map((opt, idx) => {
-            // Filtrar valores duplicados
+            
             const uniqueValues = Array.from(new Set(opt.values))
             
             return (

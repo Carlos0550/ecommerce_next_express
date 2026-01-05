@@ -18,7 +18,7 @@ export const redis = new Redis(redisUrl, {
   },
 });
 
-// Event listeners para manejo de errores y reconexión
+
 redis.on('error', (err) => {
   console.error('❌ Error de Redis:', err.message);
 });

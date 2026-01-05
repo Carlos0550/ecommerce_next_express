@@ -19,7 +19,7 @@ export default function ActivePaletteProvider({ children }: { children: React.Re
           setColors(p.colors);
         }
       } catch {
-        // fallback silently
+        
       }
     })();
   }, []);

@@ -11,7 +11,7 @@ export function initProductsCacheSyncJob() {
         await redis.set(`product:${p.id}`, JSON.stringify(p));
       }
     } catch (e) {
-      // silent
+      
     }
   });
 }

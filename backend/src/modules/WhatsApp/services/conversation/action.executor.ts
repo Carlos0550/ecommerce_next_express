@@ -13,15 +13,15 @@ import {
   AIConversationResponse,
 } from '../../schemas/whatsapp.schemas';
 
-// ============================================================================
-// TIPOS
-// ============================================================================
+
+
+
 
 type ActionData = AIConversationResponse['data'];
 
-// ============================================================================
-// EJECUTOR DE ACCIONES
-// ============================================================================
+
+
+
 
 class ActionExecutor {
   /**
@@ -37,15 +37,19 @@ class ActionExecutor {
     switch (action) {
       case 'save_data':
         await this.handleSaveData(session, data);
-        return false; // No envía mensaje propio
+        return false; 
         
       case 'process_ai':
         await this.handleProcessAI(session, data);
-        return true; // Mensajes gestionados en la acción (publicación + preview)
+        return true; 
         
       case 'create_product':
-        await this.handleCreateProduct(session, data);
-        return true; // Envía su propio mensaje
+        const adminForProduct = await prisma.admin.findUnique({ where: { id: session.adminId }, select: { tenantId: true } });
+        if (adminForProduct) {
+            await this.handleCreateProduct(session, data, adminForProduct.tenantId);
+            return true; 
+        }
+        return false;
         
       case 'cancel':
       case 'reset':
@@ -61,7 +65,7 @@ class ActionExecutor {
         
       case 'search_products':
         if (data.search_by) {
-          // Guardar acción pendiente si se proporcionó
+          
           if (data.pending_action) {
             session.pendingAction = {
               action: data.pending_action.action,
@@ -74,13 +78,13 @@ class ActionExecutor {
             console.log(`📌 Acción pendiente guardada: ${data.pending_action.action} - ${data.pending_action.update_field || 'delete'}`);
           }
           
-          // searchProducts devuelve false si el query está vacío y no se ejecutó
+          
           const executed = await searchActions.searchProducts(
             session, 
             data.search_query || '', 
             data.search_by
           );
-          return executed; // Solo true si realmente se ejecutó
+          return executed; 
         }
         return false;
         
@@ -109,12 +113,12 @@ class ActionExecutor {
         
       case 'end_conversation':
         await sessionManager.deleteSession(session.phone);
-        return false; // El mensaje de despedida viene de la IA
+        return false; 
         
       case 'show_help':
       case 'none':
       default:
-        // No hacer nada, solo enviar el mensaje de la IA
+        
         return false;
     }
   }
@@ -132,7 +136,7 @@ class ActionExecutor {
     if (data.stock !== undefined && data.stock !== null) {
       session.productData.stock = data.stock;
     }
-    // Resolver categoría (ID o crearla si no existe y viene por nombre)
+    
     if (data.category_id) {
       session.productData.categoryId = data.category_id;
     }
@@ -141,15 +145,18 @@ class ActionExecutor {
     if (categoryNameFromAI) {
       session.productData.categoryName = categoryNameFromAI;
 
-      // Asegurar categoría activa (crea si no existe)
-      const { id: ensuredCategoryId, created } = await this.ensureCategoryExists(categoryNameFromAI);
-      session.productData.categoryId = ensuredCategoryId;
+      
+      const admin = await prisma.admin.findUnique({ where: { id: session.adminId }, select: { tenantId: true } });
+      if (admin) {
+          const { id: ensuredCategoryId, created } = await this.ensureCategoryExists(categoryNameFromAI, admin.tenantId);
+          session.productData.categoryId = ensuredCategoryId;
 
-      if (created) {
-        await messageService.sendMessage(
-          session.phone,
-          `🆕 Creé la categoría "${categoryNameFromAI.trim()}" y la dejaré activa para este producto.`
-        );
+          if (created) {
+            await messageService.sendMessage(
+              session.phone,
+              `🆕 Creé la categoría "${categoryNameFromAI.trim()}" y la dejaré activa para este producto.`
+            );
+          }
       }
     }
     
@@ -165,9 +172,9 @@ class ActionExecutor {
     session.lastError = undefined;
   }
 
-  // ============================================================================
-  // MANEJADORES PRIVADOS
-  // ============================================================================
+  
+  
+  
 
   /**
    * Maneja la acción save_data
@@ -187,33 +194,40 @@ class ActionExecutor {
     data: ActionData
   ): Promise<void> {
     await this.saveDataToSession(session, data);
+
+    const admin = await prisma.admin.findUnique({ where: { id: session.adminId }, select: { tenantId: true } });
+    if (!admin) {
+        console.error(`Tenant not found for admin ${session.adminId}`);
+        return;
+    }
+    const tenantId = admin.tenantId;
     
-    // Obtener categorías disponibles para pasarlas al análisis
+    
     const availableCategories = await prisma.categories.findMany({
-      where: { status: 'active' },
+      where: { status: 'active', tenantId },
       select: { id: true, title: true },
       orderBy: { title: 'asc' },
     });
     
-    // Procesar con IA pasando las categorías disponibles
+    
     await productActions.processWithAI(session, availableCategories);
     
-    // Si hubo error, no continuar
+    
     if (session.lastError) {
       return;
     }
     
-    // Verificar si la IA infirió una categoría
+    
     const aiResult = session.productData.aiResult;
     const suggestedCategory = aiResult?.suggestedCategory;
     
-    // Si ya tiene categoría asignada, publicar directamente
+    
     if (session.productData.categoryId) {
-      await productActions.createProduct(session);
+      await productActions.createProduct(session, tenantId);
       return;
     }
     
-    // Si la IA sugirió una categoría con confianza alta o media, asignarla automáticamente
+    
     if (suggestedCategory && (suggestedCategory.confidence === 'high' || suggestedCategory.confidence === 'medium')) {
       const matchedCategory = availableCategories.find(
         c => c.title.toLowerCase() === suggestedCategory.name.toLowerCase()
@@ -223,12 +237,12 @@ class ActionExecutor {
         session.productData.categoryId = matchedCategory.id;
         session.productData.categoryName = matchedCategory.title;
         console.log(`✅ Categoría asignada automáticamente: ${matchedCategory.title} (confianza: ${suggestedCategory.confidence})`);
-        await productActions.createProduct(session);
+        await productActions.createProduct(session, tenantId);
         return;
       }
     }
     
-    // Si no hay categoría o la confianza es baja, pedir al usuario que elija
+    
     if (availableCategories.length > 0) {
       const list = availableCategories.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
       const priceStr = session.productData.price ? `$${Number(session.productData.price).toLocaleString()}` : '';
@@ -248,7 +262,7 @@ class ActionExecutor {
       session.categoryPromptShown = true;
       await sessionManager.saveSession(session);
     } else {
-      // No hay categorías disponibles, crear una genérica o informar
+      
       await messageService.sendMessage(
         session.phone,
         '⚠️ No hay categorías configuradas en el sistema. Por favor, crea una categoría desde el panel administrativo antes de continuar.'
@@ -261,10 +275,11 @@ class ActionExecutor {
    */
   private async handleCreateProduct(
     session: WhatsAppConversationSession,
-    data: ActionData
+    data: ActionData,
+    tenantId: string
   ): Promise<void> {
     await this.saveDataToSession(session, data);
-    await productActions.createProduct(session);
+    await productActions.createProduct(session, tenantId);
   }
 
   /**
@@ -282,7 +297,7 @@ class ActionExecutor {
       dataProductName: data.product_name,
     });
 
-    // Si viene selected_index, primero seleccionar el producto de la lista
+    
     if (data.selected_index && session.searchResults && session.searchResults.length > 0) {
       const index = data.selected_index;
       if (index >= 1 && index <= session.searchResults.length) {
@@ -298,15 +313,15 @@ class ActionExecutor {
       console.log(`⚠️ selected_index=${data.selected_index} pero searchResults está vacío o no existe`);
     }
 
-    // Si no hay producto seleccionado pero hay nombre, intentar seleccionarlo
+    
     if (!session.selectedProductId && data.product_name) {
       const selected = await this.trySelectProductByName(session, data.product_name);
       if (!selected) {
-        return; // El método ya envió el mensaje apropiado
+        return; 
       }
     }
 
-    // Soportar múltiples actualizaciones
+    
     if (data.updates && data.updates.length > 0) {
       for (const update of data.updates) {
         await productActions.updateProduct(
@@ -314,17 +329,17 @@ class ActionExecutor {
           update.field,
           update.value,
           update.regenerate_with_ai,
-          data.user_context // Pasar contexto/correcciones del usuario
+          data.user_context 
         );
       }
     } else if (data.update_field) {
-      // Actualización única
+      
       await productActions.updateProduct(
         session, 
         data.update_field, 
         data.update_value, 
         data.regenerate_with_ai,
-        data.user_context // Pasar contexto/correcciones del usuario
+        data.user_context 
       );
     }
   }
@@ -339,7 +354,7 @@ class ActionExecutor {
   ): Promise<boolean> {
     const normalizedName = productName.toLowerCase().trim();
     
-    // Primero buscar en searchResults si existe
+    
     if (session.searchResults && session.searchResults.length > 0) {
       const match = session.searchResults.find(p => 
         p.title.toLowerCase().includes(normalizedName) ||
@@ -353,7 +368,7 @@ class ActionExecutor {
       }
     }
     
-    // Si no está en searchResults, buscar en la DB
+    
     const products = await prisma.products.findMany({
       where: {
         title: { contains: productName, mode: 'insensitive' },
@@ -383,7 +398,7 @@ class ActionExecutor {
       return true;
     }
     
-    // Si hay varios productos, mostrar opciones
+    
     session.searchResults = products.map(p => ({
       id: p.id,
       title: p.title,
@@ -408,13 +423,14 @@ class ActionExecutor {
    * Garantiza que exista una categoría activa para el nombre dado.
    * Si no existe, la crea como activa y retorna su ID junto con un flag de creación.
    */
-  private async ensureCategoryExists(categoryName: string): Promise<{ id: string; created: boolean }> {
+  private async ensureCategoryExists(categoryName: string, tenantId: string): Promise<{ id: string; created: boolean }> {
     const normalized = categoryName.trim().toLowerCase();
 
     const existing = await prisma.categories.findFirst({
       where: { 
         title: { equals: normalized, mode: 'insensitive' },
         status: 'active',
+        tenantId
       },
     });
 
@@ -427,6 +443,7 @@ class ActionExecutor {
         title: normalized,
         status: 'active',
         is_active: true,
+        tenant: { connect: { id: tenantId } }
       },
     });
 

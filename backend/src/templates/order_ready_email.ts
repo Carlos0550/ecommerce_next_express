@@ -9,7 +9,7 @@ export function order_ready_email_html({ saleId, buyerName, payment_method, busi
   const isLocal = String(payment_method).toUpperCase() === 'EN_LOCAL';
   
   const address = business?.address || 'Av. Roque Gonzales y Roque Sáenz Peña';
-  const mapsUrl = 'https://www.google.com/maps/@-27.4622582,-55.7443897,21z?entry=ttu&g_ep=EgoyMDI1MTEzMC4wIKXMDSoASAFQAw%3D%3D'; // Keeping hardcoded map for now as coordinates are unknown
+  const mapsUrl = 'https://www.google.com/maps/@-27.4622582,-55.7443897,21z?entry=ttu&g_ep=EgoyMDI1MTEzMC4wIKXMDSoASAFQAw%3D%3D'; 
   
   const infoMessage = isLocal
     ? `Tu pedido está listo para ser retirado en nuestro local ubicado en ${address}.`

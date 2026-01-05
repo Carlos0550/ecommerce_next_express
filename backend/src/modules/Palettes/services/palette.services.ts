@@ -47,13 +47,14 @@ export class PaletteServices {
     }
   }
 
-  async create(payload: PalettePayload) {
+  async create(payload: PalettePayload, tenantId: string) {
     try {
       const created = await prisma.colorPalette.create({
         data: {
           name: payload.name,
           colors: payload.colors,
           is_active: payload.is_active ?? true,
+          tenant: { connect: { id: tenantId } }
         }
       });
       await this.refreshCache();
@@ -168,6 +169,37 @@ export class PaletteServices {
       await redis.set(key, JSON.stringify(palette));
       return palette;
     }
+    const fallback = {
+      id: "default-bw",
+      name: "mono",
+      colors: ["#ffffff","#f2f2f2","#e6e6e6","#cccccc","#b3b3b3","#999999","#7f7f7f","#666666","#4d4d4d","#1a1a1a"],
+      is_active: true,
+      use_for_admin: target === "admin",
+      use_for_shop: target === "shop",
+      created_at: new Date(),
+      updated_at: new Date()
+    } as any;
+    await redis.set(key, JSON.stringify(fallback));
+    return fallback;
+  }
+
+  async getActiveForByTenantId(target: "admin" | "shop", tenantId: string) {
+    const key = `${tenantId}:palette:${target}`;
+    const cached = await redis.get(key);
+    if (cached) return JSON.parse(cached);
+    
+    const palette = await prisma.colorPalette.findFirst({ 
+      where: { 
+        tenantId,
+        ...(target === "admin" ? { use_for_admin: true, is_active: true } : { use_for_shop: true, is_active: true })
+      } 
+    });
+    
+    if (palette) {
+      await redis.set(key, JSON.stringify(palette));
+      return palette;
+    }
+    
     const fallback = {
       id: "default-bw",
       name: "mono",

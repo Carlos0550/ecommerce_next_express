@@ -1,5 +1,6 @@
 "use client";
 import { useAppContext } from "@/providers/AppContext";
+import { useTenant } from "@/providers/TenantProvider";
 import { AppShell, Burger, Group, Stack, Flex, Text, Avatar, Button, useMantineColorScheme, ActionIcon, Box, Paper, Divider } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
@@ -26,13 +27,34 @@ export default function SiteLayout({ children }: Props) {
   } = useAppContext()
   const pathname = usePathname()
   const [business, setBusiness] = useState<BusinessData | null>(null)
+  const { tenantSlug } = useTenant() 
+  
+  
+  const isErrorPage = pathname === '/tienda-no-encontrada'
+  
   useEffect(() => {
+    
+    if (isErrorPage || !tenantSlug) {
+      return
+    }
+    
     const url = `${utils.baseUrl}/business/public`
-    fetch(url).then(async (r) => {
-      if (!r.ok) return null
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-tenant-slug': tenantSlug
+    }
+    
+    fetch(url, { headers }).then(async (r) => {
+      if (!r.ok) {
+        console.error('Error fetching business:', r.status, r.statusText)
+        return null
+      }
       return r.json()
-    }).then((d) => setBusiness(d as BusinessData | null)).catch(() => setBusiness(null))
-  }, [utils.baseUrl])
+    }).then((d) => setBusiness(d as BusinessData | null)).catch((err) => {
+      console.error('Error fetching business:', err)
+      setBusiness(null)
+    })
+  }, [tenantSlug, isErrorPage, utils.baseUrl])
   const menuItems = useMemo(() => ([
     { href: "/", label: "Inicio", icon: FiHome },
     { href: "/account", label: "Mi cuenta", icon: FiUser },
@@ -94,7 +116,7 @@ export default function SiteLayout({ children }: Props) {
             <Paper p="md" radius="md" withBorder>
               <Group align="center" justify="space-between">
                 <Group align="center">
-                  <Avatar src={business?.favicon || "/logo.png"} radius="xl" />
+                  <Avatar src={business?.favicon || business?.business_image || ""} radius="xl" />
                   <Stack gap={2}>
                     <Text fw={600}>{business?.name || "Tu Tienda"}</Text>
                   </Stack>
@@ -165,13 +187,13 @@ function ColorSchemeToggle() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const [mounted, setMounted] = useState(false);
 
-  // Evitar hidratación mismatch: solo renderizar después del mount
+  
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
-  // Durante SSR, renderizar un estado neutral
+  
   if (!mounted) {
     return (
       <ActionIcon

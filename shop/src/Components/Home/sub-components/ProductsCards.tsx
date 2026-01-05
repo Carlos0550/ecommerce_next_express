@@ -40,7 +40,7 @@ function ProductsCards({ product, priority = false }: Props) {
                     <Image
                         src={product.images[0]}
                         fill
-                        //sizes="(max-width: 768px) 50vw, 350px"
+                        
                         style={{ objectFit: 'cover' }}
                         onLoad={() => setImageLoading(false)}
                         priority={priority}

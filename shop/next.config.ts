@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  
   compress: true,
   poweredByHeader: false,
   reactCompiler: true,
@@ -11,13 +11,13 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      // Cualquier servicio en Railway (MinIO, etc.)
+      
       {
         protocol: 'https',
         hostname: '**.up.railway.app',
         pathname: '/**',
       },
-      // Supabase Storage (legacy - para imágenes que aún no se migraron)
+      
       {
         protocol: 'https',
         hostname: '**.supabase.co',

@@ -17,7 +17,22 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   
-  const res = await fetch(`${baseUrl}/products/public/${id}`, { next: { revalidate: 60 } })
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  
+  const business = tenantSlug ? await getBusinessInfo(tenantSlug) : null;
+  const businessFavicon = business?.favicon || business?.business_image || "";
+  
+  const fetchHeaders: Record<string, string> = {}
+  if (tenantSlug) fetchHeaders['x-tenant-slug'] = tenantSlug
+  
+  const res = await fetch(`${baseUrl}/products/public/${id}`, { 
+    next: { revalidate: 60 },
+    headers: fetchHeaders
+  })
   if (!res.ok) {
     return notFound()
   }
@@ -53,7 +68,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   try {
     const categoryId = product?.category?.id
     if (categoryId) {
-      const sRes = await fetch(`${baseUrl}/products/public?categoryId=${encodeURIComponent(categoryId)}&limit=10`, { next: { revalidate: 120 } })
+      const sRes = await fetch(`${baseUrl}/products/public?categoryId=${encodeURIComponent(categoryId)}&limit=10`, { 
+        next: { revalidate: 120 },
+        headers: fetchHeaders
+      })
       const sJson = await sRes.json().catch(() => null)
       const list: Products[] = Array.isArray(sJson?.data?.products) ? (sJson.data.products as Products[]) : []
       similar = list.filter((p: Products) => p.id !== product.id)
@@ -72,7 +90,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             "@type": "Product",
             name: product.title,
             description: product.description,
-            image: Array.isArray(product.images) && product.images.length > 0 ? product.images : [`${siteUrl}/logo.png`],
+            image: Array.isArray(product.images) && product.images.length > 0 ? product.images : (businessFavicon ? [businessFavicon] : []),
             category: product.category?.title || undefined,
             offers: typeof product.price === "number" ? {
               "@type": "Offer",
@@ -153,13 +171,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  const fetchHeaders: Record<string, string> = {}
+  if (tenantSlug) fetchHeaders['x-tenant-slug'] = tenantSlug
+  
   try {
     const [res, business] = await Promise.all([
-      fetch(`${baseUrl}/products/public/${id}`, { next: { revalidate: 300 } }),
-      getBusinessInfo()
+      fetch(`${baseUrl}/products/public/${id}`, { 
+        next: { revalidate: 300 },
+        headers: fetchHeaders
+      }),
+      getBusinessInfo(tenantSlug || undefined)
     ]);
 
     const businessName = business?.name || "Tienda Online";
+    const businessFavicon = business?.favicon || business?.business_image || "";
 
     if (!res.ok) {
       return { title: "Producto", description: "Detalle de producto" }
@@ -190,13 +220,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         description,
         url: canonical,
         type: "website",
-        images: [{ url: (Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/logo.png` }]
+        images: (Array.isArray(product.images) && product.images[0]) ? [{ url: product.images[0] }] : (businessFavicon ? [{ url: businessFavicon }] : [])
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: [(Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/logo.png`]
+        images: (Array.isArray(product.images) && product.images[0]) ? [product.images[0]] : (businessFavicon ? [businessFavicon] : [])
       },
       robots: { index: true, follow: true }
     }

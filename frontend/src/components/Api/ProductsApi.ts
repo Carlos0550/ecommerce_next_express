@@ -55,7 +55,7 @@ type SaveProductPayload = {
   category?: string;
   description?: string;
   images: File[];
-  // Nuevos campos para edición
+  
   fillWithAI?: boolean;
   existingImageUrls?: string[];
   deletedImageUrls?: string[];
@@ -461,7 +461,7 @@ export const useUpdateProductStock = () => {
   });
 };
 
-// IA: mejora de título y descripción del producto (no actualiza, solo propone)
+
 export type EnhanceResponse = {
   ok: boolean;
   proposal?: { title: string; description: string; options?: { name: string; values: string[] }[] };

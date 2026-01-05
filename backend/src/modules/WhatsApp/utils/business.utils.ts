@@ -5,7 +5,7 @@
 
 import { prisma } from '@/config/prisma';
 
-// API Key de WasenderAPI desde variable de entorno
+
 const WASENDER_API_KEY = process.env.WASENDER_API_KEY || '';
 
 /**
@@ -25,7 +25,7 @@ export function hasWasenderApiKey(): boolean {
   return !!WASENDER_API_KEY;
 }
 
-// Tipo para los datos del negocio
+
 export interface BusinessData {
   id: string;
   name: string | null;
@@ -80,7 +80,7 @@ export async function getBusiness(): Promise<BusinessData | null> {
 export async function getBusinessWithAccessToken(): Promise<BusinessData> {
   const business = await getBusinessOrThrow();
   
-  // Verificar que el API key esté configurado en variables de entorno
+  
   if (!hasWasenderApiKey()) {
     throw new WhatsAppError('ACCESS_TOKEN_NOT_CONFIGURED', 'WASENDER_API_KEY no configurado en variables de entorno');
   }

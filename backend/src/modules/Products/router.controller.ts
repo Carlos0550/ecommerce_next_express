@@ -19,7 +19,7 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
                 })
             }
             
-            // Check if images are provided for AI processing
+            
             const productImages = req.files;
             if (!productImages || !Array.isArray(productImages) || productImages.length === 0) {
                 return res.status(400).json({
@@ -28,7 +28,7 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
                 })
             }
         } else {
-            // Normal validation for manual product creation
+            
             if (!title || !price || !category_id) {
                 return res.status(400).json({
                     ok: false,

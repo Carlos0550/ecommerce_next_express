@@ -3,13 +3,13 @@ export function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .normalize('NFD') // Separate accents from letters
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, ''); // Trim - from end of text
+    .normalize('NFD') 
+    .replace(/[\u0300-\u036f]/g, '') 
+    .replace(/\s+/g, '-') 
+    .replace(/[^\w\-]+/g, '') 
+    .replace(/\-\-+/g, '-') 
+    .replace(/^-+/, '') 
+    .replace(/-+$/, ''); 
 }
 
 export function createProductSlug(title: string, id: string): string {

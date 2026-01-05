@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/faq`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 }
   ]
 
-  // Obtener productos con paginación
+  
   let productRoutes: MetadataRoute.Sitemap = []
   try {
     let page = 1
@@ -21,7 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     while (hasMore) {
       const res = await fetch(`${apiUrl}/products/public?limit=${limit}&page=${page}`, { 
         next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(5000) // Timeout de 5 segundos
+        signal: AbortSignal.timeout(5000) 
       })
       
       if (!res.ok) break
@@ -40,16 +40,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }))
       )
       
-      // Verificar si hay más páginas
+      
       const pagination = json?.data?.pagination
       hasMore = pagination?.hasNextPage === true || (pagination?.page || 0) < (pagination?.totalPages || 1)
       page++
       
-      // Limitar a 1000 productos para evitar sitemaps muy grandes
+      
       if (productRoutes.length >= 1000) break
     }
   } catch {
-    // Si falla, intentar obtener al menos algunos productos
+    
     try {
       const res = await fetch(`${apiUrl}/products/public?limit=100`, { 
         next: { revalidate: 3600 },
@@ -68,7 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Obtener categorías
+  
   let categoryRoutes: MetadataRoute.Sitemap = []
   try {
     const res = await fetch(`${apiUrl}/products/public/categories`, { 

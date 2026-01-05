@@ -1,7 +1,7 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
-import { PromoCreateRequestSchema, DeletePromoRequestSchema } from '@/modules/Promos/services/promo.zod';
+
 import { SaveProductRequestSchema, SaveCategoryRequestSchema, GetProductsQuerySchema, UpdateProductRequestSchema } from '@/modules/Products/services/product.zod';
 import { LoginRequestSchema, RegisterRequestSchema, NewUserRequestSchema, GetUsersQuerySchema } from '@/modules/User/services/user.zod';
 import { SalesSchema } from '@/modules/Sales/services/schemas/sales.zod';
@@ -17,8 +17,8 @@ registry.registerComponent('securitySchemes', 'bearerAuth', {
   bearerFormat: 'JWT',
 });
 
-registry.register('PromoCreateRequest', PromoCreateRequestSchema);
-registry.register('DeletePromoRequest', DeletePromoRequestSchema);
+
+
 registry.register('SaveProductRequest', SaveProductRequestSchema);
 registry.register('SaveCategoryRequest', SaveCategoryRequestSchema);
 registry.register('GetProductsQuery', GetProductsQuerySchema);
@@ -53,7 +53,7 @@ registry.registerPath({
   },
 });
 
-// User endpoints
+
 registry.registerPath({
   method: 'post',
   path: '/login',
@@ -115,48 +115,9 @@ registry.registerPath({
   },
 });
 
-registry.registerPath({
-  method: 'post',
-  path: '/promos',
-  summary: 'Crear una promo',
-  security: [{ bearerAuth: [] }],
-  request: {
-    body: {
-      content: {
-        'application/json': { schema: PromoCreateRequestSchema },
-      },
-    },
-  },
-  responses: {
-    201: { description: 'Promo creada' },
-    400: { description: 'Validación inválida' },
-  },
-});
 
-registry.registerPath({
-  method: 'get',
-  path: '/promos',
-  summary: 'Obtener todas las promos',
-  security: [{ bearerAuth: [] }],
-  responses: {
-    200: { description: 'Promos obtenidas' },
-    404: { description: 'No se encontraron promos' },
-  },
-});
 
-registry.registerPath({
-  method: 'delete',
-  path: '/promos/{id}',
-  summary: 'Eliminar una promo',
-  security: [{ bearerAuth: [] }],
-  parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-  responses: {
-    200: { description: 'Promo eliminada' },
-    404: { description: 'Promo no encontrada' },
-  },
-});
 
-// Products
 registry.registerPath({
   method: 'post',
   path: '/products/save-product',
@@ -171,7 +132,7 @@ registry.registerPath({
   },
 });
 
-// Sales
+
 registry.registerPath({
   method: 'post',
   path: '/sales/save',
@@ -314,7 +275,7 @@ const spec = generator.generateDocument({
 });
 
 export default spec;
-// Profile
+
 registry.registerPath({
   method: 'get',
   path: '/profile/me',
@@ -341,7 +302,7 @@ registry.registerPath({
   responses: { 200: { description: 'Avatar actualizado' }, 400: { description: 'Validación inválida' }, 401: { description: 'No autenticado' } },
 });
 
-// Orders
+
 registry.registerPath({
   method: 'get',
   path: '/orders/me',
@@ -351,7 +312,7 @@ registry.registerPath({
   responses: { 200: { description: 'Órdenes listadas' }, 401: { description: 'No autenticado' } },
 });
 
-// FAQs
+
 registry.registerPath({
   method: 'get',
   path: '/faqs',

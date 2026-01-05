@@ -1,4 +1,3 @@
-
 import { useAppContext } from "@/providers/AppContext";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 
@@ -44,11 +43,14 @@ export default function useProducts(params: FetchProductsParams){
 
     const {
         utils: {
-            baseUrl
+            baseUrl,
+            getTenantHeaders,
+            tenantSlug
         }
     } = useAppContext()
     return useQuery<ProductsResponse>({
         queryKey: ['products', params],
+        enabled: !!tenantSlug, 
         queryFn: async (): Promise<ProductsResponse> => {
             const qp = new URLSearchParams({
                 page: params.page.toString(),
@@ -60,7 +62,13 @@ export default function useProducts(params: FetchProductsParams){
             if (params.categoryId) {
                 qp.append('categoryId', params.categoryId)
             }
-            const res = await fetch(`${baseUrl}/products/public?${qp}`)
+            const headers = getTenantHeaders()
+            if (!headers['x-tenant-slug']) {
+                throw new Error('No tenant slug available')
+            }
+            const res = await fetch(`${baseUrl}/products/public?${qp}`, {
+                headers
+            })
             const data = await res.json();
             return data as ProductsResponse;
         },
@@ -70,11 +78,12 @@ export default function useProducts(params: FetchProductsParams){
 
 export function useInfiniteProducts(params: Omit<FetchProductsParams, 'page'> & { initialData?: ProductsResponse }) {
   const {
-    utils: { baseUrl }
+    utils: { baseUrl, getTenantHeaders, tenantSlug }
   } = useAppContext();
 
   return useInfiniteQuery<ProductsResponse>({
     queryKey: ['products-infinite', params],
+    enabled: !!tenantSlug, 
     initialPageParam: 1,
     initialData: params.initialData ? {
       pages: [params.initialData],
@@ -87,7 +96,13 @@ export function useInfiniteProducts(params: Omit<FetchProductsParams, 'page'> & 
       });
       if (params.title && params.title.trim().length > 0) qp.append('title', params.title.trim());
       if (params.categoryId) qp.append('categoryId', params.categoryId);
-      const res = await fetch(`${baseUrl}/products/public?${qp}`);
+      const headers = getTenantHeaders()
+      if (!headers['x-tenant-slug']) {
+        throw new Error('No tenant slug available')
+      }
+      const res = await fetch(`${baseUrl}/products/public?${qp}`, {
+        headers
+      });
       const data = await res.json();
       return data as ProductsResponse;
     },

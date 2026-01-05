@@ -1,4 +1,4 @@
-/// <reference types="node" />
+
 import 'dotenv/config';
 import { PrismaClient, PaymentMethod, SaleSource } from '@prisma/client';
 
@@ -27,10 +27,10 @@ function randomDateBetween(start: Date, end: Date): Date {
 }
 
 function randomTotal(): number {
-  // Monto entre 2.000 y 100.000 ARS con distribución sesgada hacia valores medios
+  
   const min = 2000;
   const max = 100000;
-  const skew = 0.6; // 0..1 (más cerca de medios)
+  const skew = 0.6; 
   const r = Math.pow(Math.random(), skew);
   const value = min + r * (max - min);
   return Number(value.toFixed(2));
@@ -44,7 +44,7 @@ async function seedSales() {
     const startRange = new Date(now);
     startRange.setDate(startRange.getDate() - DAYS_BACK);
 
-    // Traigo usuarios para asociar aleatoriamente algunas ventas
+    
     const users = await prisma.user.findMany({ select: { id: true } });
     const userIds = users.map((u) => u.id);
 
@@ -67,7 +67,7 @@ async function seedSales() {
       const source = pickWeighted(sourceDist);
       const created_at = randomDateBetween(startRange, now);
       const total = randomTotal();
-      const applyTax = Math.random() < 0.7; // 70% con IVA típico
+      const applyTax = Math.random() < 0.7; 
       const tax = applyTax ? Number((total * 0.21).toFixed(2)) : 0;
       const userId = userIds.length > 0 && Math.random() < 0.7
         ? userIds[Math.floor(Math.random() * userIds.length)]
@@ -99,7 +99,7 @@ async function seedSales() {
     console.log('\n🎉 ¡Seed de ventas completado!');
     console.log(`📊 Ventas creadas: ${inserted}`);
 
-    // Resumen rápido de distribución
+    
     const pmStats = salesData.reduce((acc, s) => {
       acc[s.payment_method] = (acc[s.payment_method] || 0) + 1;
       return acc;

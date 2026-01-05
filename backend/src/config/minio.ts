@@ -1,7 +1,7 @@
 import { Client } from 'minio';
 import { Readable } from 'stream';
 
-// Configuración MinIO
+
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'localhost';
 const MINIO_PORT = parseInt(process.env.MINIO_PORT || '9000');
 const MINIO_USE_SSL = process.env.MINIO_USE_SSL === 'true';
@@ -9,7 +9,7 @@ const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || 'minioadmin';
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || 'minioadmin';
 const MINIO_BUCKET = process.env.MINIO_BUCKET || 'images';
 
-// Cliente MinIO
+
 export const minioClient = new Client({
   endPoint: MINIO_ENDPOINT,
   port: MINIO_PORT,
@@ -18,7 +18,7 @@ export const minioClient = new Client({
   secretKey: MINIO_SECRET_KEY,
 });
 
-// Verificar si MinIO está configurado
+
 const USE_MINIO = !!(MINIO_ENDPOINT && MINIO_ACCESS_KEY && MINIO_SECRET_KEY);
 
 if (USE_MINIO) {
@@ -27,23 +27,23 @@ if (USE_MINIO) {
   console.log('📁 MinIO no configurado correctamente');
 }
 
-// Construir URL base para acceso público
+
 const getBaseUrl = (): string => {
   const protocol = MINIO_USE_SSL ? 'https' : 'http';
-  // No incluir puerto si es el estándar (443 para HTTPS, 80 para HTTP)
+  
   const isStandardPort = (MINIO_USE_SSL && MINIO_PORT === 443) || (!MINIO_USE_SSL && MINIO_PORT === 80);
   return isStandardPort 
     ? `${protocol}://${MINIO_ENDPOINT}` 
     : `${protocol}://${MINIO_ENDPOINT}:${MINIO_PORT}`;
 };
 
-// Asegurar que el bucket existe
+
 async function ensureBucketExists(bucketName: string): Promise<void> {
   try {
     const exists = await minioClient.bucketExists(bucketName);
     if (!exists) {
       await minioClient.makeBucket(bucketName);
-      // Configurar política pública para lectura
+      
       const policy = {
         Version: '2012-10-17',
         Statement: [
@@ -63,7 +63,7 @@ async function ensureBucketExists(bucketName: string): Promise<void> {
   }
 }
 
-// Inicializar bucket por defecto
+
 ensureBucketExists(MINIO_BUCKET);
 
 /**

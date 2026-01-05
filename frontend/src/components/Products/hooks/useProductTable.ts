@@ -4,7 +4,7 @@ import { useGetAllProducts, useDeleteProduct, useUpdateProductStock, useEnhanceP
 export const useProductTable = () => {
   const [search, setSearch] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  // Estado base para parámetros que no dependen de search/page
+  
   const [baseParams, setBaseParams] = useState<Omit<GetProductsParams, 'page' | 'title'>>({
     limit: 10,
     state: 'active',
@@ -14,7 +14,7 @@ export const useProductTable = () => {
     categoryId: undefined,
   });
 
-  // Derivar searchParams desde estado base + search + currentPage
+  
   const searchParams = useMemo<GetProductsParams>(() => {
     const params: GetProductsParams = {
       ...baseParams,
@@ -26,14 +26,14 @@ export const useProductTable = () => {
     return params;
   }, [baseParams, currentPage, search]);
 
-  // React Query hooks
+  
   const { data, isLoading, isError } = useGetAllProducts(searchParams);
   const deleteProductMutation = useDeleteProduct();
   const updateStockMutation = useUpdateProductStock();
   const enhanceMutation = useEnhanceProductContent();
   const updateProductDetailsMutation = useUpdateProduct();
 
-  // Estados de UI
+  
   const [viewOpened, setViewOpened] = useState<boolean>(false);
   const [selected, setSelected] = useState<Product | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -46,15 +46,15 @@ export const useProductTable = () => {
   const [additionalContext, setAdditionalContext] = useState<string>("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Datos derivados
+  
   const products: Product[] = useMemo(() => data?.products ?? [], [data?.products]);
   const pagination = data?.pagination;
 
-  // Ajustar página en el setter (en lugar de useEffect)
+  
   const safeSetCurrentPage = useCallback((pageOrUpdater: number | ((prev: number) => number)) => {
     setCurrentPage(prev => {
       const newPage = typeof pageOrUpdater === 'function' ? pageOrUpdater(prev) : pageOrUpdater;
-      // Ajustar si excede el total (usando el valor más reciente de pagination)
+      
       if (pagination?.totalPages && newPage > pagination.totalPages) {
         return pagination.totalPages;
       }
@@ -62,7 +62,7 @@ export const useProductTable = () => {
     });
   }, [pagination]);
 
-  // Handlers
+  
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
     setCurrentPage(1);
@@ -208,7 +208,7 @@ export const useProductTable = () => {
   }, []);
 
   return {
-    // Estado
+    
     search,
     currentPage,
     searchParams,
@@ -217,7 +217,7 @@ export const useProductTable = () => {
     isLoading,
     isError,
     
-    // Estados de UI
+    
     viewOpened,
     selected,
     editing,
@@ -230,13 +230,13 @@ export const useProductTable = () => {
     additionalContext,
     deletingId,
     
-    // Mutations
+    
     deleteProductMutation,
     updateStockMutation,
     enhanceMutation,
     updateProductDetailsMutation,
     
-    // Setters
+    
     setSearch: handleSearchChange,
     setCurrentPage: safeSetCurrentPage,
     setStockValue,
@@ -244,7 +244,7 @@ export const useProductTable = () => {
     setEnhanceTitle,
     setEnhanceDescription,
     
-    // Handlers
+    
     handleViewProduct,
     handleEditProduct,
     handleCloseView,

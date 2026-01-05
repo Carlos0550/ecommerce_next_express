@@ -39,7 +39,7 @@ export default function useBankInfo() {
             const data = await res.json();
             return data as BusinessData;
         },
-        staleTime: 1000 * 60 * 60, // 1 hour cache
+        staleTime: 1000 * 60 * 60, 
         retry: 1
     });
 }

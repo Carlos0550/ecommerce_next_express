@@ -6,9 +6,9 @@
  * consistencia en la comunicación con los usuarios.
  */
 
-// ============================================================================
-// TIPOS
-// ============================================================================
+
+
+
 
 interface ProductPreviewData {
   title: string;
@@ -45,9 +45,9 @@ interface ProductListItem {
   state: string;
 }
 
-// ============================================================================
-// CONSTANTES
-// ============================================================================
+
+
+
 
 const STATE_LABELS: Record<string, string> = {
   active: '✅ Activo',
@@ -56,9 +56,9 @@ const STATE_LABELS: Record<string, string> = {
   deleted: '🗑️ Eliminado',
 };
 
-// ============================================================================
-// FORMATEADOR
-// ============================================================================
+
+
+
 
 class MessageFormatter {
   /**

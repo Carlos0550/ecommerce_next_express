@@ -32,7 +32,7 @@ class SessionService {
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
     const apiKey = getWasenderApiKey();
 
-    // Si ya hay una sesión, eliminarla primero
+    
     if (business.whatsapp_session_id) {
       try {
         const client = new WasenderClient(apiKey);
@@ -57,7 +57,7 @@ class SessionService {
       ignore_broadcasts: true,
     });
 
-    // Guardar datos de la sesión
+    
     await updateBusinessWhatsApp(business.id, {
       whatsapp_session_id: result.data.id,
       whatsapp_api_key: result.data.api_key,
@@ -66,7 +66,7 @@ class SessionService {
       whatsapp_phone_number: null,
     });
 
-    // Conectar la sesión para inicializarla y poder obtener el QR
+    
     try {
       await client.connectSession(result.data.id);
     } catch (error) {
@@ -119,7 +119,7 @@ class SessionService {
       const client = new WasenderClient(apiKey);
       const result = await client.getSessionStatusWithApiKey(business.whatsapp_api_key);
 
-      // Mapear estados de WasenderAPI a nuestros estados internos
+      
       let status: SessionStatusResponse['status'] = 'disconnected';
       
       switch (result.status) {
@@ -139,7 +139,7 @@ class SessionService {
           status = 'disconnected';
       }
 
-      // Actualizar estado en la base de datos
+      
       if (status === 'connected') {
         await updateBusinessWhatsApp(business.id, { whatsapp_connected: true });
       } else if (status === 'disconnected') {
@@ -172,7 +172,7 @@ class SessionService {
       console.warn('Error eliminando sesión en WasenderAPI:', error);
     }
 
-    // Limpiar datos de sesión
+    
     await updateBusinessWhatsApp(business.id, {
       whatsapp_session_id: null,
       whatsapp_api_key: null,

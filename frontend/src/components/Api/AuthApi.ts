@@ -38,7 +38,7 @@ export const useGetUsers = (page: number, limit: number, search?: string, type: 
   } = useAppContext()
   return useQuery({
     queryKey: ["getUsers", page, limit, search, type],
-    //staleTime: 1000 * 60 * 10,
+    
     queryFn: async () => {
       const queryString = new URLSearchParams({
         page: page.toString(),
@@ -91,11 +91,39 @@ export const useLogin = () => {
   })
 }
 
+export type RegisterTenantParams = {
+  name: string;
+  email: string;
+  password: string;
+  storeName: string;
+};
+
+export type RegisterTenantResult = {
+  ok: boolean;
+  data?: {
+    tenant: {
+      id: string;
+      slug: string;
+      name: string;
+      plan: string;
+    };
+    admin: {
+      id: number;
+      email: string;
+      name: string;
+    };
+    token: string;
+    slugWasModified: boolean;
+  };
+  message?: string;
+  error?: string;
+};
+
 export const useRegister = () => {
   return useMutation({
     mutationKey: ["register"],
-    mutationFn: async ({ name, email, password }: { name: string, email: string, password: string }) => {
-      const response = await fetchWithTimeout(`${baseUrl}/admin/register`, {
+    mutationFn: async ({ name, email, password, storeName }: RegisterTenantParams): Promise<RegisterTenantResult> => {
+      const response = await fetchWithTimeout(`${baseUrl}/tenant/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,15 +132,18 @@ export const useRegister = () => {
           name,
           email,
           password,
+          storeName,
         }),
-        timeout: 10000,
+        timeout: 15000,
       });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({} as any));
-        throw new Error(err?.error || 'Error al registrarse');
-      }
+      
       const data = await response.json();
-      return data;
+      
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || 'Error al registrarse');
+      }
+      
+      return data as RegisterTenantResult;
     },
   })
 }

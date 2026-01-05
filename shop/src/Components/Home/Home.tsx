@@ -105,7 +105,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
     return (
         <Box >
             <Flex direction="column" justify={"center"}>
-                {/* SEO Hero Section */}
+                {}
                 {!search && !selectedCategories[0] && (
                     <Box mt={30} mb={10}>
                         <Container size="xl">
@@ -119,7 +119,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     </Box>
                 )}
 
-                {/* Promociones destacadas */}
+                {}
                 {!search && !selectedCategories[0] && <PromosBanner />}
 
                 <Box my={30}>

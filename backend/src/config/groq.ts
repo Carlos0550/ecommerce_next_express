@@ -17,7 +17,7 @@ const groq = new OpenAI({
 });
 
 
-// Modelos de visión de Groq que soportan imágenes
+
 const VISION_MODEL = 'meta-llama/llama-4-maverick-17b-128e-instruct';
 const TEXT_MODEL = 'llama-3.3-70b-versatile';
 
@@ -27,15 +27,15 @@ const isDevelopment = process.env.NODE_ENV === 'development';
  * Detecta el tipo MIME real de una imagen basándose en los magic bytes
  */
 function detectImageMimeType(buffer: Buffer): string | null {
-  // Magic bytes para diferentes formatos de imagen
+  
   const signatures: { bytes: number[]; mime: string }[] = [
     { bytes: [0xFF, 0xD8, 0xFF], mime: 'image/jpeg' },
     { bytes: [0x89, 0x50, 0x4E, 0x47], mime: 'image/png' },
     { bytes: [0x47, 0x49, 0x46, 0x38], mime: 'image/gif' },
-    { bytes: [0x52, 0x49, 0x46, 0x46], mime: 'image/webp' }, // RIFF (WebP)
+    { bytes: [0x52, 0x49, 0x46, 0x46], mime: 'image/webp' }, 
   ];
 
-  // Log de los primeros bytes para debugging
+  
   const firstBytes = Array.from(buffer.slice(0, 10)).map(b => b.toString(16).padStart(2, '0')).join(' ');
   console.log('🔢 Primeros 10 bytes (hex):', firstBytes);
 
@@ -53,7 +53,7 @@ function detectImageMimeType(buffer: Buffer): string | null {
   }
 
   console.warn('⚠️ No se reconoció el formato de imagen');
-  return null; // No reconocido
+  return null; 
 }
 
 /**
@@ -81,14 +81,14 @@ async function downloadAndConvertToBase64(url: string): Promise<string | null> {
     
     console.log('📊 Tamaño descargado:', buffer.length, 'bytes');
     
-    // Detectar el tipo MIME real basándose en los magic bytes
+    
     const detectedMimeType = detectImageMimeType(buffer);
     const headerContentType = response.headers.get('content-type') || '';
     
     console.log('📋 Content-Type del header:', headerContentType);
     console.log('🔍 Tipo MIME detectado:', detectedMimeType);
     
-    // Si no se pudo detectar el tipo, la imagen probablemente está encriptada o corrupta
+    
     if (!detectedMimeType) {
       console.error('❌ No se pudo detectar el tipo de imagen. Puede estar encriptada.');
       console.log('📄 Primeros 100 bytes como string:', buffer.slice(0, 100).toString('utf8').replace(/[^\x20-\x7E]/g, '.'));
@@ -97,15 +97,15 @@ async function downloadAndConvertToBase64(url: string): Promise<string | null> {
     
     const base64 = buffer.toString('base64');
     
-    // Validar que tenemos datos suficientes
+    
     if (base64.length < 100) {
       console.error('❌ Base64 demasiado corto, imagen probablemente inválida');
       return null;
     }
     
-    // Verificar que el base64 corresponde al tipo detectado
+    
     const expectedPrefixes: Record<string, string[]> = {
-      'image/jpeg': ['/9j/', '/9k/', '/9l/'], // JPEG puede tener variaciones
+      'image/jpeg': ['/9j/', '/9k/', '/9l/'], 
       'image/png': ['iVBORw'],
       'image/gif': ['R0lGOD'],
       'image/webp': ['UklGR'],
@@ -119,7 +119,7 @@ async function downloadAndConvertToBase64(url: string): Promise<string | null> {
     
     if (!hasValidPrefix) {
       console.warn('⚠️ El base64 no tiene el prefijo esperado para', detectedMimeType);
-      // Intentar de todas formas, puede que funcione
+      
     }
     
     return `data:${detectedMimeType};base64,${base64}`;
@@ -202,7 +202,7 @@ export const analyzeProductImages = async (
   try {
     const imageMessagesRaw = await Promise.all(
       imageUrls.map(async (url) => {
-        // URLs de WhatsApp son temporales - descargar y convertir a base64
+        
         if (isWhatsAppUrl(url)) {
           const base64Image = await downloadAndConvertToBase64(url);
           if (base64Image) {
@@ -215,10 +215,10 @@ export const analyzeProductImages = async (
             };
           }
           console.warn('❌ No se pudo descargar imagen de WhatsApp:', url.substring(0, 50));
-          return null; // Marcar como fallida
+          return null; 
         }
         
-        // URLs de localhost en desarrollo
+        
         if (isDevelopment && isLocalhostUrl(url)) {
           const base64Image = await convertLocalUrlToBase64(url);
           if (base64Image) {
@@ -230,10 +230,10 @@ export const analyzeProductImages = async (
               }
             };
           }
-          return null; // Marcar como fallida
+          return null; 
         }
 
-        // URL pública - usarla directamente
+        
         return {
           type: "image_url" as const,
           image_url: {
@@ -244,7 +244,7 @@ export const analyzeProductImages = async (
       })
     );
     
-    // Filtrar imágenes que fallaron
+    
     const imageMessages = imageMessagesRaw.filter((msg): msg is NonNullable<typeof msg> => msg !== null);
     
     console.log(`🖼️ Imágenes válidas: ${imageMessages.length}/${imageUrls.length}`);
@@ -253,8 +253,8 @@ export const analyzeProductImages = async (
       throw new Error('No se pudieron procesar las imágenes. Por favor intenta con otras imágenes.');
     }
 
-    // Seleccionar estilo aleatorio para variar las descripciones
-    // Cada estilo tiene una frase de ejemplo que el modelo DEBE usar como inspiración
+    
+    
     const introStyles = [
       { name: 'PREGUNTA_RETÓRICA', example: '¿Lista para brillar? ¿Buscas el accesorio perfecto? ¿Quieres destacar?' },
       { name: 'AFIRMACIÓN_DIRECTA', example: 'Este accesorio es exactamente lo que tu look necesita' },
@@ -279,7 +279,7 @@ export const analyzeProductImages = async (
       { name: 'EXCLUSIVO', example: 'Sé parte de quienes ya lo disfrutan' },
     ];
     
-    // Formatos de estructura diferentes para las descripciones
+    
     const structureFormats = [
       {
         name: 'CLÁSICO',
@@ -310,7 +310,7 @@ export const analyzeProductImages = async (
     
     console.log(`🎨 Estilos: Apertura=${selectedIntro.name}, Tono=${selectedTone.name}, Cierre=${selectedClosing.name}, Estructura=${selectedStructure.name}`);
     
-    // Construir sección de categorías disponibles si se proporcionaron
+    
     const categoriesSection = availableCategories && availableCategories.length > 0
       ? `
 === CATEGORÍAS DISPONIBLES ===
@@ -467,8 +467,8 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
           ]
         }
       ],
-      // Temperatura más baja cuando hay correcciones (para ser más preciso)
-      // Más alta cuando no hay correcciones (para más variedad)
+      
+      
       temperature: additionalContext?.includes('CORRECCIONES DEL USUARIO') ? 0.3 : 0.75,
       max_tokens: 2000
     });
@@ -490,11 +490,11 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
       jsonContent = jsonMatch[0];
     }
 
-    // Sanea escapes Unicode inválidos o barras invertidas sueltas que rompen JSON.parse
+    
     const sanitizeInvalidEscapes = (str: string): string => {
-      // \u que no tenga 4 dígitos hex → escapar la barra para que quede literal
+      
       let fixed = str.replace(/\\u(?![0-9a-fA-F]{4})/g, '\\\\u');
-      // Barra invertida seguida de un caracter no escapable en JSON → duplicar barra
+      
       fixed = fixed.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
       return fixed;
     };

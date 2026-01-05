@@ -17,9 +17,12 @@ class PaletteController {
 
   async create(req: Request, res: Response) {
     try {
+      const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+      if (!tenantId) return res.status(400).json({ error: "tenant_required" });
+
       const { name, colors, is_active } = req.body as { name: string; colors: string[]; is_active?: boolean };
       if (!name || !Array.isArray(colors) || colors.length !== 10) return res.status(400).json({ error: "Nombre y 10 colores requeridos" });
-      const created = await paletteServices.create({ name, colors, is_active });
+      const created = await paletteServices.create({ name, colors, is_active }, tenantId);
       res.status(201).json(created);
     } catch (e) {
       return res.status(500).json({ error: "Error creando paleta" });
@@ -82,10 +85,13 @@ class PaletteController {
 
   async generate(req: Request, res: Response) {
     try {
+      const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+      if (!tenantId) return res.status(400).json({ error: "tenant_required" });
+
       const { prompt } = req.body as { prompt: string };
       if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'Prompt requerido' });
       const { name, colors } = await generatePaletteFromPrompt(prompt);
-      const created = await paletteServices.create({ name, colors, is_active: true });
+      const created = await paletteServices.create({ name, colors, is_active: true }, tenantId);
       res.status(201).json(created);
     } catch (e) {
       return res.status(500).json({ error: 'Error generando paleta' });
@@ -94,10 +100,13 @@ class PaletteController {
 
   async random(req: Request, res: Response) {
     try {
+      const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+      if (!tenantId) return res.status(400).json({ error: "tenant_required" });
+
       const { name } = req.body as { name?: string };
       const randHex = () => '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
       const base = Array.from({ length: 10 }, () => randHex());
-      const created = await paletteServices.create({ name: name ?? 'random', colors: base, is_active: true });
+      const created = await paletteServices.create({ name: name ?? 'random', colors: base, is_active: true }, tenantId);
       res.status(201).json(created);
     } catch {
       return res.status(500).json({ error: 'Error generando paleta aleatoria' });

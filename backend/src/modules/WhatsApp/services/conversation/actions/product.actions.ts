@@ -10,15 +10,15 @@ import { messageService } from '../../message.service';
 import { sessionManager } from '../session.manager';
 import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
 
-// ============================================================================
-// CONFIGURACIÓN
-// ============================================================================
+
+
+
 
 const STORE_URL = process.env.STORE_URL || process.env.FRONTEND_URL || '';
 
-// ============================================================================
-// ACCIONES
-// ============================================================================
+
+
+
 
 class ProductActions {
   /**
@@ -45,14 +45,14 @@ class ProductActions {
       session.productData.aiResult = aiResult;
       session.lastError = undefined;
       
-      // Log de categoría inferida
+      
       if (aiResult.suggestedCategory) {
         console.log(`📂 Categoría inferida por IA: ${aiResult.suggestedCategory.name} (confianza: ${aiResult.suggestedCategory.confidence})`);
       } else {
         console.log(`📂 La IA no pudo inferir una categoría`);
       }
       
-      // Agregar mensaje con el preview al historial
+      
       const previewMessage = this.formatProductPreview(session);
       session.messageHistory.push({
         role: 'assistant',
@@ -69,7 +69,7 @@ class ProductActions {
   /**
    * Crea el producto en la base de datos
    */
-  async createProduct(session: WhatsAppConversationSession): Promise<void> {
+  async createProduct(session: WhatsAppConversationSession, tenantId: string): Promise<void> {
     const { productData } = session;
     
     if (!productData.aiResult || !productData.categoryId) {
@@ -79,7 +79,7 @@ class ProductActions {
     try {
       const productState = productData.draft ? 'draft' : 'active';
       
-      // Subir imágenes externas al storage y usar URLs finales
+      
       const storedImages = await this.storeImagesToBucket(productData.images);
 
       const product = await prisma.products.create({
@@ -92,6 +92,7 @@ class ProductActions {
           options: productData.aiResult.options,
           categoryId: productData.categoryId,
           state: productState,
+          tenantId: tenantId
         },
       });
       
@@ -117,11 +118,11 @@ class ProductActions {
     
       await messageService.sendMessage(session.phone, successMessage);
 
-      // Enviar preview del producto publicado
+      
       const previewMessage = this.formatPersistedPreview(productLink, product);
       await messageService.sendMessage(session.phone, previewMessage);
 
-      // Registrar en historial que el producto fue creado/publicado (contexto para la IA)
+      
       session.messageHistory.push({
         role: 'system',
         content: `[SISTEMA: Producto creado y publicado]\nID: ${product.id}\nTítulo: ${product.title}${productLink ? `\nLink: ${productLink}` : ''}`,
@@ -129,8 +130,8 @@ class ProductActions {
       });
       session.lastError = undefined;
       
-      // En lugar de eliminar la sesión, mantenerla con el producto seleccionado
-      // para permitir ediciones inmediatas
+      
+      
       session.selectedProductId = product.id;
       session.searchResults = [{
         id: product.id,
@@ -140,7 +141,7 @@ class ProductActions {
         state: product.state,
       }];
       session.state = 'editing';
-      // Limpiar datos del producto nuevo para evitar arrastres en siguientes cargas
+      
       session.productData = { images: [] };
       await sessionManager.saveSession(session);
     } catch (error) {
@@ -272,7 +273,7 @@ class ProductActions {
         data: updateData,
       });
       
-      // Actualizar el producto en los resultados de búsqueda
+      
       const updatedProduct = await prisma.products.findUnique({
         where: { id: session.selectedProductId },
         select: { id: true, title: true, price: true, stock: true, state: true },
@@ -456,7 +457,7 @@ ${product.description}
           const response = await fetch(url);
           if (!response.ok) {
             console.error(`❌ No se pudo descargar la imagen (${response.status})`, url);
-            return url; // fallback
+            return url; 
           }
           const arrayBuffer = await response.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
@@ -472,7 +473,7 @@ ${product.description}
           return url;
         } catch (error) {
           console.error('❌ Error subiendo imagen externa:', error);
-          return url; // fallback a la URL original para no romper el flujo
+          return url; 
         }
       })
     );

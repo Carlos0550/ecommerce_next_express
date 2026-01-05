@@ -151,7 +151,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
     });
   };
 
-  // Valores derivados para los switches
+  
   const fillWithAI = formValues.fillWithAI ?? false;
   const publishAutomatically = formValues.publishAutomatically ?? false;
 
@@ -284,7 +284,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       )}
 
       <Stack>
-        {/* Input nativo oculto */}
+        {}
         <input
           type="file"
           accept="image/*"
@@ -339,7 +339,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           </Stack>
         </Dropzone>
         
-        {/* Botón alternativo para móviles */}
+        {}
         <Button
           variant="filled"
           size="lg"

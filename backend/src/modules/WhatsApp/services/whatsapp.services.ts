@@ -34,9 +34,9 @@ import {
  * @deprecated Usar los servicios específicos directamente
  */
 class WhatsAppServices {
-  // ============================================================================
-  // CONFIGURACIÓN
-  // ============================================================================
+  
+  
+  
 
   async getConfig(): Promise<WhatsAppConfigResponse> {
     return configService.getConfig();
@@ -46,9 +46,9 @@ class WhatsAppServices {
     return configService.updateConfig(config);
   }
 
-  // ============================================================================
-  // SESIONES
-  // ============================================================================
+  
+  
+  
 
   async createSession(
     name: string,
@@ -70,9 +70,9 @@ class WhatsAppServices {
     return sessionService.disconnectSession();
   }
 
-  // ============================================================================
-  // MENSAJES
-  // ============================================================================
+  
+  
+  
 
   async sendMessage(to: string, message: string): Promise<void> {
     return messageService.sendMessage(to, message);
@@ -85,17 +85,17 @@ class WhatsAppServices {
     return messageService.sendTestMessage(to, message);
   }
 
-  // ============================================================================
-  // WEBHOOKS
-  // ============================================================================
+  
+  
+  
 
   async handleWebhook(event: WebhookEvent, signature?: string): Promise<void> {
     return webhookHandler.handleWebhook(event, signature);
   }
 
-  // ============================================================================
-  // SESIONES DE CONVERSACIÓN
-  // ============================================================================
+  
+  
+  
 
   async getConversationSession(phone: string): Promise<WhatsAppConversationSession | null> {
     return sessionManager.getSession(phone);
@@ -122,7 +122,7 @@ class WhatsAppServices {
   }
 
   async markReminderSent(phone: string): Promise<void> {
-    return sessionManager.markReminderSent(phone, 40); // TIMEOUT_CLOSE_SESSION + 10
+    return sessionManager.markReminderSent(phone, 40); 
   }
 
   async wasReminderSent(phone: string): Promise<boolean> {
@@ -133,9 +133,9 @@ class WhatsAppServices {
     return sessionManager.getActiveSessionPhones();
   }
 
-  // ============================================================================
-  // TIMEOUT WORKER
-  // ============================================================================
+  
+  
+  
 
   startTimeoutWorker(): void {
     timeoutWorker.start();

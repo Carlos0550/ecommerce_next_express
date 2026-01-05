@@ -236,7 +236,7 @@ export function PromoForm({ onClose, promo }: PromoFormProps) {
 
                     <Divider />
 
-                    {/* Configuración del Descuento */}
+                    {}
                     <Box>
                         <Text size="lg" fw={500} mb="md" >Configuración del Descuento</Text>
                         <Grid gutter="md">
@@ -355,7 +355,7 @@ export function PromoForm({ onClose, promo }: PromoFormProps) {
 
                     <Divider />
 
-                    {/* Límites de Uso */}
+                    {}
                     <Box>
                         <Text size="lg" fw={500} mb="md" >Límites de Uso</Text>
                         <Grid gutter="md">

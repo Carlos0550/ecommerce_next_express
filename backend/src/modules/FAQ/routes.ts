@@ -6,13 +6,13 @@ import { ensureFaqCreate, ensureFaqUpdate, parseFaqListQuery } from './router.co
 const router = Router();
 const service = new FaqServices();
 
-// Público
+
 router.get('/', async (_req, res) => {
   const rs = await service.listPublic();
   res.json(rs);
 });
 
-// Admin
+
 router.get('/admin', requireAuth, requireRole([1]), parseFaqListQuery, async (req, res) => {
   const { page, limit } = (req as any).faqQuery as { page: number; limit: number };
   const rs = await service.listAdmin(page, limit);
@@ -21,7 +21,9 @@ router.get('/admin', requireAuth, requireRole([1]), parseFaqListQuery, async (re
 
 router.post('/', requireAuth, requireRole([1]), ensureFaqCreate, async (req, res) => {
   const data = (req as any).faqCreate;
-  const rs = await service.create(data);
+  const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+  if (!tenantId) return res.status(400).json({ error: 'tenant_required' });
+  const rs = await service.create(data, tenantId);
   res.status(201).json(rs);
 });
 

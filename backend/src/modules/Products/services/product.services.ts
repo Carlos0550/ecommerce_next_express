@@ -44,28 +44,41 @@ class ProductServices {
             return res.status(500).json({ ok: false, error: "Error al mejorar el contenido con IA" });
         }
     }
-    async refreshAllProductsCache() {
-        const products = await prisma.products.findMany({ include: { category: true } });
-        await redis.set("products:all", JSON.stringify(products));
+    async refreshAllProductsCache(tenantId?: string) {
+        const where = tenantId ? { tenantId } : {};
+        const products = await prisma.products.findMany({ where, include: { category: true } });
+        const cacheKey = tenantId ? `${tenantId}:products:all` : "products:all";
+        await redis.set(cacheKey, JSON.stringify(products));
         for (const p of products) {
-            await redis.set(`product:${p.id}`, JSON.stringify(p));
+            const productCacheKey = tenantId ? `${tenantId}:product:${p.id}` : `product:${p.id}`;
+            await redis.set(productCacheKey, JSON.stringify(p));
         }
     }
 
-    async refreshProductCache(productId: string) {
+    async refreshProductCache(productId: string, tenantId?: string) {
         const product = await prisma.products.findUnique({ where: { id: productId }, include: { category: true } });
         if (product) {
-            await redis.set(`product:${productId}`, JSON.stringify(product));
-            const cached = await redis.get("products:all");
+            const productTenantId = tenantId || product.tenantId;
+            const productCacheKey = productTenantId ? `${productTenantId}:product:${productId}` : `product:${productId}`;
+            await redis.set(productCacheKey, JSON.stringify(product));
+            
+            const allCacheKey = productTenantId ? `${productTenantId}:products:all` : "products:all";
+            const cached = await redis.get(allCacheKey);
             if (cached) {
                 const arr = JSON.parse(cached) as any[];
                 const idx = arr.findIndex((x) => x.id === productId);
                 if (idx >= 0) arr[idx] = product; else arr.unshift(product);
-                await redis.set("products:all", JSON.stringify(arr));
+                await redis.set(allCacheKey, JSON.stringify(arr));
             }
         }
     }
     async saveProduct(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         const {
             title,
             description,
@@ -144,6 +157,7 @@ class ProductServices {
                 price: finalPrice,
                 tags: finalTags,
                 category: { connect: { id: category_id } },
+                tenant: { connect: { id: tenantId } },
                 images: imageUrls,
                 state: productState,
                 stock: finalStock,
@@ -151,8 +165,8 @@ class ProductServices {
             }
         });
 
-        await this.refreshAllProductsCache()
-        await this.refreshProductCache(product.id);
+        await this.refreshAllProductsCache(tenantId)
+        await this.refreshProductCache(product.id, tenantId);
 
         return res.status(201).json({
             ok: true,
@@ -163,6 +177,12 @@ class ProductServices {
     }
 
     async saveCategory(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         const { title } = req.body
         const image = req.file
         const normalized_title = title.trim().toLowerCase()
@@ -170,7 +190,8 @@ class ProductServices {
         try {
             const category_exists = await prisma.categories.findFirst({
                 where: {
-                    title: normalized_title
+                    title: normalized_title,
+                    tenantId
                 }
             })
 
@@ -196,7 +217,8 @@ class ProductServices {
             await prisma.categories.create({
                 data: {
                     title: normalized_title,
-                    image: image_url
+                    image: image_url,
+                    tenantId
                 }
             })
 
@@ -215,8 +237,15 @@ class ProductServices {
     }
 
     async getAllCategories(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const categories = await prisma.categories.findMany({
+                where: { tenantId },
                 orderBy: {
                     created_at: "asc"
                 },
@@ -258,6 +287,12 @@ class ProductServices {
     }
 
     async getAllProducts(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const page = Number(req.query.page) || 1;
             const limit = Number(req.query.limit) || 10;
@@ -273,7 +308,7 @@ class ProductServices {
             const isActive = req.query.isActive === 'true' ? true :
                 req.query.isActive === 'false' ? false : undefined;
 
-            const where: any = {};
+            const where: any = { tenantId };
 
             if (title) {
                 where.title = {
@@ -351,11 +386,17 @@ class ProductServices {
         }
     };
     async deleteProduct(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const { product_id } = req.params;
 
             const product_info = await prisma.products.findFirst({
-                where: { id: product_id }
+                where: { id: product_id, tenantId }
             });
 
             if (!product_info) {
@@ -380,7 +421,7 @@ class ProductServices {
             }
         });
 
-            await this.refreshProductCache(product_id);
+            await this.refreshProductCache(product_id, tenantId);
 
             return res.status(200).json({
                 ok: true,
@@ -396,6 +437,12 @@ class ProductServices {
     }
 
     async updateProduct(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const {
                 title,
@@ -435,7 +482,7 @@ class ProductServices {
             let imageUrls: string[] = [];
 
             const existentProduct = await prisma.products.findFirst({
-                where: { id: product_id }
+                where: { id: product_id, tenantId }
             });
 
             if (!existentProduct) {
@@ -497,8 +544,8 @@ class ProductServices {
                 }
             });
 
-            await this.refreshAllProductsCache()
-            await this.refreshProductCache(product_id);
+            await this.refreshAllProductsCache(tenantId)
+            await this.refreshProductCache(product_id, tenantId);
 
             return res.status(200).json({
                 ok: true,
@@ -516,10 +563,16 @@ class ProductServices {
     }
 
     async productChangeStatus(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const { product_id, state } = req.params as unknown as UpdateProductStatusSchema;
 
-            const product = await prisma.products.findUnique({ where: { id: product_id } });
+            const product = await prisma.products.findFirst({ where: { id: product_id, tenantId } });
             if (!product) {
                 return res.status(404).json({
                     ok: false,
@@ -531,6 +584,8 @@ class ProductServices {
                 where: { id: product_id },
                 data: { state: state as ProductState }
             });
+
+            await this.refreshProductCache(product_id, tenantId);
 
             return res.status(200).json({
                 ok: true,
@@ -546,19 +601,25 @@ class ProductServices {
     }
 
     async updateStock(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const { product_id, quantity } = req.params as unknown as { product_id: string; quantity: string };
             const q = parseInt(quantity, 10);
             if (!Number.isFinite(q) || q < 0) {
                 return res.status(400).json({ ok: false, error: 'Cantidad de stock inválida' });
             }
-            const product = await prisma.products.findUnique({ where: { id: product_id } });
+            const product = await prisma.products.findFirst({ where: { id: product_id, tenantId } });
             if (!product) {
                 return res.status(404).json({ ok: false, error: 'Producto no encontrado' });
             }
             const nextState: ProductState = q > 0 ? ProductState.active : ProductState.out_stock;
             await prisma.products.update({ where: { id: product_id }, data: { stock: q, state: nextState } });
-            await this.refreshProductCache(product_id);
+            await this.refreshProductCache(product_id, tenantId);
             return res.status(200).json({ ok: true, message: 'Stock actualizado', stock: q, state: nextState });
         } catch (error) {
             console.error('Error al actualizar stock:', error);
@@ -567,6 +628,12 @@ class ProductServices {
     }
 
     async updateCategory(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const { category_id } = req.params;
             const { title } = req.body;
@@ -579,8 +646,8 @@ class ProductServices {
                 });
             }
 
-            const existingCategory = await prisma.categories.findUnique({
-                where: { id: category_id }
+            const existingCategory = await prisma.categories.findFirst({
+                where: { id: category_id, tenantId }
             });
 
             if (!existingCategory) {
@@ -595,7 +662,8 @@ class ProductServices {
             const existingCategoryWithTitle = await prisma.categories.findFirst({
                 where: { 
                     title: normalized_title,
-                    id: { not: category_id }
+                    id: { not: category_id },
+                    tenantId
                 }
             });
 
@@ -654,6 +722,12 @@ class ProductServices {
     }
 
     async categoryChangeStatus(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId || (req as any).user?.tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const {
                 category_id,
@@ -672,6 +746,18 @@ class ProductServices {
                 return res.status(400).json({
                     ok: false,
                     error: "Estado de categoría inválido. Debe ser activo(1), inactivo(2) o eliminado(3)"
+                });
+            }
+
+            
+            const category = await prisma.categories.findFirst({
+                where: { id: category_id, tenantId }
+            });
+            
+            if (!category) {
+                return res.status(404).json({
+                    ok: false,
+                    error: "Categoría no encontrada"
                 });
             }
 
@@ -702,10 +788,17 @@ class ProductServices {
     }
 
     async getPublicCategories(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const categories = await prisma.categories.findMany({
                 where: {
-                    status: CategoryStatus.active
+                    status: CategoryStatus.active,
+                    tenantId
                 }
             })
             console.log("Categorías públicas:", categories);
@@ -722,6 +815,12 @@ class ProductServices {
         }
     }
     async getPublicProducts(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const page = Number(req.query.page) || 1;
             const limit = Number(req.query.limit) || 12;
@@ -730,7 +829,8 @@ class ProductServices {
             const sortBy = (req.query.sortBy as string) || undefined;
             const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
 
-            const cached = await redis.get("products:all");
+            const cacheKey = `${tenantId}:products:all`;
+            const cached = await redis.get(cacheKey);
             let products: any[] = [];
             if (cached) {
                 products = (JSON.parse(cached) as any[]).filter((p) => p.is_active === true && p.state === "active");
@@ -752,7 +852,7 @@ class ProductServices {
             }
 
             const skip = (page - 1) * limit;
-            const where: any = { is_active: true, state: "active" };
+            const where: any = { is_active: true, state: "active", tenantId };
             if (title) where.title = { contains: title, mode: "insensitive" };
             if (categoryId) where.categoryId = categoryId;
             const [totalProducts, dbProducts] = await Promise.all([
@@ -771,13 +871,19 @@ class ProductServices {
     }
 
     async getPublicProductById(req: Request, res: Response) {
+        const tenantId = (req as any).tenantId;
+        
+        if (!tenantId) {
+            return res.status(400).json({ ok: false, error: 'tenant_required' });
+        }
+        
         try {
             const { id } = req.params as { id: string }
             if (!id) {
                 return res.status(400).json({ ok: false, error: "ID de producto requerido" })
             }
-            const product = await prisma.products.findUnique({
-                where: { id },
+            const product = await prisma.products.findFirst({
+                where: { id, tenantId },
                 include: { category: true }
             })
             if (!product || product.is_active !== true || product.state !== ProductState.active) {

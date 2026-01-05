@@ -55,8 +55,8 @@ class ConfigService {
       updateData.whatsapp_enabled = config.whatsapp_enabled;
     }
     
-    // whatsapp_access_token ya no se acepta desde el request
-    // Se debe configurar en la variable de entorno WASENDER_API_KEY
+    
+    
     
     if (config.whatsapp_allowed_remitents !== undefined) {
       updateData.whatsapp_allowed_remitents = config.whatsapp_allowed_remitents 

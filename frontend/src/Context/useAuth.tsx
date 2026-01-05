@@ -1,7 +1,7 @@
 import { baseUrl } from "@/components/Api"
 import { showNotification } from "@mantine/notifications"
 import { useQuery } from "@tanstack/react-query"
-import { useState, useMemo, useLayoutEffect } from "react"
+import { useState, useMemo, useLayoutEffect, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { fetchWithTimeout } from "@/Utils/fetchWithTimeout"
 
@@ -10,7 +10,8 @@ export type Session = {
     email: string,
     name: string,
     is_active: boolean,
-    role: number
+    role: number,
+    tenantId?: string
 }
 
 const getInitialToken = (): string | null => {
@@ -22,11 +23,24 @@ const getInitialToken = (): string | null => {
     return null
 }
 
+const getStoredTenantId = (): string | null => {
+    return localStorage.getItem('tenant_id')
+}
+
+const setStoredTenantId = (tenantId: string | null) => {
+    if (tenantId) {
+        localStorage.setItem('tenant_id', tenantId)
+    } else {
+        localStorage.removeItem('tenant_id')
+    }
+}
+
 export function useAuth() {
     const [token, setToken] = useState<string | null>(getInitialToken)
+    const [tenantId, setTenantIdState] = useState<string | null>(getStoredTenantId)
     const navigate = useNavigate()
 
-    // Redirigir si no hay token (solo navegación, sin setState)
+    
     useLayoutEffect(() => {
         if (!token) {
             navigate("/auth")
@@ -40,6 +54,11 @@ export function useAuth() {
         } else {
             localStorage.removeItem('auth_token')
         }
+    }
+
+    const updateTenantId = (newTenantId: string | null) => {
+        setTenantIdState(newTenantId)
+        setStoredTenantId(newTenantId)
     }
 
     const { data: validationData, isLoading, error, refetch } = useQuery({
@@ -72,10 +91,21 @@ export function useAuth() {
         throwOnError: false,
     })
 
-    // Derivar session desde validationData
-    const session = useMemo<Session | null>(() => validationData ?? null, [validationData])
+    
+    useEffect(() => {
+        if (validationData?.tenantId && validationData.tenantId !== tenantId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            updateTenantId(validationData.tenantId)
+        }
+    }, [validationData, tenantId])
 
-    // Manejar error de validación - solo side effects externos (sin setState)
+    
+    const session = useMemo<Session | null>(() => {
+        if (!validationData) return null
+        return validationData
+    }, [validationData])
+
+    
     useLayoutEffect(() => {
         if (error && token) {
             console.error('Token validation error')
@@ -91,6 +121,7 @@ export function useAuth() {
 
     const logout = (expired_session: boolean = false) => {
         updateToken(null)
+        updateTenantId(null)
         navigate("/auth")
         if (expired_session) {
             return showNotification({
@@ -109,9 +140,11 @@ export function useAuth() {
 
     return {
         session,
-        setSession: () => {}, // Deprecated: session is now derived from validationData
+        setSession: () => {}, 
         token,
         setToken: updateToken,
+        tenantId,
+        setTenantId: updateTenantId,
         loading: isLoading,
         refetchValidation: refetch,
         logout

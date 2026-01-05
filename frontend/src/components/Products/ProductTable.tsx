@@ -20,7 +20,7 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
   
   const {
-    // Estado
+    
     search,
     searchParams,
     products,
@@ -28,7 +28,7 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     isLoading,
     isError,
     
-    // Estados de UI
+    
     viewOpened,
     selected,
     editing,
@@ -40,13 +40,13 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     additionalContext,
     deletingId,
     
-    // Mutations
+    
     deleteProductMutation,
     updateStockMutation,
     enhanceMutation,
     updateProductDetailsMutation,
     
-    // Setters
+    
     setSearch,
     setCurrentPage,
     setStockValue,
@@ -54,7 +54,7 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     setEnhanceTitle,
     setEnhanceDescription,
     
-    // Handlers
+    
     handleViewProduct,
     handleEditProduct,
     handleCloseView,

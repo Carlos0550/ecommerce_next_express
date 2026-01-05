@@ -74,7 +74,7 @@ class SessionManager {
     const key = getLastUserMessageKey(phone);
     await redis.setex(key, CONVERSATION_TTL, Date.now().toString());
     
-    // Limpiar el flag de recordatorio cuando el usuario responde
+    
     const reminderKey = getReminderSentKey(phone);
     await redis.del(reminderKey);
   }
@@ -93,7 +93,7 @@ class SessionManager {
    */
   async markReminderSent(phone: string, ttl: number): Promise<void> {
     const key = getReminderSentKey(phone);
-    // Usamos un TTL largo (igual al de la conversación) para evitar que caduque antes de cerrar la sesión
+    
     await redis.setex(key, CONVERSATION_TTL, Date.now().toString());
   }
 

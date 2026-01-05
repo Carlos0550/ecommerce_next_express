@@ -3,16 +3,16 @@
  * Identifica saludos, tono argentino/formal y estilo de comunicación
  */
 
-// ============================================================================
-// TIPOS
-// ============================================================================
+
+
+
 
 export type UserTone = 'argentino' | 'formal' | 'neutral';
 export type GreetingTone = 'casual' | 'formal';
 
-// ============================================================================
-// CONSTANTES - PATRONES DE DETECCIÓN
-// ============================================================================
+
+
+
 
 const GREETING_PATTERNS = [
   'hola', 'holi', 'holis', 'hola!', 'hola?',
@@ -64,9 +64,9 @@ const FORMAL_REQUEST_PATTERNS = [
   'sin emojis', 'sin emoji', 'no uses emojis', 'no uses emoji'
 ];
 
-// ============================================================================
-// FUNCIONES DE DETECCIÓN
-// ============================================================================
+
+
+
 
 /**
  * Detecta si un mensaje es un saludo
@@ -74,7 +74,7 @@ const FORMAL_REQUEST_PATTERNS = [
 export function isGreeting(message: string): boolean {
   const normalized = message.toLowerCase().trim();
   
-  // Verificar coincidencia con patrones de saludo
+  
   const matchesGreeting = GREETING_PATTERNS.some(greeting => {
     const msgWords = normalized.split(/\s+/);
     const greetingWords = greeting.split(/\s+/);
@@ -83,7 +83,7 @@ export function isGreeting(message: string): boolean {
     );
   });
   
-  // También considerar mensajes cortos que contengan saludos
+  
   const isShortGreeting = normalized.length <= 10 && 
     GREETING_PATTERNS.some(g => normalized.includes(g));
   
@@ -113,18 +113,18 @@ export function detectGreetingTone(message: string): GreetingTone {
 export function detectUserTone(message: string): UserTone {
   const normalized = message.toLowerCase();
   
-  // Contar marcadores argentinos
+  
   const argentinoCount = ARGENTINO_MARKERS.filter(marker => 
     normalized.includes(marker) || 
     normalized.split(/\s+/).some(word => word.includes(marker))
   ).length;
   
-  // Contar marcadores formales
+  
   const formalCount = FORMAL_MARKERS.filter(marker => 
     normalized.includes(marker)
   ).length;
   
-  // Determinar tono basado en conteo
+  
   if (argentinoCount >= 2) {
     return 'argentino';
   }

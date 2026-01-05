@@ -9,31 +9,53 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
-  const business = await getBusinessInfo();
-  const businessName = business?.name || "Tienda Online";
-  const businessImage = business?.business_image || `${siteUrl}/logo.png`;
   
-  // Prepare Query Params for Products
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  
+  if (!tenantSlug) {
+    return <HomeComponent initialProducts={undefined} initialCategories={undefined} business={null} />
+  }
+  
+  const business = await getBusinessInfo(tenantSlug);
+  const businessName = business?.name || "Tienda Online";
+  const businessImage = business?.business_image || business?.favicon || "";
+  
+  
+  const apiHeaders: Record<string, string> = {
+    'x-tenant-slug': tenantSlug
+  };
+  
+  
   const qp = new URLSearchParams()
-  qp.append("limit", "30") // Default limit in Home.tsx
+  qp.append("limit", "30") 
   if (sp?.title && sp.title.trim()) qp.append("title", sp.title.trim())
   if (sp?.categoryId && sp.categoryId.trim()) qp.append("categoryId", sp.categoryId.trim())
   
-  // Fetch Products
+  
   let productsData: ProductsResponse | undefined = undefined
   let products: Products[] = []
   try {
-    const res = await fetch(`${baseUrl}/products/public?${qp.toString()}`, { next: { revalidate: 180 } })
+    const res = await fetch(`${baseUrl}/products/public?${qp.toString()}`, { 
+      next: { revalidate: 180 },
+      headers: apiHeaders
+    })
     if (res.ok) {
         productsData = await res.json()
         products = productsData?.data?.products || []
     }
   } catch {}
 
-  // Fetch Categories
+  
   let categoriesData: CategoriesResponse | undefined = undefined
   try {
-    const resCat = await fetch(`${baseUrl}/products/public/categories`, { next: { revalidate: 3600 } })
+    const resCat = await fetch(`${baseUrl}/products/public/categories`, { 
+      next: { revalidate: 3600 },
+      headers: apiHeaders
+    })
     if (resCat.ok) {
         categoriesData = await resCat.json()
     }
@@ -89,7 +111,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const catQ = sp?.categoryId?.trim()
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   
-  const business = await getBusinessInfo();
+  
+  const { headers } = await import('next/headers');
+  const headersList = await headers();
+  const tenantSlug = headersList.get('x-tenant-slug');
+  
+  const business = await getBusinessInfo(tenantSlug || undefined);
   const businessName = business?.name || "Tienda Online";
   const bizDescription = business?.description || ''
   const businessImage = business?.business_image || `${siteUrl}/opengraph-image`;
@@ -98,7 +125,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const city = business?.city;
   
   let baseTitle = businessName;
-  // Si tenemos tipo y ciudad, construimos un título SEO fuerte
+  
   if (type && city) {
     baseTitle = `${type} en ${city}`;
   } else if (type) {
@@ -109,15 +136,15 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (titleQ) parts.push(`Buscar: ${titleQ}`)
   if (catQ) parts.push(`Categoría: ${catQ}`)
   
-  // Si no hay búsqueda, usamos el título base como principal
-  // Si hay búsqueda, lo agregamos al final o dejamos que el layout lo maneje
+  
+  
   if (parts.length === 0) {
       parts.push(baseTitle);
   } else {
-      // Si hay busqueda, dejamos solo la busqueda y el layout agregará el nombre del negocio
-      // O podemos forzarlo:
-      // parts.push(businessName) 
-      // Dejamos que el template del layout haga su trabajo: "%s | BusinessName"
+      
+      
+      
+      
   }
   
   const fullTitle = parts.join(" · ")

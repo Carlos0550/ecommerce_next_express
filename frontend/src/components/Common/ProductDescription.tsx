@@ -13,7 +13,7 @@ interface ProductDescriptionProps {
 export default function ProductDescription({ description }: ProductDescriptionProps) {
   if (!description) return null;
 
-  // Dividir por líneas
+  
   const lines = description.split('\n').filter(line => line.trim() !== '');
   
   const elements: ReactNode[] = [];

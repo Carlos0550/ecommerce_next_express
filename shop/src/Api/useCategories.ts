@@ -14,17 +14,26 @@ export interface Categories {
 }
 
 export const useCategories = (initialData?: CategoriesResponse) => {
-    ///public/categories
+    
     const {
         utils: {
-            baseUrl
+            baseUrl,
+            getTenantHeaders,
+            tenantSlug
         }
     } = useAppContext()
     return useQuery<CategoriesResponse>({
         queryKey: ['categories'],
+        enabled: !!tenantSlug, 
         initialData,
         queryFn: async (): Promise<CategoriesResponse> => {
-            const res = await fetch(`${baseUrl}/products/public/categories`)
+            const headers = getTenantHeaders()
+            if (!headers['x-tenant-slug']) {
+                throw new Error('No tenant slug available')
+            }
+            const res = await fetch(`${baseUrl}/products/public/categories`, {
+                headers
+            })
             const data = await res.json();
             return data as CategoriesResponse;
         }

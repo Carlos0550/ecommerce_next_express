@@ -182,13 +182,13 @@ export function SalesForm({ onClose, sale }: Props) {
     };
     const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), []);
 
-    // Derivar payment_method desde el primer método de pago
+    
     const primaryPaymentMethod = useMemo(() => {
         const primary = formValue.payment_methods?.[0]?.method;
         return primary || formValue.payment_method;
     }, [formValue.payment_methods, formValue.payment_method]);
 
-    // Derivar tax (0 si es EFECTIVO o NINGUNO)
+    
     const effectiveTax = useMemo(() => {
         if (primaryPaymentMethod === "EFECTIVO" || primaryPaymentMethod === "NINGUNO") {
             return 0;
@@ -374,9 +374,7 @@ export function SalesForm({ onClose, sale }: Props) {
                                             )}
                                         </Group>
                                     ))}
-                                    {/* {paymentMismatch && (
-                                        <Text c="red">Advertencia: la suma de los métodos de pago ({currency.format(paymentSum)}) no coincide con el total ({currency.format(finalTotal)}).</Text>
-                                    )} */}
+                                    {}
                                     {remainingAmount > 0 && ((formValue.payment_methods?.length || 0) > 1) && (
                                         <Text c="orange">Faltan {currency.format(remainingAmount)} {effectiveTax > 0 ? "(calculado sobre subtotal sin impuesto)" : ""}</Text>
                                     )}

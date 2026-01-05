@@ -12,14 +12,57 @@ export type BusinessData = {
   favicon?: string;
 };
 
-export const getBusinessInfo = async (): Promise<BusinessData | null> => {
+function getTenantSlugFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'tenant_slug') {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
+
+export const getBusinessInfo = async (tenantSlug?: string): Promise<BusinessData | null> => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+  
+  
+  
+  let slug = tenantSlug;
+  if (!slug && typeof document !== 'undefined') {
+    slug = getTenantSlugFromCookie()!;
+  }
+  
+  
+  console.log('[getBusinessInfo] tenantSlug param:', tenantSlug, '| final slug:', slug);
+  
+  
+  if (!slug) {
+    console.warn('[getBusinessInfo] No tenant slug available, skipping API call');
+    return null;
+  }
+  
   try {
-    const res = await fetch(`${baseUrl}/business/public`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    const headers: Record<string, string> = {
+      'x-tenant-slug': slug
+    };
+    
+    console.log('[getBusinessInfo] Making request with headers:', headers);
+    
+    const res = await fetch(`${baseUrl}/business/public`, { 
+      next: { revalidate: 60 },
+      headers
+    });
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error(`[getBusinessInfo] Error: ${res.status} ${res.statusText}`, errorBody);
+      return null;
+    }
     return await res.json();
   } catch (error) {
-    console.error("Error fetching business info:", error);
+    console.error("[getBusinessInfo] Error:", error);
     return null;
   }
 };

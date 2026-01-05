@@ -13,27 +13,27 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Client as MinioClient } from 'minio';
 import { Pool } from 'pg';
 
-// ============================================================================
-// CONFIGURACIÓN - MODIFICAR ESTAS VARIABLES
-// ============================================================================
 
-// Supabase Storage (origen)
-// IMPORTANTE: Usar la service_role key (no la anon key) para acceso completo
-const SUPABASE_URL = '';  // Corregido al proyecto correcto
-const SUPABASE_KEY = 'TU_SERVICE_ROLE_KEY_AQUI';  // Reemplazar con tu service_role key
-const SUPABASE_BUCKET = 'images'; // Bucket principal en Supabase
 
-// MinIO (destino)
+
+
+
+
+const SUPABASE_URL = '';  
+const SUPABASE_KEY = 'TU_SERVICE_ROLE_KEY_AQUI';  
+const SUPABASE_BUCKET = 'images'; 
+
+
 const MINIO_CONFIG = {
-  endPoint: '',  // Sin https:// ni puerto
+  endPoint: '',  
   port: 443,
-  useSSL: true,  // true para HTTPS
+  useSSL: true,  
   accessKey: '',
   secretKey: '',
 };
-const MINIO_BUCKET = 'images'; // Bucket principal en MinIO
+const MINIO_BUCKET = 'images'; 
 
-// Base de datos destino (donde actualizar las URLs)
+
 const DEST_DB = {
   host: '',
   port: 10187,
@@ -43,20 +43,20 @@ const DEST_DB = {
   ssl: { rejectUnauthorized: false }
 };
 
-// ============================================================================
-// ESTRUCTURA DE ARCHIVOS A MIGRAR
-// ============================================================================
+
+
+
 
 interface ImageField {
   table: string;
   idColumn: string;
   imageColumn: string;
-  isJsonArray?: boolean;  // true si el campo es JSON array de URLs
-  folder: string;         // carpeta en storage
+  isJsonArray?: boolean;  
+  folder: string;         
 }
 
 const IMAGE_FIELDS: ImageField[] = [
-  // Products - campo images es un JSON array
+  
   {
     table: 'Products',
     idColumn: 'id',
@@ -64,7 +64,7 @@ const IMAGE_FIELDS: ImageField[] = [
     isJsonArray: true,
     folder: 'products'
   },
-  // Categories - campo image es string
+  
   {
     table: 'Categories',
     idColumn: 'id',
@@ -72,7 +72,7 @@ const IMAGE_FIELDS: ImageField[] = [
     isJsonArray: false,
     folder: 'categories'
   },
-  // User - campo profile_image es string
+  
   {
     table: 'User',
     idColumn: 'id',
@@ -80,7 +80,7 @@ const IMAGE_FIELDS: ImageField[] = [
     isJsonArray: false,
     folder: 'avatars'
   },
-  // Admin - campo profile_image es string
+  
   {
     table: 'Admin',
     idColumn: 'id',
@@ -88,7 +88,7 @@ const IMAGE_FIELDS: ImageField[] = [
     isJsonArray: false,
     folder: 'avatars'
   },
-  // BusinessData - campos business_image y favicon
+  
   {
     table: 'BusinessData',
     idColumn: 'id',
@@ -103,7 +103,7 @@ const IMAGE_FIELDS: ImageField[] = [
     isJsonArray: false,
     folder: 'business/images'
   },
-  // Promos - campo image
+  
   {
     table: 'Promos',
     idColumn: 'id',
@@ -113,9 +113,9 @@ const IMAGE_FIELDS: ImageField[] = [
   },
 ];
 
-// ============================================================================
-// FUNCIONES DE UTILIDAD
-// ============================================================================
+
+
+
 
 /**
  * Extrae el path del archivo de una URL de Supabase
@@ -125,13 +125,13 @@ function extractPathFromSupabaseUrl(url: string): string | null {
   
   try {
     const urlObj = new URL(url);
-    // Formato típico: /storage/v1/object/public/bucket/path/to/file.jpg
+    
     const match = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)/);
     if (match) {
-      return match[2]; // Retorna el path sin el bucket
+      return match[2]; 
     }
     
-    // Si no coincide, intentar extraer después del bucket
+    
     const parts = urlObj.pathname.split('/');
     const bucketIndex = parts.findIndex(p => p === SUPABASE_BUCKET);
     if (bucketIndex >= 0) {
@@ -140,7 +140,7 @@ function extractPathFromSupabaseUrl(url: string): string | null {
     
     return null;
   } catch {
-    // Si no es una URL válida, podría ser un path directo
+    
     return url.startsWith('/') ? url.slice(1) : url;
   }
 }
@@ -174,7 +174,7 @@ async function downloadFromSupabase(
       return null;
     }
     
-    // Convertir Blob a Buffer
+    
     const arrayBuffer = await data.arrayBuffer();
     return Buffer.from(arrayBuffer);
   } catch (error: any) {
@@ -194,11 +194,11 @@ async function uploadToMinio(
   contentType: string = 'application/octet-stream'
 ): Promise<boolean> {
   try {
-    // Asegurar que el bucket existe
+    
     const exists = await minio.bucketExists(bucket);
     if (!exists) {
       await minio.makeBucket(bucket);
-      // Configurar política pública
+      
       const policy = {
         Version: '2012-10-17',
         Statement: [
@@ -244,7 +244,7 @@ function getContentType(filePath: string): string {
   return types[ext || ''] || 'application/octet-stream';
 }
 
-// Número de archivos a procesar en paralelo
+
 const CONCURRENCY_LIMIT = 5;
 
 /**
@@ -275,13 +275,13 @@ async function migrateFile(
   sourcePath: string,
   destBucket: string = MINIO_BUCKET
 ): Promise<{ success: boolean; newUrl: string | null }> {
-  // Descargar de Supabase
+  
   const data = await downloadFromSupabase(supabase, supabaseBucket, sourcePath);
   if (!data) {
     return { success: false, newUrl: null };
   }
   
-  // Subir a MinIO
+  
   const contentType = getContentType(sourcePath);
   const uploaded = await uploadToMinio(minio, destBucket, sourcePath, data, contentType);
   
@@ -307,14 +307,14 @@ async function processTableImages(
   const stats = { migrated: 0, failed: 0, updated: 0 };
   
   try {
-    // Obtener registros con imágenes
+    
     const query = `SELECT "${field.idColumn}", "${field.imageColumn}" FROM "${field.table}" WHERE "${field.imageColumn}" IS NOT NULL`;
     const result = await pool.query(query);
     
     console.log(`  📊 Registros con imágenes: ${result.rows.length}`);
     
-    // Recopilar todas las URLs únicas a migrar
-    const urlsToMigrate: Map<string, string> = new Map(); // sourcePath -> originalUrl
+    
+    const urlsToMigrate: Map<string, string> = new Map(); 
     const recordsData: Array<{ id: any; urls: string[]; isArray: boolean }> = [];
     
     for (const row of result.rows) {
@@ -347,8 +347,8 @@ async function processTableImages(
     
     console.log(`  📊 URLs únicas a migrar: ${urlsToMigrate.size}`);
     
-    // Migrar archivos en paralelo
-    const migratedUrls: Map<string, string> = new Map(); // originalUrl -> newUrl
+    
+    const migratedUrls: Map<string, string> = new Map(); 
     const pathsArray = Array.from(urlsToMigrate.entries());
     
     for (let i = 0; i < pathsArray.length; i += CONCURRENCY_LIMIT) {
@@ -373,7 +373,7 @@ async function processTableImages(
       console.log(`  ⏳ Progreso: ${Math.min(i + CONCURRENCY_LIMIT, pathsArray.length)}/${pathsArray.length} archivos`);
     }
     
-    // Actualizar registros en la base de datos
+    
     console.log(`  💾 Actualizando registros en base de datos...`);
     
     for (const record of recordsData) {
@@ -405,9 +405,9 @@ async function processTableImages(
   return stats;
 }
 
-// ============================================================================
-// FUNCIÓN PRINCIPAL
-// ============================================================================
+
+
+
 
 async function main() {
   console.log('═'.repeat(60));
@@ -417,7 +417,7 @@ async function main() {
   console.log(`📍 Destino: ${MINIO_CONFIG.endPoint}:${MINIO_CONFIG.port} (bucket: ${MINIO_BUCKET})`);
   console.log(`📍 Base de datos: ${DEST_DB.host}:${DEST_DB.port}/${DEST_DB.database}`);
   
-  // Crear clientes
+  
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   
   const minio = new MinioClient(MINIO_CONFIG);
@@ -427,7 +427,7 @@ async function main() {
     ssl: DEST_DB.ssl ? { rejectUnauthorized: false } : false
   });
   
-  // Estadísticas globales
+  
   const globalStats = {
     totalMigrated: 0,
     totalFailed: 0,
@@ -435,18 +435,18 @@ async function main() {
   };
   
   try {
-    // Probar conexiones
+    
     console.log('\n🔌 Probando conexiones...');
     
-    // Probar MinIO
+    
     await minio.listBuckets();
     console.log('  ✓ Conexión a MinIO exitosa');
     
-    // Probar base de datos
+    
     await pool.query('SELECT 1');
     console.log('  ✓ Conexión a base de datos exitosa');
     
-    // Procesar cada campo de imagen
+    
     console.log('\n' + '─'.repeat(60));
     console.log('📋 MIGRANDO ARCHIVOS');
     console.log('─'.repeat(60));
@@ -458,7 +458,7 @@ async function main() {
       globalStats.totalUpdated += stats.updated;
     }
     
-    // Resumen
+    
     console.log('\n' + '═'.repeat(60));
     console.log('📊 RESUMEN DE MIGRACIÓN');
     console.log('═'.repeat(60));
@@ -476,6 +476,6 @@ async function main() {
   }
 }
 
-// Ejecutar
+
 main().catch(console.error);
 

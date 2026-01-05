@@ -10,7 +10,7 @@ const service = new OrdersServices()
 router.post("/create", attachAuthIfPresent, ensureCreatePayload, async (req: Request, res: Response) => {
   const user = (req as any).user
   const userId = user ? Number(user.sub || user.id) : undefined
-  const rs = await service.createOrder(userId, (req as any).items, (req as any).payment_method, (req as any).customer, (req as any).promo_code)
+  const rs = await service.createOrder(userId, (req as any).items, (req as any).payment_method, (req as any).customer)
   res.json(rs)
 })
 

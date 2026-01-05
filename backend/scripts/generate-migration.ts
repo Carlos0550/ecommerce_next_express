@@ -1,4 +1,4 @@
-/// <reference types="node" />
+
 
 import { execSync } from 'child_process';
 import * as fs from 'fs';
@@ -24,25 +24,25 @@ if (!migrationName) {
 const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0].replace('T', '');
 const migrationsDir = path.join(process.cwd(), 'prisma', 'migrations');
 
-// Asegurar que el directorio de migraciones existe
+
 if (!fs.existsSync(migrationsDir)) {
   fs.mkdirSync(migrationsDir, { recursive: true });
 }
 
 if (migrationType === 'drift') {
-  // Generar migración para resolver drift
+  
   console.log('🔧 Generando migración para resolver drift...\n');
   
   const migrationDir = path.join(migrationsDir, `${timestamp}_${migrationName}`);
   const migrationFile = path.join(migrationDir, 'migration.sql');
   
-  // Crear directorio de migración
+  
   if (!fs.existsSync(migrationDir)) {
     fs.mkdirSync(migrationDir, { recursive: true });
   }
   
   try {
-    // Generar el SQL de diferencia
+    
     console.log('📝 Comparando schema con la base de datos...');
     const sql = execSync(
       'npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script',
@@ -55,12 +55,12 @@ if (migrationType === 'drift') {
     
     if (!sql || sql.trim().length === 0) {
       console.log('✅ No hay diferencias entre el schema y la base de datos');
-      // Eliminar el directorio vacío
+      
       fs.rmdirSync(migrationDir);
       process.exit(0);
     }
     
-    // Guardar el SQL en el archivo
+    
     fs.writeFileSync(migrationFile, sql);
     console.log(`✅ Migración generada: ${migrationFile}`);
     console.log(`\n📋 SQL generado (${sql.split('\n').length} líneas):`);
@@ -79,11 +79,11 @@ if (migrationType === 'drift') {
   }
   
 } else {
-  // Generar migración normal (dev)
+  
   console.log(`🚀 Generando migración: ${migrationName}\n`);
   
   try {
-    // Generar migración sin aplicar
+    
     execSync(
       `npx prisma migrate dev --name ${migrationName} --create-only`,
       { 

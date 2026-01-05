@@ -2,9 +2,10 @@ import { Router } from "express";
 import { saveProduct, saveCategory, getAllProducts, updateProductController, changeCategoryStatus, changeProductStatus } from "./router.controller";
 import { uploadMultipleImages, handleImageUploadError, uploadSingleImage } from "../../middlewares/image.middleware";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
+import { resolveTenant, resolveTenantFromSlug } from "@/middlewares/tenant.middleware";
 import ProductServices from "./services/product.services";
  
-// Endpoint para mejora de título y descripción con IA
+
 
 const router = Router();
 const product_service = new ProductServices
@@ -60,7 +61,7 @@ router.patch(
     (req, res) => product_service.updateStock(req, res)
 )
 
-// AI: mejora de título y descripción del producto (no modifica hasta confirmar)
+
 router.post(
     "/ai/enhance/:product_id",
     requireAuth,
@@ -68,8 +69,8 @@ router.post(
     (req, res) => product_service.enhanceProductContent(req, res)
 )
 
-//Public endpoints
-router.get("/public", (req, res) => product_service.getPublicProducts(req, res))
-router.get("/public/categories", (req, res) => product_service.getPublicCategories(req, res))
-router.get("/public/:id", (req, res) => product_service.getPublicProductById(req, res))
+
+router.get("/public", resolveTenantFromSlug, (req, res) => product_service.getPublicProducts(req, res))
+router.get("/public/categories", resolveTenantFromSlug, (req, res) => product_service.getPublicCategories(req, res))
+router.get("/public/:id", resolveTenantFromSlug, (req, res) => product_service.getPublicProductById(req, res))
 export default router

@@ -12,5 +12,6 @@ export type BusinessDataRequest = {
     description?: string
     business_image?: string
     favicon?: string
+    whatsapp_phone_number?: string
     bankData: BusinessBankData[]
 }

@@ -22,12 +22,22 @@ export default function PromosBanner() {
 
   const { data, isLoading } = useQuery<{ ok: boolean; promos: Promo[] }>({
     queryKey: ['public-promos'],
+    enabled: !!utils.tenantSlug, 
     queryFn: async () => {
-      const res = await fetch(`${utils.baseUrl}/promos/public`)
+      const headers = utils.getTenantHeaders()
+      if (!headers['x-tenant-slug']) {
+        throw new Error('No tenant slug available')
+      }
+      const res = await fetch(`${utils.baseUrl}/promos/public`, { headers })
+      
+      if (res.status === 404) {
+        return { ok: true, promos: [] }
+      }
       if (!res.ok) throw new Error('Failed to fetch promos')
       return res.json()
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000, 
+    retry: false, 
   })
 
   const promos = data?.promos || []

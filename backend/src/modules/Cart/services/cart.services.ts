@@ -24,12 +24,19 @@ export default class CartServices {
   async getOrCreateUserCart(userId: number) {
     const cart = await prisma.cart.findUnique({ where: { userId }, include: { items: { include: { product: true } } } })
     if (cart) return cart
-    return prisma.cart.create({ data: { user: { connect: { id: userId } } }, include: { items: { include: { product: true } } } })
+    const tenant = await prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } })
+    return prisma.cart.create({ 
+      data: { 
+        user: { connect: { id: userId } },
+        tenant: { connect: { id: tenant?.tenantId } }
+      }, 
+      include: { items: { include: { product: true } } } 
+    })
   }
 
   async getCart(userId: number) {
     const cart = await this.getOrCreateUserCart(userId)
-    const total = cart.items.reduce((acc, it) => acc + Number(it.product.price) * Number(it.quantity), 0)
+    const total = (cart as any).items.reduce((acc:any, it:any) => acc + Number(it.product.price) * Number(it.quantity), 0)
     if (Number(cart.total) !== total) {
       await prisma.cart.update({ where: { id: cart.id }, data: { total } })
       return { ...cart, total }
@@ -42,10 +49,10 @@ export default class CartServices {
     const product = await prisma.products.findUnique({ where: { id: productId } })
     if (!product || !product.is_active || product.state !== "active") return { ok: false, status: 400, error: "product_not_available" }
 
-    // Find all items for this product in cart
+    
     const existingItems = await prisma.orderItems.findMany({ where: { cartId: cart.id, productId } })
     
-    // Find matching options
+    
     const match = existingItems.find(item => areOptionsEqual(item.selected_options, options))
 
     if (match) {
@@ -59,8 +66,9 @@ export default class CartServices {
         product: { connect: { id: productId } }, 
         quantity, 
         price_has_changed: false,
-        selected_options: options ?? [] 
-      } 
+        selected_options: options ?? [],
+        tenant: { connect: { id: cart.tenantId } }
+      }
     })
     const total = await this.recomputeTotal(cart.id)
     return { ok: true, item, total }
@@ -115,21 +123,22 @@ export default class CartServices {
       const priceChanged = typeof incoming.price === "number" && Number(incoming.price) !== Number(product.price)
       if (existing) {
         if (Number(incoming.quantity) <= 0) {
-          // Remove item if quantity is 0 or less
+          
           await prisma.orderItems.delete({ where: { id: existing.id } })
         } else {
-          // Update quantity if greater than 0
+          
           await prisma.orderItems.update({ where: { id: existing.id }, data: { quantity: Number(incoming.quantity) || 1, price_has_changed: priceChanged || existing.price_has_changed } })
         }
       } else if (Number(incoming.quantity) > 0) {
-        // Only create new item if quantity is greater than 0
+        
         await prisma.orderItems.create({ 
           data: { 
             cart: { connect: { id: cart.id } }, 
             product: { connect: { id: incoming.product_id } }, 
             quantity: Number(incoming.quantity) || 1, 
             price_has_changed: priceChanged,
-            selected_options: incoming.options ?? []
+            selected_options: incoming.options ?? [],
+            tenant: { connect: { id: cart.tenantId } }
           } 
         })
       }

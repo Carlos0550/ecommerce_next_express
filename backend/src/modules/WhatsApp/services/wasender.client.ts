@@ -58,7 +58,7 @@ export interface SessionStatus {
 export interface QRCodeResponse {
   success: boolean;
   data: {
-    qrCode: string; // String del QR para generar imagen
+    qrCode: string; 
   };
 }
 
@@ -150,7 +150,7 @@ class WasenderClient {
       );
     }
 
-    // Manejar respuestas vacías (como DELETE)
+    
     const text = await response.text();
     if (!text) {
       return { success: true } as T;
@@ -375,7 +375,7 @@ class WasenderClient {
     signature: string,
     webhookSecret: string
   ): boolean {
-    // WasenderAPI usa HMAC-SHA256 para firmar webhooks
+    
     const crypto = require('crypto');
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)

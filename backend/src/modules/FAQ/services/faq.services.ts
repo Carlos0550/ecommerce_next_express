@@ -22,8 +22,8 @@ export default class FaqServices {
     return { ok: true, items, page, total };
   }
 
-  async create(data: { question: string; answer: string; position?: number; is_active?: boolean }) {
-    const item = await prisma.fAQ.create({ data });
+  async create(data: { question: string; answer: string; position?: number; is_active?: boolean }, tenantId: string) {
+    const item = await prisma.fAQ.create({ data: { ...data, tenant: { connect: { id: tenantId } } } });
     return { ok: true, item };
   }
 

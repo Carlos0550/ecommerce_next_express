@@ -85,23 +85,23 @@ export default function WhatsAppConfig() {
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // QR and status polling
+  
   const { data: qrData, isLoading: isLoadingQR } = useGetQRCode(qrModalOpened && isConnecting);
   const { data: statusData } = useGetSessionStatus(qrModalOpened && isConnecting);
 
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
 
-  // Derive allowed remitents from config or local state
+  
   const allowedRemitents = localRemitents !== null 
     ? localRemitents 
     : config?.whatsapp_allowed_remitents
       ? config.whatsapp_allowed_remitents.split(",").map((r) => r.trim()).filter(Boolean)
       : [];
 
-  // Track previous connection status to detect changes
+  
   const prevStatusRef = useRef<string | undefined>(undefined);
 
-  // Generate QR code image when data changes
+  
   useEffect(() => {
     if (qrData?.qr_code) {
       QRCode.toDataURL(qrData.qr_code, { width: 256, margin: 2 })
@@ -110,13 +110,13 @@ export default function WhatsAppConfig() {
     }
   }, [qrData?.qr_code]);
 
-  // Close modal when connection status changes to connected
+  
   useEffect(() => {
     const currentStatus = statusData?.status;
     const wasConnecting = prevStatusRef.current !== "connected";
     
     if (currentStatus === "connected" && wasConnecting && isConnecting) {
-      // Schedule state updates for next tick to avoid cascading renders
+      
       queueMicrotask(() => {
         setIsConnecting(false);
         closeQrModal();
@@ -214,7 +214,7 @@ export default function WhatsAppConfig() {
 
           <Divider />
 
-          {/* Estado de conexión */}
+          {}
           <Group gap="md">
             <Text fw={500}>Estado:</Text>
             {config?.whatsapp_connected ? (
@@ -416,7 +416,7 @@ export default function WhatsAppConfig() {
         </Stack>
       </Modal>
 
-      {/* Modal Test Message */}
+      {}
       <Modal
         opened={testModalOpened}
         onClose={closeTestModal}

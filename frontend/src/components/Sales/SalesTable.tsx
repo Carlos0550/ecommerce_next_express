@@ -128,10 +128,10 @@ export default function SalesTable() {
   const [editSale, setEditSale] = useState<Sales | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Derivar totalToday desde data
+  
   const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
 
-  // Handlers que resetean página
+  
   const handlePresetChange = (value: string) => {
     setPreset(value)
     setCurrentPage(1)
@@ -307,7 +307,7 @@ export default function SalesTable() {
                     <Text>Total</Text>
                     <Text fw={700}>{currency.format(finalTotal)}</Text>
                   </Group>
-                  {/* Items detallados se muestran en el modal de \"Ver productos\" */}
+                  {}
                   <Group justify="space-between">
                     <Text>Cliente</Text>
                     <Text>{sale.user?.name || sale.orders?.[0]?.buyer_name || '—'} {sale.user?.email || sale.orders?.[0]?.buyer_email ? `(${sale.user?.email || sale.orders?.[0]?.buyer_email})` : ''}</Text>
