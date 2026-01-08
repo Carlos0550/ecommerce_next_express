@@ -1,39 +1,39 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: cinnamon-postgres
-    environment:
-      POSTGRES_USER: cinnamon
-      POSTGRES_PASSWORD: cinnamon_dev_password
-      POSTGRES_DB: cinnamon
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cinnamon"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - cinnamon-network
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: cinnamon-postgres
+  #   environment:
+  #     POSTGRES_USER: cinnamon
+  #     POSTGRES_PASSWORD: cinnamon_dev_password
+  #     POSTGRES_DB: cinnamon
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U cinnamon"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - cinnamon-network
 
-  redis:
-    image: redis:7-alpine
-    container_name: cinnamon-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - cinnamon-network
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: cinnamon-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   restart: unless-stopped
+  #   networks:
+  #     - cinnamon-network
 
   backend:
     build:
@@ -43,8 +43,8 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3000
-      DATABASE_URL: postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon
-      DIRECT_URL: postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon}
+      DIRECT_URL: ${DIRECT_URL:-postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
@@ -59,54 +59,49 @@ services:
       - "3000:3000"
     volumes:
       - ./backend/uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - cinnamon-network
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:3000/api
-    container_name: cinnamon-frontend
-    environment:
-      - VITE_API_URL=http://localhost:3000/api
-    ports:
-      - "5173:4173"
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - cinnamon-network
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #     args:
+  #       VITE_API_URL: http://localhost:3000/api
+  #   container_name: cinnamon-frontend
+  #   environment:
+  #     - VITE_API_URL=http://localhost:3000/api
+  #   ports:
+  #     - "5173:4173"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+  #   networks:
+  #     - cinnamon-network
 
-  shop:
-    build:
-      context: ./shop
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:3000/api
-        NEXT_PUBLIC_SITE_URL: http://localhost:3001
-    container_name: cinnamon-shop
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
-      - NEXT_PUBLIC_SITE_URL=http://localhost:3001
-    ports:
-      - "3001:3000"
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - cinnamon-network
+  # shop:
+  #   build:
+  #     context: ./shop
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NEXT_PUBLIC_API_URL: http://localhost:3000/api
+  #       NEXT_PUBLIC_SITE_URL: http://localhost:3001
+  #   container_name: cinnamon-shop
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:3000/api
+  #     - NEXT_PUBLIC_SITE_URL=http://localhost:3001
+  #   ports:
+  #     - "3001:3000"
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
+  #   networks:
+  #     - cinnamon-network
 
-volumes:
-  postgres_data:
-  redis_data:
+# volumes:
+#   postgres_data:
+#   redis_data:
 
 networks:
   cinnamon-network:
