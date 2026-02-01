@@ -140,7 +140,9 @@ export const useRegister = () => {
         timeout: 10000,
       });
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}) as any);
+        const err = await response
+          .json()
+          .catch(() => ({}) as Record<string, unknown>);
         throw new Error(err?.error || "Error al registrarse");
       }
       const data = await response.json();

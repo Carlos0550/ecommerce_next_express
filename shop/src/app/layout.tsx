@@ -1,6 +1,6 @@
 import "./globals.css";
 import AppProvider from "../providers/AppProvider";
-import SiteLayout from "../Components/Layout/SiteLayout";
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getBusinessInfo } from "@/Api/useBusiness";

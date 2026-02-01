@@ -18,11 +18,10 @@ import ProductsCards from "./sub-components/ProductsCards";
 import { Categories, CategoriesResponse, useCategories } from "@/Api/useCategories";
 import { BusinessData } from "@/Api/useBusiness";
 import CategoriesCards from "./sub-components/CategoriesCards";
-import PromosBanner from "./sub-components/PromosBanner";
 import Hero from "./sub-components/Hero";
 import EmptyState from "./sub-components/EmptyState";
 import { useAppContext } from "@/providers/AppContext";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CartWrapper from "../Cart/CartWrapper";
@@ -53,9 +52,10 @@ export default function Home({ initialProducts, initialCategories, business }: P
     if (urlTitle !== search) {
       setSearch(urlTitle);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlTitle]);
 
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
+  const { data, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
     limit: 30,
     title: debouncedSearch,
     categoryId: urlCategoryId,
@@ -67,7 +67,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
 
   const products: Products[] = useMemo(
     () => (Array.isArray(data?.pages) ? data.pages.flatMap((p) => p?.data?.products ?? []) : []),
-    [data?.pages]
+    [data]
   );
 
   const {
@@ -77,7 +77,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
   const h1Title = useMemo(() => {
     if (business?.name) return business.name;
     return "Tienda Online";
-  }, [business?.name]);
+  }, [business]);
 
   // Synchronization: Search Input -> URL
   // Only update URL if debouncedSearch or urlCategoryId changes
@@ -146,7 +146,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
             />
           )}
 
-          {!urlTitle && !urlCategoryId && <PromosBanner />}
+
 
           {categories.length > 0 && (
             <Box id="categorias" my={50}>

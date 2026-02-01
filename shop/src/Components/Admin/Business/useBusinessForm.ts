@@ -63,7 +63,7 @@ export function useBusinessForm() {
         address: data.address || "",
         city: data.city || "",
         state: data.state || "",
-        type: (data as any)?.type || "",
+        type: (data as BusinessData & { type?: string })?.type || "",
         description: data.description || "",
         business_image: data.business_image || "",
         favicon: data.favicon || "",
@@ -137,7 +137,7 @@ export function useBusinessForm() {
   }, []);
 
   const handleChange = useCallback(
-    (key: keyof BusinessData, value: any) => {
+    (key: keyof BusinessData, value: BusinessData[keyof BusinessData]) => {
       setForm((prev) => ({ ...prev, [key]: value }));
       if (errors[key as keyof FormErrors]) {
         setErrors((prev) => ({ ...prev, [key]: undefined }));

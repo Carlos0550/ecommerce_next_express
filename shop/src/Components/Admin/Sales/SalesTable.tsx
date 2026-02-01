@@ -1,6 +1,6 @@
 import { Box, Paper, Table, Text, Loader, Group, Button, Badge, Stack, ScrollArea, SegmentedControl, Checkbox, Textarea, ActionIcon, SimpleGrid, Skeleton, Divider } from "@mantine/core"
 import { DatePickerInput } from "@mantine/dates"
-import { AreaChart } from "@mantine/charts"
+import { LineChart } from "@mui/x-charts"
 import { useMediaQuery } from "@mantine/hooks"
 import { theme } from "@/theme"
 import type { Product } from "@/Api/admin/ProductsApi"
@@ -9,7 +9,7 @@ import type { PaymentMethods, SaleSource, ManualProductItem } from "./SalesForm"
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper"
 import React, { useMemo, useState } from "react"
 import { SalesForm } from "./SalesForm"
-import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiTrendingDown, FiActivity, FiGlobe, FiArrowLeft, FiArrowRight } from "react-icons/fi"
+import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiArrowLeft, FiArrowRight } from "react-icons/fi"
 import dayjs from "dayjs"
 
 export type SaleItemOption = { name: string; value?: string; values?: string[] }
@@ -276,7 +276,7 @@ export default function SalesTable() {
   }, [analytics])
 
   const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
-  const pendingCount = useMemo(() => sales.filter(s => s.source === 'WEB' && !s.processed && !s.declined).length, [sales])
+
 
   return (
     <Box>
@@ -326,15 +326,27 @@ export default function SalesTable() {
       {!isMobile && (preset === "ULTIMOS_7" || preset === "MES") && analytics?.timeseries?.by_day && analytics.timeseries.by_day.length >= 1 && (
         <Paper withBorder p="xl" radius="md" mb="xl">
             <Text fw={700} mb="lg">Tendencia de Ingresos</Text>
-            <AreaChart
-                h={200}
-                data={chartData}
-                dataKey="date"
-                series={[{ name: 'ventas', color: 'rose.6', label: 'Ingresos ($)' }]}
-                curveType="monotone"
-                withDots={chartData.length <= 7}
-                valueFormatter={(value) => currency.format(value)}
-            />
+            <Box h={220}>
+                <LineChart
+                    xAxis={[{
+                        data: chartData.map((_, i) => i),
+                        scaleType: "point",
+                        valueFormatter: (value: number) => chartData[value]?.date || "",
+                    }]}
+                    series={[{
+                        data: chartData.map(d => d.ventas),
+                        area: true,
+                        color: "#e64980",
+                        curve: "catmullRom",
+                        label: "Ingresos ($)",
+                        valueFormatter: (value) => currency.format(Number(value || 0)),
+                    }]}
+                    height={200}
+                    margin={{ left: 70, right: 20, top: 20, bottom: 30 }}
+                    grid={{ vertical: true, horizontal: true }}
+                    hideLegend
+                />
+            </Box>
         </Paper>
       )}
 
@@ -404,10 +416,7 @@ export default function SalesTable() {
         <Stack>
           {sales.map((sale) => {
             const finalTotal = Number(sale.total) || 0
-            const taxPct = Number(sale.tax) || 0
-            const subtotal = taxPct > 0 ? finalTotal / (1 + taxPct / 100) : finalTotal
-            const taxAmount = finalTotal - subtotal
-            const itemsCount = sale?.loadedManually ? (sale?.manualProducts?.length ?? 0) : (sale?.products?.length ?? 0)
+
             return (
               <Paper key={sale.id} withBorder p="md" radius="md" >
                 <Stack gap="xs">

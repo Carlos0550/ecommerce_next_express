@@ -25,7 +25,7 @@ export const useSaveSale = () => {
 
       return await result.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { success?: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ["get-sales"] });
       if (data?.success) {
         showNotification({
@@ -34,7 +34,7 @@ export const useSaveSale = () => {
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       showNotification({
         message: (error as Error)?.message || "Error al guardar la venta",
         color: "red",
@@ -108,7 +108,7 @@ export const useProcessSale = () => {
         color: "green",
       });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       showNotification({
         message: e?.message || "Error al procesar orden",
         color: "red",
@@ -263,7 +263,7 @@ export const useDeclineSale = () => {
         color: "green",
       });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       showNotification({
         message: e?.message || "Error al declinar la venta",
         color: "red",
@@ -303,7 +303,7 @@ export const useUpdateSale = () => {
       qc.invalidateQueries({ queryKey: ["get-sales"] });
       showNotification({ message: "Venta actualizada", color: "green" });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       showNotification({
         message: e?.message || "Error al actualizar venta",
         color: "red",
@@ -333,7 +333,7 @@ export const useDeleteSale = () => {
       qc.invalidateQueries({ queryKey: ["get-sales"] });
       showNotification({ message: "Venta eliminada", color: "green" });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       showNotification({
         message: e?.message || "Error al eliminar venta",
         color: "red",

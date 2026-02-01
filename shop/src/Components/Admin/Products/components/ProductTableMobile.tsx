@@ -35,7 +35,7 @@ export const ProductTableMobile = ({
     <Stack>
       {state === "draft" && (
         <Text mb="md" c="dimmed">
-          Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón " <FiEdit /> editar " en la fila del producto.
+          Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón &quot; <FiEdit /> editar &quot; en la fila del producto.
         </Text>
       )}
       {products.map((p) => (

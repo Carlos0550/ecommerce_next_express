@@ -1,4 +1,4 @@
-import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Switch, Textarea, SegmentedControl, Title, rem } from "@mantine/core";
+import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Textarea, SegmentedControl, Title, rem } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { showNotification } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -21,7 +21,7 @@ export type ManualProductItem = {
     quantity: number;
     title: string;
     price: number;
-    options?: any;
+    options?: Record<string, unknown>;
 }
 
 export type SaleRequest = {
@@ -34,7 +34,7 @@ export type SaleRequest = {
     total?: number
     tax: number
     payment_methods?: { method: PaymentMethods; amount: number }[]
-    items?: { product_id: string; quantity: number; options?: any }[]
+    items?: { product_id: string; quantity: number; options?: Record<string, unknown> }[]
     sale_date?: string
 }
 
@@ -44,20 +44,20 @@ type Props = {
 }
 
 const formatDateOnly = (d: unknown) => {
-    const m = dayjs(d as any);
+    const m = dayjs(d as string | number | Date);
     return m.isValid() ? m.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
 };
 
 const getInitialFormValue = (sale?: Sales): SaleRequest => {
     if (sale) {
-        const pm = Array.isArray((sale as any).paymentMethods) ? (sale as any).paymentMethods : [];
+        const pm = Array.isArray((sale as Sales & { paymentMethods?: { method: PaymentMethods; amount: number }[] }).paymentMethods) ? (sale as Sales & { paymentMethods?: { method: PaymentMethods; amount: number }[] }).paymentMethods : [];
         return {
             payment_method: sale.payment_method,
             source: sale.source,
             product_ids: (sale.products || []).map(p => p.id),
             tax: Number(sale.tax) || 0,
             loadedManually: !!sale.loadedManually,
-            manualProducts: (sale.manualProducts || []) as any,
+            manualProducts: (sale.manualProducts || []) as ManualProductItem[],
             payment_methods: pm,
             sale_date: formatDateOnly(dayjs(sale.created_at).toDate()),
         };
@@ -91,7 +91,7 @@ const getInitialManualText = (sale?: Sales): string => {
 
 const getInitialSelectedProducts = (sale?: Sales): Product[] => {
     if (sale && sale.products) {
-        return sale.products as any;
+        return sale.products as Product[];
     }
     return [];
 };
@@ -219,7 +219,7 @@ export function SalesForm({ onClose, sale }: Props) {
         if (updateSale.isSuccess) {
             onClose();
         }
-    }, [updateSale.isSuccess])
+    }, [updateSale.isSuccess, onClose])
 
     const productsSubtotal = useMemo(() => selectedProducts.reduce((acc, p) => acc + (typeof p.price === 'number' ? p.price : 0), 0), [selectedProducts]);
     const manualSubtotal = useMemo(() => (formValue.manualProducts || []).reduce((acc, item) => acc + Number(item.quantity) * Number(item.price), 0), [formValue.manualProducts]);
@@ -429,7 +429,7 @@ export function SalesForm({ onClose, sale }: Props) {
                                                     <FiList  />
                                                     <Text fw={600} size="sm">Carga Manual</Text>
                                                 </Group>
-                                                <Text size="xs" c="dimmed">Formato: "CANTIDAD PRODUCTO PRECIO" por línea</Text>
+                                                <Text size="xs" c="dimmed">Formato: &quot;CANTIDAD PRODUCTO PRECIO&quot; por línea</Text>
                                             </Stack>
                                             
                                             <Textarea

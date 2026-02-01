@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Box, Flex, Loader, Text, Pagination, Modal } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { theme } from '@/theme';
@@ -11,6 +10,7 @@ import { EnhanceProductModal } from './components/EnhanceProductModal';
 import { StockModal } from './components/StockModal';
 import ModalWrapper from '@/Components/Admin/Common/ModalWrapper';
 import ProductForm from './ProductForm';
+import { useMounted } from '@/utils/hooks/useMounted';
 
 
 interface ProductTableProps {
@@ -19,11 +19,7 @@ interface ProductTableProps {
 
 function ProductTable({ setAddOpened }: ProductTableProps) {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
   
   const {
     // Estado

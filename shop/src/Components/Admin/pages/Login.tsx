@@ -38,13 +38,13 @@ export default function Login() {
             <Tabs.Panel value="register" pt="md">
               <RegisterForm
                 loading={registerHook.isPending}
-                onSubmit={(values: any) => {
+                onSubmit={(values: { name: string; email: string; password: string; asAdmin: boolean }) => {
                   registerHook.mutate({ name: values.name, email: values.email, password: values.password, asAdmin: values.asAdmin }, {
                     onSuccess: () => {
                       showNotification({ title: "Cuenta creada", message: "Ahora puedes iniciar sesión", color: "green" });
                       setFormType("login");
                     },
-                    onError: (err: any) => {
+                    onError: (err: Error) => {
                       const msg = err instanceof Error ? err.message : 'Error al registrarse';
                       showNotification({ title: "Error de registro", message: msg, color: "red" });
                     }

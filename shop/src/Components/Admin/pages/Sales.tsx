@@ -1,5 +1,5 @@
 "use client";
-import { Box, Button, Text, Title, Flex, ActionIcon, Affix, Transition, rem } from "@mantine/core";
+import { Box, Button, Text, Title, Flex, ActionIcon, Affix, Transition } from "@mantine/core";
 import SalesTable from "@/Components/Admin/Sales/SalesTable";
 import { useState } from "react";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
@@ -10,7 +10,7 @@ import { FiPlus } from "react-icons/fi";
 export function Sales() {
     const [opened, setOpened] = useState<boolean>(false)
     const isMobile = useMediaQuery("(max-width: 768px)")
-    const [scroll] = useWindowScroll()
+    const [] = useWindowScroll()
     const handleToggle = () => {
         setOpened(!opened)
     }

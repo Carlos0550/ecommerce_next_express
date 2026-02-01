@@ -1,5 +1,5 @@
 "use client";
-import { Stack, Paper, Group, Avatar, Text, Button, Divider, Box, Flex } from "@mantine/core";
+import { Stack, Paper, Group, Avatar, Text, Button, Box, Flex } from "@mantine/core";
 import Link from "next/link";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import React from "react";

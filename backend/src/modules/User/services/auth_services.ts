@@ -418,7 +418,7 @@ class AuthServices {
     } else {
       text_message = `
           <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_main}};">
-                Fuiste invitado para administrar y gestionar todo nuestro catálogo de productos, ofertas, promociones, etc.
+                Fuiste invitado para administrar y gestionar todo nuestro catálogo de productos y ofertas.
                 Tu contraseña temporal es: ${secure_password}
               </p>
           `;

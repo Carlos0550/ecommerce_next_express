@@ -3,7 +3,7 @@ import { Products } from '@/Api/useProducts'
 import AddToCartButton from '@/Components/Cart/AddToCartButton';
 import { useAppContext } from '@/providers/AppContext'
 import { Badge, Button, Card, Flex, Group, Text, Loader, Stack, Box } from '@mantine/core'
-import { FiArrowRight, FiInfo } from 'react-icons/fi'
+import { FiInfo } from 'react-icons/fi'
 import { useState } from 'react'
 import Image from 'next/image';
 import Link from 'next/link';

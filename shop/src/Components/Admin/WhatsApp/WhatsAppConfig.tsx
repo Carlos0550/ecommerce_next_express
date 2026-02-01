@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import NextImage from "next/image";
+import { useMounted } from "@/utils/hooks/useMounted";
 import {
   Paper,
   Title,
@@ -164,10 +166,13 @@ function QRModal({ opened, onClose, qrCodeImage, isLoadingQR }: QRModalProps) {
           </>
         ) : qrCodeImage ? (
           <>
-            <img
+            <NextImage
               src={qrCodeImage}
               alt="WhatsApp QR Code"
-              style={{ maxWidth: 256, borderRadius: 8 }}
+              width={256}
+              height={256}
+              unoptimized
+              style={{ borderRadius: 8 }}
             />
             <Text ta="center" size="sm">
               Abre WhatsApp en tu teléfono y escanea este código para conectar.
@@ -244,7 +249,7 @@ function TestMessageModal({ opened, onClose, onSend, isSending }: TestMessageMod
 }
 
 export default function WhatsAppConfig() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const { data: config, isLoading } = useGetWhatsAppConfig();
   const updateConfig = useUpdateWhatsAppConfig();
   const createSession = useCreateWhatsAppSession();
@@ -276,9 +281,7 @@ export default function WhatsAppConfig() {
 
   const prevStatusRef = useRef<string | undefined>(undefined);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+
 
   useEffect(() => {
     if (qrData?.qr_code) {

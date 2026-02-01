@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import CategoriesForm from "@/Components/Admin/Categories/CategoriesForm";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { theme } from "@/theme";
@@ -6,6 +6,7 @@ import { Badge, Box, Button, Flex, Group, Image, Loader, Paper, ScrollArea, Sele
 import { useMediaQuery } from "@mantine/hooks";
 import { FiEdit, FiPlus, FiSearch } from "react-icons/fi";
 import { useChangeCategoryStatus, useGetAllCategories } from "@/Api/admin/CategoriesApi";
+import { useMounted } from "@/utils/hooks/useMounted";
 
 const NoImage = "/image_fallback.webp";
 
@@ -24,17 +25,13 @@ type Props = {
 }
 
 export function CategoriesTable({setAddOpened}: Props) {
-    const [mounted, setMounted] = useState(false);
+    const mounted = useMounted();
     const [query, setQuery] = useState<string>("");
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
     const [openEdit, setOpenEdit] = useState<boolean>(false);
 
     const { data, isLoading, isError } = useGetAllCategories();
     const useChangeStatus = useChangeCategoryStatus()
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const categories: Category[] = useMemo(() => {
         if (!data) return [];

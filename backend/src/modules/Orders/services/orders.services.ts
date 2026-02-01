@@ -1,118 +1,135 @@
-import { prisma } from "@/config/prisma"
-import { sendEmail } from "@/config/resend"
-import { purchase_email_html } from "@/templates/purchase_email"
-import salesServices from "@/modules/Sales/services/sales.services"
-import BusinessServices from "@/modules/Business/business.services"
-import PaletteServices from "@/modules/Palettes/services/palette.services"
-import { PaymentMethod } from "@prisma/client"
-import fs from 'fs'
-import { uploadToBucket } from '@/config/minio'
-import PromoServices from "@/modules/Promos/services/promo.services"
-type OrderItemInput = { product_id: string; quantity: number; options?: any }
-type CustomerInput = { name: string; email: string; phone?: string; street?: string; postal_code?: string; city?: string; province?: string; pickup?: boolean }
+import { prisma } from "@/config/prisma";
+import { sendEmail } from "@/config/resend";
+import { purchase_email_html } from "@/templates/purchase_email";
+import salesServices from "@/modules/Sales/services/sales.services";
+import BusinessServices from "@/modules/Business/business.services";
+import PaletteServices from "@/modules/Palettes/services/palette.services";
+import { PaymentMethod } from "@prisma/client";
+import fs from "fs";
+import { uploadToBucket } from "@/config/minio";
+type OrderItemInput = { product_id: string; quantity: number; options?: any };
+type CustomerInput = {
+  name: string;
+  email: string;
+  phone?: string;
+  street?: string;
+  postal_code?: string;
+  city?: string;
+  province?: string;
+  pickup?: boolean;
+};
 
 export default class OrdersServices {
-  async createOrder(userId: number | undefined, items: OrderItemInput[], paymentMethod: string, customer: CustomerInput, promo_code?: string) {
-    const productIds = items.map(i => String(i.product_id))
-    const products = await prisma.products.findMany({ where: { id: { in: productIds } } })
-    const productsMap = new Map(products.map(p => [p.id, p]))
+  async createOrder(
+    userId: number | undefined,
+    items: OrderItemInput[],
+    paymentMethod: string,
+    customer: CustomerInput,
+  ) {
+    const productIds = items.map((i) => String(i.product_id));
+    const products = await prisma.products.findMany({
+      where: { id: { in: productIds } },
+    });
+    const productsMap = new Map(products.map((p) => [p.id, p]));
 
-    const snapshot = items.map(item => {
-      const product = productsMap.get(item.product_id)
-      if (!product) return null
-      return {
-        id: product.id,
-        title: product.title,
-        price: Number(product.price),
-        quantity: Math.max(1, Number(item.quantity) || 1),
-        options: item.options || []
-      }
-    }).filter(i => i !== null) as { id: string, title: string, price: number, quantity: number, options: any }[]
+    const snapshot = items
+      .map((item) => {
+        const product = productsMap.get(item.product_id);
+        if (!product) return null;
+        return {
+          id: product.id,
+          title: product.title,
+          price: Number(product.price),
+          quantity: Math.max(1, Number(item.quantity) || 1),
+          options: item.options || [],
+        };
+      })
+      .filter((i) => i !== null) as {
+      id: string;
+      title: string;
+      price: number;
+      quantity: number;
+      options: any;
+    }[];
 
-    const subtotal = snapshot.reduce((acc, it) => acc + Number(it.price) * Number(it.quantity), 0)
-    
-    // Calcular descuento de promoción
-    const { discount, promo_id } = await PromoServices.calculateDiscount(
-      promo_code,
-      subtotal,
-      items,
-      userId
-    )
-    
-    const total = Math.max(0, subtotal - discount)
+    const subtotal = snapshot.reduce(
+      (acc, it) => acc + Number(it.price) * Number(it.quantity),
+      0,
+    );
+    const total = subtotal;
 
-    const paymentNormalized: PaymentMethod = (String(paymentMethod).toUpperCase() === 'EN_LOCAL') ? 'EFECTIVO' : (String(paymentMethod).toUpperCase() as PaymentMethod)
-    
+    const paymentNormalized: PaymentMethod =
+      String(paymentMethod).toUpperCase() === "EN_LOCAL"
+        ? "EFECTIVO"
+        : (String(paymentMethod).toUpperCase() as PaymentMethod);
+
     // Construir data base
     const orderData: any = {
       total,
       subtotal,
-      discount: discount > 0 ? discount : undefined,
-      promo_code: promo_code && promo_id ? promo_code : undefined,
       payment_method: paymentNormalized,
       items: snapshot as any,
       buyer_email: customer.email || undefined,
       buyer_phone: customer.phone || undefined,
       buyer_name: customer.name || undefined,
-    }
+    };
 
     // Agregar relación con usuario si existe
     if (userId && Number.isInteger(userId)) {
-      orderData.user = { connect: { id: userId } }
-    }
-
-    // Agregar relación con promoción si existe
-    if (promo_id) {
-      orderData.promo = { connect: { id: promo_id } }
+      orderData.user = { connect: { id: userId } };
     }
 
     const order = await prisma.orders.create({
-      data: orderData
-    })
-
-    // Incrementar usage_count de la promoción si se aplicó
-    if (promo_id && promo_code) {
-      try {
-        await prisma.promos.update({
-          where: { id: promo_id },
-          data: { usage_count: { increment: 1 } }
-        })
-      } catch (err) {
-        console.error('Error incrementando usage_count de promoción:', err)
-      }
-    }
+      data: orderData,
+    });
 
     if (userId && Number.isInteger(userId)) {
-      await prisma.user.update({ where: { id: userId }, data: {
-        phone: customer.phone || undefined,
-        shipping_street: customer.street || undefined,
-        shipping_postal_code: customer.postal_code || undefined,
-        shipping_city: customer.city || undefined,
-        shipping_province: customer.province || undefined,
-      } })
-      const cart = await prisma.cart.findUnique({ where: { userId }, select: { id: true } })
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          phone: customer.phone || undefined,
+          shipping_street: customer.street || undefined,
+          shipping_postal_code: customer.postal_code || undefined,
+          shipping_city: customer.city || undefined,
+          shipping_province: customer.province || undefined,
+        },
+      });
+      const cart = await prisma.cart.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
       if (cart?.id) {
-        await prisma.orderItems.deleteMany({ where: { cartId: cart.id } })
-        await prisma.cart.update({ where: { id: cart.id }, data: { total: 0 } })
+        await prisma.orderItems.deleteMany({ where: { cartId: cart.id } });
+        await prisma.cart.update({
+          where: { id: cart.id },
+          data: { total: 0 },
+        });
       }
     }
-    const parsed_payment_method = paymentNormalized
+    const parsed_payment_method = paymentNormalized;
     try {
-      const saleId = await salesServices.saveSale({
+      const saleId = (await salesServices.saveSale({
         payment_method: parsed_payment_method,
         source: "WEB",
         product_ids: productIds,
-        user_sale:{ user_id: userId?.toString() || undefined },
-        items: items.map(i => ({ product_id: i.product_id, quantity: i.quantity, options: (i as any).options }))
-      }) as any;
-      if (typeof saleId === 'string') {
-        await prisma.orders.update({ where: { id: order.id }, data: { saleId } });
+        user_sale: { user_id: userId?.toString() || undefined },
+        items: items.map((i) => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+          options: (i as any).options,
+        })),
+      })) as any;
+      if (typeof saleId === "string") {
+        await prisma.orders.update({
+          where: { id: order.id },
+          data: { saleId },
+        });
       }
     } catch (err) {
-      console.error('order_sale_link_failed', err)
+      console.error("order_sale_link_failed", err);
     }
     setImmediate(async () => {
-      await this.notify(order.id, snapshot, total, paymentMethod, customer)
+      await this.notify(order.id, snapshot, total, paymentMethod, customer);
       try {
         for (const it of snapshot) {
           await prisma.$executeRaw`UPDATE "Products" 
@@ -121,30 +138,48 @@ export default class OrdersServices {
             WHERE id = ${it.id}`;
         }
       } catch (err) {
-        console.error('order_stock_decrement_failed', err)
+        console.error("order_stock_decrement_failed", err);
       }
-    })
-    return { ok: true, order_id: order.id, total }
+    });
+    return { ok: true, order_id: order.id, total };
   }
 
   async getOrderById(orderId: string) {
-    return prisma.orders.findUnique({ where: { id: orderId }, select: { id: true, payment_method: true, userId: true, transfer_receipt_path: true } })
+    return prisma.orders.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        payment_method: true,
+        userId: true,
+        transfer_receipt_path: true,
+      },
+    });
   }
 
   async saveTransferReceipt(orderId: string, file: Express.Multer.File) {
     try {
       const order = await prisma.orders.findUnique({ where: { id: orderId } });
-      if (!order) return { ok: false, status: 404, error: 'order_not_found' };
-      if (String(order.payment_method).toUpperCase() !== 'TRANSFERENCIA') return { ok: false, status: 400, error: 'invalid_payment_method' };
+      if (!order) return { ok: false, status: 404, error: "order_not_found" };
+      if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA")
+        return { ok: false, status: 400, error: "invalid_payment_method" };
       const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
       const uniqueName = `receipt-${orderId}-${Date.now()}`;
-      const up = await uploadToBucket(buffer, uniqueName, 'comprobantes', '', file.mimetype);
-      if (!up.path) return { ok: false, status: 500, error: 'upload_failed' };
-      await prisma.orders.update({ where: { id: orderId }, data: { transfer_receipt_path: up.path } });
+      const up = await uploadToBucket(
+        buffer,
+        uniqueName,
+        "comprobantes",
+        "",
+        file.mimetype,
+      );
+      if (!up.path) return { ok: false, status: 500, error: "upload_failed" };
+      await prisma.orders.update({
+        where: { id: orderId },
+        data: { transfer_receipt_path: up.path },
+      });
       return { ok: true, path: up.path };
     } catch (err) {
-      console.error('saveTransferReceipt_error', err);
-      return { ok: false, status: 500, error: 'internal_error' };
+      console.error("saveTransferReceipt_error", err);
+      return { ok: false, status: 500, error: "internal_error" };
     }
   }
 
@@ -153,7 +188,7 @@ export default class OrdersServices {
     const [items, total] = await Promise.all([
       prisma.orders.findMany({
         where: { userId },
-        orderBy: { created_at: 'desc' },
+        orderBy: { created_at: "desc" },
         skip,
         take: Math.max(1, limit),
         select: {
@@ -167,10 +202,27 @@ export default class OrdersServices {
       prisma.orders.count({ where: { userId } }),
     ]);
     const totalPages = Math.ceil(total / Math.max(1, limit)) || 1;
-    return { ok: true, items, page, total, totalPages, hasNextPage: page < totalPages, hasPrevPage: page > 1 };
+    return {
+      ok: true,
+      items,
+      page,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    };
   }
-  private async notify(orderId: string, items: { title: string; price: number; quantity: number }[], total: number, paymentMethod: string, customer: CustomerInput) {
-    const productRows = items.map(it => ({ title: `${it.title} x${it.quantity}`, price: Number(it.price) * Number(it.quantity) }))
+  private async notify(
+    orderId: string,
+    items: { title: string; price: number; quantity: number }[],
+    total: number,
+    paymentMethod: string,
+    customer: CustomerInput,
+  ) {
+    const productRows = items.map((it) => ({
+      title: `${it.title} x${it.quantity}`,
+      price: Number(it.price) * Number(it.quantity),
+    }));
     if (customer.email && customer.email.trim()) {
       const business = await BusinessServices.getBusiness();
       const palette = await PaletteServices.getActiveFor("shop");
@@ -185,8 +237,12 @@ export default class OrdersServices {
         buyerEmail: customer.email,
         business: business as any,
         palette: palette as any,
-      })
-      await sendEmail({ to: customer.email, subject: `Confirmación de compra #${orderId}`, html: buyerHtml })
+      });
+      await sendEmail({
+        to: customer.email,
+        subject: `Confirmación de compra #${orderId}`,
+        html: buyerHtml,
+      });
     }
   }
 }

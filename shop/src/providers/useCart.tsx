@@ -17,9 +17,6 @@ export type CartItem = {
 export type Cart = {
   items: CartItem[];
   total: number;
-  promo_code?: string;
-  discount?: number;
-  promo_title?: string;
 };
 
 function areOptionsEqual(a?: SelectedOption[] | null, b?: SelectedOption[] | null) {
@@ -73,8 +70,6 @@ function useCart(baseUrl: string, token: string | null) {
   const [cart, setCart] = useState<Cart>({
     items: [],
     total: 0,
-    promo_code: "",
-    discount: 0,
   });
   const [isInitialized, setIsInitialized] = useState(false);
   const [formValues, setFormValues] = useState<CheckoutFormValues>(INITIAL_FORM_VALUES);
@@ -90,9 +85,6 @@ function useCart(baseUrl: string, token: string | null) {
         setCart({
           items: Array.isArray(parsed.items) ? parsed.items : [],
           total: Number(parsed.total) || 0,
-          promo_code: parsed.promo_code || "",
-          discount: Number(parsed.discount) || 0,
-          promo_title: parsed.promo_title || "",
         });
       }
     } catch (e) {
@@ -118,10 +110,7 @@ function useCart(baseUrl: string, token: string | null) {
             ? { ...item, quantity: item.quantity + qtyToAdd }
             : item
         );
-        const newSubtotal = updatedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const newTotal = currentCart.discount
-          ? Math.max(0, newSubtotal - currentCart.discount)
-          : newSubtotal;
+        const newTotal = updatedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
         newCart = { ...currentCart, items: updatedItems, total: newTotal };
       } else {
         const newItems = [...currentCart.items, { ...product, quantity: qtyToAdd }];
@@ -155,11 +144,7 @@ function useCart(baseUrl: string, token: string | null) {
       const currentCart = cartRef.current;
       const newItems = currentCart.items.filter((item) => item.product_id !== product_id);
       const newSubtotal = newItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const newTotal = currentCart.discount
-        ? Math.max(0, newSubtotal - currentCart.discount)
-        : newSubtotal;
-
-      setCart({ ...currentCart, items: newItems, total: newTotal });
+      setCart({ ...currentCart, items: newItems, total: newSubtotal });
 
       if (token) {
         try {
@@ -176,78 +161,7 @@ function useCart(baseUrl: string, token: string | null) {
     [token, baseUrl]
   );
 
-  const validatePromoCode = useCallback(
-    async (code: string, baseUrlParam: string) => {
-      if (!code || code.trim().length === 0) {
-        return { ok: false, error: "code_required" };
-      }
-      try {
-        const currentCart = cartRef.current;
-        const items = currentCart.items.map((it) => ({
-          product_id: it.product_id,
-          quantity: it.quantity,
-        }));
-        const res = await fetchWithTimeout(`${baseUrlParam}/promos/validate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code: code.trim().toUpperCase(),
-            items,
-            total: currentCart.total,
-          }),
-          timeout: 5000,
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          return { ok: false, error: json.error || "validation_failed" };
-        }
-        return { ok: true, ...json };
-      } catch {
-        return { ok: false, error: "network_error" };
-      }
-    },
-    []
-  );
 
-  const applyPromoCode = useCallback(
-    async (code: string, baseUrlParam: string) => {
-      const result = await validatePromoCode(code, baseUrlParam);
-      if (!result.ok) {
-        return result;
-      }
-      const currentCart = cartRef.current;
-      const subtotal = currentCart.items.reduce(
-        (acc, item) => acc + item.price * item.quantity,
-        0
-      );
-      const discount = result.discount || 0;
-      const newTotal = Math.max(0, subtotal - discount);
-      setCart({
-        ...currentCart,
-        promo_code: code.trim().toUpperCase(),
-        discount: discount,
-        promo_title: result.promo?.title || "",
-        total: newTotal,
-      });
-      return { ok: true, ...result };
-    },
-    [validatePromoCode]
-  );
-
-  const removePromoCode = useCallback(() => {
-    const currentCart = cartRef.current;
-    const originalTotal = currentCart.items.reduce(
-      (acc, item) => acc + item.price * item.quantity,
-      0
-    );
-    setCart({
-      ...currentCart,
-      promo_code: "",
-      discount: 0,
-      promo_title: "",
-      total: originalTotal,
-    });
-  }, []);
 
   const clearCart = useCallback(async () => {
     const currentCart = cartRef.current;
@@ -255,9 +169,6 @@ function useCart(baseUrl: string, token: string | null) {
       ...currentCart,
       items: [],
       total: 0,
-      promo_code: "",
-      discount: 0,
-      promo_title: "",
     });
 
     if (token) {
@@ -285,10 +196,7 @@ function useCart(baseUrl: string, token: string | null) {
               (options ? areOptionsEqual(item.options, options) : true)
             )
         );
-        const newSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const newTotal = currentCart.discount
-          ? Math.max(0, newSubtotal - currentCart.discount)
-          : newSubtotal;
+        const newTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
         setCart({ ...currentCart, items, total: newTotal });
 
         if (token) {
@@ -310,10 +218,7 @@ function useCart(baseUrl: string, token: string | null) {
             ? { ...item, quantity }
             : item
         );
-        const newSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const newTotal = currentCart.discount
-          ? Math.max(0, newSubtotal - currentCart.discount)
-          : newSubtotal;
+        const newTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
         setCart({ ...currentCart, items, total: newTotal });
 
         if (token) {
@@ -362,7 +267,6 @@ function useCart(baseUrl: string, token: string | null) {
       const payload = {
         items,
         payment_method: formValues.orderMethod,
-        promo_code: currentCart.promo_code || undefined,
         customer: {
           name: formValues.name,
           email: formValues.email,
@@ -477,15 +381,9 @@ function useCart(baseUrl: string, token: string | null) {
             })
           );
           const subtotal = mappedItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-          const total = currentCart.discount
-            ? Math.max(0, subtotal - currentCart.discount)
-            : subtotal;
           setCart({
             items: mappedItems,
-            total,
-            promo_code: currentCart.promo_code,
-            discount: currentCart.discount,
-            promo_title: currentCart.promo_title,
+            total: subtotal,
           });
         }
       } catch (e) {
@@ -505,9 +403,6 @@ function useCart(baseUrl: string, token: string | null) {
     updateQuantity,
     syncWithServer,
     processOrder,
-    validatePromoCode,
-    applyPromoCode,
-    removePromoCode,
   };
 }
 

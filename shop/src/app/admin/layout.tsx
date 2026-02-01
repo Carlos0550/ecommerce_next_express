@@ -2,7 +2,6 @@
 import { AdminContextProvider } from "@/providers/AdminContext";
 import AdminLayout from "@/Components/Admin/AdminLayout";
 import "@mantine/dates/styles.css";
-import "@mantine/charts/styles.css";
 import "@mantine/dropzone/styles.css";
 import "@mantine/tiptap/styles.css";
 import { usePathname } from "next/navigation";

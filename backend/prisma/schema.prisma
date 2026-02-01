@@ -20,11 +20,6 @@ enum ProductState {
   deleted
 }
 
-enum PromoType {
-  percentage
-  fixed //monto fijo
-}
-
 enum CategoryStatus {
   deleted
   active
@@ -45,16 +40,15 @@ enum PaymentMethod {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  email          String
-  password       String
-  name           String
-  is_active      Boolean  @default(true)
-  profile_image  String?
-  created_at     DateTime @default(now()) @db.Timestamptz(3)
-  updated_at     DateTime @updatedAt @db.Timestamptz(3)
-  role           Int      @default(2)
-  created_promos Promos[] @relation("PromosCreatedBy")
+  id            Int      @id @default(autoincrement())
+  email         String
+  password      String
+  name          String
+  is_active     Boolean  @default(true)
+  profile_image String?
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  updated_at    DateTime @updatedAt @db.Timestamptz(3)
+  role          Int      @default(2)
 
   sales                Sales[]
   orders               Orders[]
@@ -96,7 +90,6 @@ model Categories {
   created_at DateTime       @default(now()) @db.Timestamptz(3)
   status     CategoryStatus @default(active)
   products   Products[]
-  promos     Promos[]
 
   @@index([status, is_active])
   @@index([created_at])
@@ -117,7 +110,6 @@ model Products {
   stock       Int          @default(1)
   options     Json         @default("[]")
   category    Categories?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  promos      Promos[]
   sales       Sales[]
   orderItems  OrderItems[]
 
@@ -126,39 +118,6 @@ model Products {
   @@index([is_active, state])
   @@index([created_at])
   @@index([price])
-}
-
-model Promos {
-  id               String       @id @default(cuid())
-  code             String?      @unique
-  title            String
-  description      String?
-  image            String?
-  type             PromoType
-  value            Float
-  max_discount     Float?
-  min_order_amount Float?
-  start_date       DateTime?    @db.Timestamptz(3)
-  end_date         DateTime?    @db.Timestamptz(3)
-  is_active        Boolean      @default(true)
-  usage_limit      Int?
-  usage_count      Int          @default(0)
-  per_user_limit   Int?
-  categories       Categories[]
-  products         Products[]
-  all_products     Boolean      @default(false)
-  all_categories   Boolean      @default(false)
-  show_in_home     Boolean      @default(false)
-  orders           Orders[]
-  created_at       DateTime     @default(now()) @db.Timestamptz(3)
-  updated_at       DateTime     @updatedAt @db.Timestamptz(3)
-  createdById      Int?
-  created_by       User?        @relation("PromosCreatedBy", fields: [createdById], references: [id])
-
-  @@index([is_active])
-  @@index([show_in_home, is_active])
-  @@index([start_date, end_date])
-  @@index([createdById])
 }
 
 model Sales {
@@ -218,10 +177,6 @@ model Orders {
   items                 Json     @default("[]")
   total                 Float    @default(0.00)
   subtotal              Float?   @default(0.00)
-  discount              Float?   @default(0.00)
-  promo_code            String?
-  promoId               String?
-  promo                 Promos?  @relation(fields: [promoId], references: [id], onDelete: SetNull)
   payment_method        String
   created_at            DateTime @default(now()) @db.Timestamptz(3)
   buyer_email           String?
@@ -234,8 +189,6 @@ model Orders {
   @@index([userId])
   @@index([created_at])
   @@index([saleId])
-  @@index([promo_code])
-  @@index([promoId])
 }
 
 model FAQ {

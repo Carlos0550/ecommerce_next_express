@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useMemo, useCallback } from "react";
+import { createContext, useContext, useMemo } from "react";
 import { useAdminAuth } from "./useAdminAuth";
 import { useWindowSize } from "@/utils/hooks/useWindowSize";
 import { capitalizeTexts, BASE_URL } from "@/utils/constants";

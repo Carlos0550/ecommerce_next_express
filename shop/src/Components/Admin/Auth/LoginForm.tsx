@@ -39,7 +39,7 @@ export default function LoginForm(){
         color: "green",
       });
     }
-  }, [loginHook.isSuccess]);
+  }, [loginHook.isSuccess, loginHook.data, setToken, router, capitalizeTexts]);
 
   useEffect(() => {
     if (loginHook.isError && loginHook.error) {

@@ -15,8 +15,8 @@ import {
   Badge,
   Divider,
 } from "@mantine/core";
-import { AreaChart, BarChart, PieChart } from "@mantine/charts";
 import { DatePickerInput } from "@mantine/dates";
+import { LineChart, BarChart, PieChart } from "@mui/x-charts";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useGetSalesAnalytics } from "@/Api/admin/SalesApi";
@@ -136,6 +136,19 @@ function KPICard({ icon, label, value, color, trend, trendLabel, subtitle }: KPI
   );
 }
 
+const MUI_COLORS = {
+  green: "#40c057",
+  blue: "#228be6",
+  violet: "#7950f2",
+  cyan: "#15aabf",
+  teal: "#12b886",
+  orange: "#fd7e14",
+  pink: "#e64980",
+  grape: "#be4bdb",
+  indigo: "#4c6ef5",
+  gray: "#868e96",
+};
+
 export default function Home() {
   const mounted = useIsMounted();
   const [activePreset, setActivePreset] = useState<RangePreset>("30d");
@@ -176,7 +189,7 @@ export default function Home() {
     return (data?.timeseries?.by_day || []).map(d => ({ date: d.date, count: Number(d.count || 0) }));
   }, [data]);
 
-  const paymentPie = useMemo(() => {
+  const paymentPieData = useMemo(() => {
     const mapMethod: Record<string, string> = {
       EFECTIVO: "Efectivo",
       TARJETA: "Tarjeta",
@@ -184,31 +197,34 @@ export default function Home() {
       QR: "QR",
       NINGUNO: "Ninguno",
     };
-    const colors = ["blue.6", "green.6", "violet.6", "orange.6", "gray.6"];
+    const colors = [MUI_COLORS.blue, MUI_COLORS.green, MUI_COLORS.violet, MUI_COLORS.orange, MUI_COLORS.gray];
     return (data?.breakdowns?.payment_methods || []).map((pm, idx) => ({
-      name: mapMethod[pm.method] || pm.method,
+      id: idx,
+      label: mapMethod[pm.method] || pm.method,
       value: pm.count,
       color: colors[idx % colors.length],
     }));
   }, [data]);
 
-  const sourcePie = useMemo(() => {
+  const sourcePieData = useMemo(() => {
     const mapSource: Record<string, string> = {
       CAJA: "Local/Caja",
       WEB: "Tienda online",
     };
-    const colors = ["teal.6", "cyan.6", "indigo.6"];
+    const colors = [MUI_COLORS.teal, MUI_COLORS.cyan, MUI_COLORS.indigo];
     return (data?.breakdowns?.sources || []).map((sc, idx) => ({
-      name: mapSource[sc.source] || sc.source,
+      id: idx,
+      label: mapSource[sc.source] || sc.source,
       value: sc.count,
       color: colors[idx % colors.length],
     }));
   }, [data]);
 
-  const categoryPie = useMemo(() => {
-    const colors = ["pink.6", "grape.6", "violet.6", "indigo.6", "blue.6", "cyan.6", "teal.6", "green.6"];
+  const categoryPieData = useMemo(() => {
+    const colors = [MUI_COLORS.pink, MUI_COLORS.grape, MUI_COLORS.violet, MUI_COLORS.indigo, MUI_COLORS.blue, MUI_COLORS.cyan, MUI_COLORS.teal, MUI_COLORS.green];
     return (data?.breakdowns?.by_category || []).map((cat, idx) => ({
-      name: cat.name,
+      id: idx,
+      label: cat.name,
       value: cat.revenue,
       color: colors[idx % colors.length],
     }));
@@ -216,7 +232,7 @@ export default function Home() {
 
   const topProductsData = useMemo(() => {
     return (data?.top_products || []).map(p => ({
-      product: p.title.length > 20 ? p.title.substring(0, 20) + "..." : p.title,
+      product: p.title.length > 15 ? p.title.substring(0, 15) + "..." : p.title,
       cantidad: p.quantity_sold,
       ingresos: p.revenue,
     }));
@@ -386,21 +402,32 @@ export default function Home() {
                   {formatCurrencyCompact(data.totals.revenue_total || 0)} total
                 </Badge>
               </Group>
-              <AreaChart
-                h={260}
-                data={revenueSeries}
-                dataKey="date"
-                series={[{ name: "revenue", label: "Ingresos", color: "green.6" }]}
-                xAxisLabel="Fecha"
-                yAxisLabel="ARS"
-                curveType="monotone"
-                withLegend
-                gridAxis="xy"
-                valueFormatter={(value) => formatCurrency(Number(value || 0))}
-                yAxisProps={{
-                  tickFormatter: (value: number) => formatCurrencyCompact(Number(value || 0)),
-                }}
-              />
+              <Box h={280}>
+                <LineChart
+                  xAxis={[{
+                    data: revenueSeries.map((_, i) => i),
+                    scaleType: "point",
+                    valueFormatter: (value: number) => revenueSeries[value]?.date || "",
+                  }]}
+                  yAxis={[{
+                    valueFormatter: (value: number | null) => formatCurrencyCompact(Number(value || 0)),
+                  }]}
+                  series={[
+                    {
+                      data: revenueSeries.map(d => d.revenue),
+                      area: true,
+                      color: MUI_COLORS.green,
+                      curve: "catmullRom",
+                      label: "Ingresos",
+                      valueFormatter: (value) => formatCurrency(Number(value || 0)),
+                    },
+                  ]}
+                  height={260}
+                  margin={{ left: 70, right: 20, top: 20, bottom: 30 }}
+                  grid={{ vertical: true, horizontal: true }}
+                  hideLegend
+                />
+              </Box>
             </Paper>
 
             <Paper p="md" radius="md" withBorder>
@@ -410,15 +437,25 @@ export default function Home() {
                   {data.totals.sales_count} ventas
                 </Badge>
               </Group>
-              <BarChart
-                h={260}
-                data={countSeries}
-                dataKey="date"
-                series={[{ name: "count", color: "blue.6" }]}
-                xAxisLabel="Fecha"
-                yAxisLabel="Ventas"
-                gridAxis="xy"
-              />
+              <Box h={280}>
+                <BarChart
+                  xAxis={[{
+                    data: countSeries.map(d => d.date),
+                    scaleType: "band",
+                  }]}
+                  series={[
+                    {
+                      data: countSeries.map(d => d.count),
+                      color: MUI_COLORS.blue,
+                      label: "Ventas",
+                    },
+                  ]}
+                  height={260}
+                  margin={{ left: 50, right: 20, top: 20, bottom: 50 }}
+                  grid={{ horizontal: true }}
+                  hideLegend
+                />
+              </Box>
             </Paper>
           </SimpleGrid>
 
@@ -433,14 +470,29 @@ export default function Home() {
                 </Text>
               </Group>
               {topProductsData.length > 0 ? (
-                <BarChart
-                  h={260}
-                  data={topProductsData}
-                  dataKey="product"
-                  series={[{ name: "cantidad", label: "Cantidad", color: "violet.6" }]}
-                  orientation="vertical"
-                  gridAxis="xy"
-                />
+                <Box h={280}>
+                  <BarChart
+                    yAxis={[{
+                      data: topProductsData.map(d => d.product),
+                      scaleType: "band",
+                    }]}
+                    xAxis={[{
+                      label: "Cantidad vendida",
+                    }]}
+                    series={[
+                      {
+                        data: topProductsData.map(d => d.cantidad),
+                        color: MUI_COLORS.violet,
+                        label: "Cantidad",
+                      },
+                    ]}
+                    layout="horizontal"
+                    height={260}
+                    margin={{ left: 100, right: 20, top: 20, bottom: 40 }}
+                    grid={{ vertical: true }}
+                    hideLegend
+                  />
+                </Box>
               ) : (
                 <Center h={260}>
                   <Text c="dimmed">No hay datos de productos</Text>
@@ -457,29 +509,51 @@ export default function Home() {
                   </Group>
                 </Text>
               </Group>
-              <BarChart
-                h={260}
-                data={hourlyData}
-                dataKey="hora"
-                series={[{ name: "ventas", label: "Ventas", color: "cyan.6" }]}
-                gridAxis="xy"
-              />
+              <Box h={280}>
+                <BarChart
+                  xAxis={[{
+                    data: hourlyData.map(d => d.hora),
+                    scaleType: "band",
+                  }]}
+                  series={[
+                    {
+                      data: hourlyData.map(d => d.ventas),
+                      color: MUI_COLORS.cyan,
+                      label: "Ventas",
+                    },
+                  ]}
+                  height={260}
+                  margin={{ left: 50, right: 20, top: 20, bottom: 50 }}
+                  grid={{ horizontal: true }}
+                  hideLegend
+                />
+              </Box>
             </Paper>
           </SimpleGrid>
 
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" mt="md">
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Métodos de pago</Text>
-              {paymentPie.length > 0 ? (
-                <PieChart
-                  withLabels
-                  labelsType="percent"
-                  labelsPosition="outside"
-                  withLabelsLine
-                  data={paymentPie}
-                  h={220}
-                  tooltipDataSource="segment"
-                />
+              {paymentPieData.length > 0 ? (
+                <Box h={240}>
+                  <PieChart
+                    series={[
+                      {
+                        data: paymentPieData,
+                        highlightScope: { fade: "global", highlight: "item" },
+                        faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
+                        arcLabel: (item) => `${((item.value / paymentPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabelMinAngle: 20,
+                        innerRadius: 30,
+                        outerRadius: 80,
+                        paddingAngle: 2,
+                        cornerRadius: 4,
+                      },
+                    ]}
+                    height={220}
+                    margin={{ right: 100 }}
+                  />
+                </Box>
               ) : (
                 <Center h={220}>
                   <Text c="dimmed">Sin datos</Text>
@@ -489,16 +563,26 @@ export default function Home() {
 
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Origen de ventas</Text>
-              {sourcePie.length > 0 ? (
-                <PieChart
-                  withLabels
-                  labelsType="percent"
-                  labelsPosition="outside"
-                  withLabelsLine
-                  data={sourcePie}
-                  h={220}
-                  tooltipDataSource="segment"
-                />
+              {sourcePieData.length > 0 ? (
+                <Box h={240}>
+                  <PieChart
+                    series={[
+                      {
+                        data: sourcePieData,
+                        highlightScope: { fade: "global", highlight: "item" },
+                        faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
+                        arcLabel: (item) => `${((item.value / sourcePieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabelMinAngle: 20,
+                        innerRadius: 30,
+                        outerRadius: 80,
+                        paddingAngle: 2,
+                        cornerRadius: 4,
+                      },
+                    ]}
+                    height={220}
+                    margin={{ right: 100 }}
+                  />
+                </Box>
               ) : (
                 <Center h={220}>
                   <Text c="dimmed">Sin datos</Text>
@@ -508,17 +592,27 @@ export default function Home() {
 
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Ingresos por categoría</Text>
-              {categoryPie.length > 0 ? (
-                <PieChart
-                  withLabels
-                  labelsType="percent"
-                  labelsPosition="outside"
-                  withLabelsLine
-                  data={categoryPie}
-                  h={220}
-                  tooltipDataSource="segment"
-                  valueFormatter={(value) => formatCurrencyCompact(value)}
-                />
+              {categoryPieData.length > 0 ? (
+                <Box h={240}>
+                  <PieChart
+                    series={[
+                      {
+                        data: categoryPieData,
+                        highlightScope: { fade: "global", highlight: "item" },
+                        faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
+                        arcLabel: (item) => `${((item.value / categoryPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabelMinAngle: 20,
+                        innerRadius: 30,
+                        outerRadius: 80,
+                        paddingAngle: 2,
+                        cornerRadius: 4,
+                        valueFormatter: (item) => formatCurrencyCompact(item.value),
+                      },
+                    ]}
+                    height={220}
+                    margin={{ right: 100 }}
+                  />
+                </Box>
               ) : (
                 <Center h={220}>
                   <Text c="dimmed">Sin datos</Text>

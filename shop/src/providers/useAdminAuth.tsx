@@ -1,7 +1,7 @@
 "use client";
 import { showNotification } from "@mantine/notifications";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 
@@ -13,64 +13,57 @@ export type AdminSession = {
   role: number;
 };
 
-type AdminState = {
-  token: string | null;
-  session: AdminSession | null;
-  loading: boolean;
-};
+const TOKEN_KEY = "admin_auth_token";
+
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token && token !== "" ? token : null;
+}
+
+function subscribeToStorage(callback: () => void) {
+  const handler = (e: StorageEvent) => {
+    if (e.key === TOKEN_KEY) callback();
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}
+
+function getServerSnapshot(): string | null {
+  return null;
+}
 
 export function useAdminAuth() {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
-  const [state, setState] = useState<AdminState>({
-    token: null,
-    session: null,
-    loading: true, 
-  });
   const router = useRouter();
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem("admin_auth_token");
-    if (storedToken && storedToken !== "") {
-      setState(s => ({ ...s, token: storedToken, loading: true }));
-    } else {
-      localStorage.removeItem("admin_auth_token");
-      setState(s => ({ ...s, token: null, loading: false }));
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!state.loading && !state.token && !window.location.pathname.startsWith("/admin/auth")) {
-      router.push("/admin/auth");
-    }
-  }, [state.token, state.loading, router]);
+  const token = useSyncExternalStore(subscribeToStorage, getStoredToken, getServerSnapshot);
 
   const updateToken = useCallback((newToken: string | null) => {
-    setState(s => ({ ...s, token: newToken, loading: !!newToken }));
     if (newToken) {
-      localStorage.setItem("admin_auth_token", newToken);
+      localStorage.setItem(TOKEN_KEY, newToken);
     } else {
-      localStorage.removeItem("admin_auth_token");
-      setState(s => ({ ...s, session: null }));
+      localStorage.removeItem(TOKEN_KEY);
     }
+    window.dispatchEvent(new StorageEvent("storage", { key: TOKEN_KEY }));
   }, []);
 
   const {
     data: validationData,
-    isLoading,
+    isLoading: isValidating,
     isError,
-    error,
     refetch,
   } = useQuery({
-    queryKey: ["validateAdminToken", state.token],
+    queryKey: ["validateAdminToken", token],
     queryFn: async () => {
-      if (!state.token) {
+      if (!token) {
         throw new Error("No token available");
       }
 
       const response = await fetchWithTimeout(baseUrl + "/validate-token", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${state.token}`,
+          Authorization: `Bearer ${token}`,
         },
         timeout: 5000,
       });
@@ -82,41 +75,28 @@ export function useAdminAuth() {
 
       return (await response.json()) as AdminSession;
     },
-    enabled: !!state.token,
+    enabled: !!token,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
 
-  useLayoutEffect(() => {
-    if (validationData) {
-      if (!validationData.is_active) {
-        setState(s => ({ ...s, loading: false }));
-        if (!window.location.pathname.startsWith("/admin/auth")) {
-          router.push("/admin/auth");
-          showNotification({
-            title: "Acceso denegado",
-            message: "Tu cuenta de administrador aún no ha sido aprobada.",
-            color: "red",
-          });
-        }
-        return;
-      }
-      setState(s => ({ ...s, session: validationData, loading: false }));
-    }
-  }, [validationData, router]);
+  const session = useMemo((): AdminSession | null => {
+    if (!validationData) return null;
+    if (!validationData.is_active) return null;
+    return validationData;
+  }, [validationData]);
 
-  useLayoutEffect(() => {
-    if (isError && state.token) {
-      setState(s => ({ ...s, token: null, session: null, loading: false }));
-      localStorage.removeItem("admin_auth_token");
-      router.push("/admin/auth");
-      showNotification({
-        title: "Sesión inválida",
-        message: "Por favor inicie sesión de nuevo.",
-        color: "red",
-      });
-    }
-  }, [isError, state.token, router]);
+  const loading = useMemo(() => {
+    if (typeof window === "undefined") return true;
+    if (token && isValidating) return true;
+    if (token && !validationData && !isError) return true;
+    return false;
+  }, [token, isValidating, validationData, isError]);
+
+  const handleAuthError = useCallback(() => {
+    updateToken(null);
+    router.push("/admin/auth");
+  }, [updateToken, router]);
 
   const logout = useCallback(
     (expired_session: boolean = false) => {
@@ -139,15 +119,39 @@ export function useAdminAuth() {
     [router, updateToken]
   );
 
+  if (isError && token) {
+    queueMicrotask(() => {
+      handleAuthError();
+      showNotification({
+        title: "Sesión inválida",
+        message: "Por favor inicie sesión de nuevo.",
+        color: "red",
+      });
+    });
+  }
+
+  if (validationData && !validationData.is_active && token) {
+    queueMicrotask(() => {
+      if (!window.location.pathname.startsWith("/admin/auth")) {
+        router.push("/admin/auth");
+        showNotification({
+          title: "Acceso denegado",
+          message: "Tu cuenta de administrador aún no ha sido aprobada.",
+          color: "red",
+        });
+      }
+    });
+  }
+
   return useMemo(() => ({
-    session: state.session,
+    session,
     setSession: () => {},
-    token: state.token,
+    token,
     setToken: updateToken,
-    loading: state.loading || (!!state.token && !state.session && !isError),
+    loading,
     refetchValidation: refetch,
     logout,
-  }), [state.session, state.token, state.loading, isError, refetch, logout, updateToken]);
+  }), [session, token, loading, refetch, logout, updateToken]);
 }
 
 export default useAdminAuth;

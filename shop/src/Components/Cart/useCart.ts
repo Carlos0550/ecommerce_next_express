@@ -12,9 +12,6 @@ export default function useCart(onClose: () => void) {
       formValues,
       setFormValues,
       processOrder,
-      validatePromoCode,
-      applyPromoCode,
-      removePromoCode,
     },
     auth,
     utils,
@@ -212,8 +209,5 @@ export default function useCart(onClose: () => void) {
     businessData,
     isLoadingBankInfo,
     bankInfoError,
-    validatePromoCode,
-    applyPromoCode,
-    removePromoCode,
   };
 }

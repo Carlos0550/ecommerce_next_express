@@ -1,6 +1,6 @@
 'use client';
 import { Stack, Title, Text, Button, Center, ThemeIcon, Box } from '@mantine/core';
-import { FiBox, FiPackage, FiInfo } from 'react-icons/fi';
+import { FiPackage } from 'react-icons/fi';
 import React from 'react';
 
 interface EmptyStateProps {

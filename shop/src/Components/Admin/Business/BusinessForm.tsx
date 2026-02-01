@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
 import { Button, Flex, Group, Stack, TextInput, Title, ActionIcon, Text, Divider, Paper, Textarea, Tooltip, FileInput, Image, Loader } from "@mantine/core";
 import Loading from "../Loader/Loading";
 import { useBusinessForm } from "./useBusinessForm";
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCity, FaBuilding, FaUniversity, FaCreditCard, FaTrash, FaPlus, FaSave, FaMagic, FaUpload, FaImage, FaBriefcase, FaDesktop } from "react-icons/fa";
+import { useMounted } from "@/utils/hooks/useMounted";
 
 export default function BusinessForm() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const { 
     form, 
     errors, 
@@ -23,10 +23,6 @@ export default function BusinessForm() {
     isUploadingFavicon,
     isUploadingHero
   } = useBusinessForm();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted || isLoading) {
     return (
@@ -129,7 +125,7 @@ export default function BusinessForm() {
                 />
                 {form.business_image && (
                   <Paper p="xs" withBorder>
-                    <Image src={form.business_image} h={80} w="auto" fit="contain" radius="sm" />
+                    <Image src={form.business_image} h={80} w="auto" fit="contain" radius="sm" alt="Vista previa del logo" />
                     <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Logo</Text>
                   </Paper>
                 )}
@@ -146,7 +142,7 @@ export default function BusinessForm() {
                 />
                 {form.favicon && (
                   <Paper p="xs" withBorder>
-                    <Image src={form.favicon} h={32} w={32} fit="contain" radius="sm" mx="auto" />
+                    <Image src={form.favicon} h={32} w={32} fit="contain" radius="sm" mx="auto" alt="Vista previa del favicon" />
                     <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Favicon</Text>
                   </Paper>
                 )}
@@ -165,7 +161,7 @@ export default function BusinessForm() {
               />
               {form.hero_image && (
                 <Paper p="xs" withBorder>
-                  <Image src={form.hero_image} h={150} w="100%" fit="cover" radius="sm" />
+                  <Image src={form.hero_image} h={150} w="100%" fit="cover" radius="sm" alt="Vista previa del banner principal" />
                   <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Banner Home</Text>
                 </Paper>
               )}

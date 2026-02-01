@@ -1,15 +1,15 @@
 "use client";
 import { ActionIcon, useMantineColorScheme } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { FiMoon, FiSun } from "react-icons/fi";
+
+const subscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function ColorSchemeToggle() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   if (!mounted) {
     return (
