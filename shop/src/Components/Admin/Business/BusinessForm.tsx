@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button, Flex, Group, Stack, TextInput, Title, ActionIcon, Text, Divider, Paper, Textarea, Tooltip, FileInput, Image, Loader } from "@mantine/core";
 import Loading from "../Loader/Loading";
 import { useBusinessForm } from "./useBusinessForm";
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCity, FaBuilding, FaUniversity, FaCreditCard, FaTrash, FaPlus, FaSave, FaMagic, FaUpload, FaImage, FaBriefcase } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCity, FaBuilding, FaUniversity, FaCreditCard, FaTrash, FaPlus, FaSave, FaMagic, FaUpload, FaImage, FaBriefcase, FaDesktop } from "react-icons/fa";
 
 export default function BusinessForm() {
   const [mounted, setMounted] = useState(false);
@@ -20,7 +20,8 @@ export default function BusinessForm() {
     isGeneratingDescription,
     handleImageUpload,
     isUploadingImage,
-    isUploadingFavicon
+    isUploadingFavicon,
+    isUploadingHero
   } = useBusinessForm();
 
   useEffect(() => {
@@ -113,49 +114,69 @@ export default function BusinessForm() {
             leftSection={<FaBriefcase size={14} />}
           />
 
-          <Divider my="sm" label="Imágenes" labelPosition="center" />
+          <Divider my="sm" label="Imágenes y Banner" labelPosition="center" />
 
-          <Group grow align="flex-start">
+          <Stack gap="md">
+            <Group grow align="flex-start">
+              <Stack gap={5}>
+                <FileInput
+                  label="Logo (OpenGraph/Metadatos)"
+                  placeholder="Subir logo..."
+                  leftSection={isUploadingImage ? <Loader size="xs" /> : <FaUpload size={14} />}
+                  accept="image/*"
+                  onChange={(file) => handleImageUpload(file, 'business_image')}
+                  disabled={isUploadingImage}
+                />
+                {form.business_image && (
+                  <Paper p="xs" withBorder>
+                    <Image src={form.business_image} h={80} w="auto" fit="contain" radius="sm" />
+                    <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Logo</Text>
+                  </Paper>
+                )}
+              </Stack>
+
+              <Stack gap={5}>
+                <FileInput
+                  label="Favicon (Icono navegador)"
+                  placeholder="Subir favicon..."
+                  leftSection={isUploadingFavicon ? <Loader size="xs" /> : <FaImage size={14} />}
+                  accept="image/*"
+                  onChange={(file) => handleImageUpload(file, 'favicon')}
+                  disabled={isUploadingFavicon}
+                />
+                {form.favicon && (
+                  <Paper p="xs" withBorder>
+                    <Image src={form.favicon} h={32} w={32} fit="contain" radius="sm" mx="auto" />
+                    <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Favicon</Text>
+                  </Paper>
+                )}
+              </Stack>
+            </Group>
+
             <Stack gap={5}>
               <FileInput
-                label="Logo/Imagen del Negocio (OpenGraph/Twitter)"
-                placeholder="Subir imagen..."
-                leftSection={isUploadingImage ? <Loader size="xs" /> : <FaUpload size={14} />}
+                label="Banner Principal (Hero Home)"
+                placeholder="Subir imagen panorámica para la portada..."
+                description="Se recomienda una imagen de alta calidad, relación 16:9 o 21:9"
+                leftSection={isUploadingHero ? <Loader size="xs" /> : <FaDesktop size={14} />}
                 accept="image/*"
-                onChange={(file) => handleImageUpload(file, 'business_image')}
-                disabled={isUploadingImage}
+                onChange={(file) => handleImageUpload(file, 'hero_image')}
+                disabled={isUploadingHero}
               />
-              {form.business_image && (
+              {form.hero_image && (
                 <Paper p="xs" withBorder>
-                   <Image src={form.business_image} h={100} w="auto" fit="contain" radius="sm" />
-                   <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa</Text>
+                  <Image src={form.hero_image} h={150} w="100%" fit="cover" radius="sm" />
+                  <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa Banner Home</Text>
                 </Paper>
               )}
             </Stack>
-
-            <Stack gap={5}>
-              <FileInput
-                label="Favicon"
-                placeholder="Subir favicon..."
-                leftSection={isUploadingFavicon ? <Loader size="xs" /> : <FaImage size={14} />}
-                accept="image/*"
-                onChange={(file) => handleImageUpload(file, 'favicon')}
-                disabled={isUploadingFavicon}
-              />
-              {form.favicon && (
-                <Paper p="xs" withBorder>
-                   <Image src={form.favicon} h={32} w={32} fit="contain" radius="sm" mx="auto" />
-                   <Text size="xs" c="dimmed" ta="center" mt={4}>Vista previa</Text>
-                </Paper>
-              )}
-            </Stack>
-          </Group>
+          </Stack>
 
           <Stack gap={0}>
              <Group justify="space-between" align="center" mb={5}>
                 <Text size="sm" fw={500}>Descripción del negocio</Text>
                 <Tooltip label="Mejorar con IA">
-                  <ActionIcon 
+                   <ActionIcon 
                     variant="light" 
                     color="grape" 
                     onClick={handleGenerateDescription} 

@@ -4,24 +4,33 @@ const nextConfig: NextConfig = {
   /* config options here */
   compress: true,
   poweredByHeader: false,
-  reactCompiler: true,
-  output: 'standalone',
+  reactCompiler: false,
+  output: "standalone",
   experimental: {
-    optimizePackageImports: ['@mantine/core', '@mantine/hooks', 'react-icons'],
+    optimizePackageImports: [
+      "@mantine/core",
+      "@mantine/hooks",
+      "@mantine/dates",
+      "@mantine/charts",
+      "@mantine/dropzone",
+      "@mantine/tiptap",
+      "react-icons",
+      "recharts",
+    ],
   },
   images: {
     remotePatterns: [
       // Cualquier servicio en Railway (MinIO, etc.)
       {
-        protocol: 'https',
-        hostname: '**.up.railway.app',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "**.up.railway.app",
+        pathname: "/**",
       },
       // Supabase Storage (legacy - para imágenes que aún no se migraron)
       {
-        protocol: 'https',
-        hostname: '**.supabase.co',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/**",
       },
     ],
   },

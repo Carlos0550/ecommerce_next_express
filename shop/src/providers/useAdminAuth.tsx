@@ -1,7 +1,7 @@
 "use client";
 import { showNotification } from "@mantine/notifications";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 
@@ -24,11 +24,10 @@ export function useAdminAuth() {
   const [state, setState] = useState<AdminState>({
     token: null,
     session: null,
-    loading: true, // Siempre empezamos cargando para hidratación segura
+    loading: true, 
   });
   const router = useRouter();
 
-  // Inicialización en el cliente
   useEffect(() => {
     const storedToken = localStorage.getItem("admin_auth_token");
     if (storedToken && storedToken !== "") {
@@ -40,7 +39,6 @@ export function useAdminAuth() {
   }, []);
 
   useLayoutEffect(() => {
-    // Solo redirigir si ya terminamos de intentar cargar el token inicial
     if (!state.loading && !state.token && !window.location.pathname.startsWith("/admin/auth")) {
       router.push("/admin/auth");
     }
@@ -125,13 +123,13 @@ export function useAdminAuth() {
       updateToken(null);
       router.push("/admin/auth");
       if (expired_session) {
-        return showNotification({
+        showNotification({
           title: "Sesión expirada",
           message: "Por favor, inicie sesión de nuevo",
           color: "red",
         });
       } else {
-        return showNotification({
+        showNotification({
           title: "Sesión cerrada",
           message: "Hasta pronto",
           color: "green",
@@ -141,7 +139,7 @@ export function useAdminAuth() {
     [router, updateToken]
   );
 
-  return {
+  return useMemo(() => ({
     session: state.session,
     setSession: () => {},
     token: state.token,
@@ -149,7 +147,7 @@ export function useAdminAuth() {
     loading: state.loading || (!!state.token && !state.session && !isError),
     refetchValidation: refetch,
     logout,
-  };
+  }), [state.session, state.token, state.loading, isError, refetch, logout, updateToken]);
 }
 
 export default useAdminAuth;

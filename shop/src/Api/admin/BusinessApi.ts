@@ -21,11 +21,14 @@ export type BusinessData = {
   description?: string;
   business_image?: string;
   favicon?: string;
+  hero_image?: string;
   bankData: BankData[];
 };
 
 export const useGetBusiness = () => {
-  const { auth: { token } } = useAdminContext();
+  const {
+    auth: { token },
+  } = useAdminContext();
   return useQuery<BusinessData | null, Error>({
     queryKey: ["business"],
     enabled: !!token,
@@ -37,7 +40,7 @@ export const useGetBusiness = () => {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Error obteniendo negocio");
       return json as BusinessData;
-    }
+    },
   });
 };
 
@@ -56,7 +59,9 @@ export const getPublicBusiness = async (): Promise<BusinessData | null> => {
 
 export const useCreateBusiness = () => {
   const queryClient = useQueryClient();
-  const { auth: { token } } = useAdminContext();
+  const {
+    auth: { token },
+  } = useAdminContext();
   return useMutation({
     mutationKey: ["createBusiness"],
     mutationFn: async (payload: BusinessData) => {
@@ -64,9 +69,9 @@ export const useCreateBusiness = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Error creando negocio");
@@ -78,80 +83,121 @@ export const useCreateBusiness = () => {
     },
     onError: (e: Error) => {
       notifications.show({ message: e.message || "Error", color: "red" });
-    }
+    },
   });
 };
 
 export const useGenerateDescription = () => {
-  const { auth: { token } } = useAdminContext();
+  const {
+    auth: { token },
+  } = useAdminContext();
   return useMutation({
     mutationKey: ["generateDescription"],
-    mutationFn: async ({ name, city, province, type, actualDescription }: { name: string; city: string; province: string; type?: string; actualDescription?: string }) => {
+    mutationFn: async ({
+      name,
+      city,
+      province,
+      type,
+      actualDescription,
+    }: {
+      name: string;
+      city: string;
+      province: string;
+      type?: string;
+      actualDescription?: string;
+    }) => {
       console.log(
-        "name", name,
-        "city", city,
-        "province", province,
-        "type", type,
-        "actualDescription", actualDescription
+        "name",
+        name,
+        "city",
+        city,
+        "province",
+        province,
+        "type",
+        type,
+        "actualDescription",
+        actualDescription,
       );
       const res = await fetch(`${baseUrl}/business/generate-description`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name, city, province, type, actualDescription })
+        body: JSON.stringify({ name, city, province, type, actualDescription }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Error generando descripción");
+      if (!res.ok)
+        throw new Error(json?.error || "Error generando descripción");
       return json.description as string;
     },
     onError: (e: Error) => {
       notifications.show({ message: e.message || "Error", color: "red" });
-    }
+    },
   });
 };
 
 export const useUploadBusinessImage = () => {
-    const { auth: { token } } = useAdminContext();
-    return useMutation({
-        mutationKey: ["uploadBusinessImage"],
-        mutationFn: async ({ file, field, id }: { file: File; field: 'business_image' | 'favicon'; id?: string }) => {
-            const formData = new FormData();
-            formData.append("file", file);
-            const url = new URL(`${baseUrl}/business/upload-image`);
-            url.searchParams.set("field", field);
-            if (id) url.searchParams.set("id", id);
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                },
-                body: formData
-            });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json?.error || "Error subiendo imagen");
-            return json.url as string;
+  const {
+    auth: { token },
+  } = useAdminContext();
+  return useMutation({
+    mutationKey: ["uploadBusinessImage"],
+    mutationFn: async ({
+      file,
+      field,
+      id,
+    }: {
+      file: File;
+      field: "business_image" | "favicon" | "hero_image";
+      id?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const url = new URL(`${baseUrl}/business/upload-image`);
+      url.searchParams.set("field", field);
+      if (id) url.searchParams.set("id", id);
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        onError: (e: Error) => {
-            notifications.show({ message: e.message || "Error al subir imagen", color: "red" });
-        }
-    });
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Error subiendo imagen");
+      return json.url as string;
+    },
+    onError: (e: Error) => {
+      notifications.show({
+        message: e.message || "Error al subir imagen",
+        color: "red",
+      });
+    },
+  });
 };
 
 export const useUpdateBusiness = () => {
   const queryClient = useQueryClient();
-  const { auth: { token } } = useAdminContext();
+  const {
+    auth: { token },
+  } = useAdminContext();
   return useMutation({
     mutationKey: ["updateBusiness"],
-    mutationFn: async ({ id, payload }: { id: string; payload: BusinessData }) => {
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: BusinessData;
+    }) => {
       const res = await fetch(`${baseUrl}/business/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Error actualizando negocio");
@@ -163,7 +209,6 @@ export const useUpdateBusiness = () => {
     },
     onError: (e: Error) => {
       notifications.show({ message: e.message || "Error", color: "red" });
-    }
+    },
   });
 };
-

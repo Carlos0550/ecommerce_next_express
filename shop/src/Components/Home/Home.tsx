@@ -1,20 +1,20 @@
-
-
 "use client";
-import { Box, Flex, Title, Text, Container, Input, NativeSelect, Loader, Stack, Center } from "@mantine/core";
-
+import { Box, Flex, Title, Text, Container, Input, NativeSelect, Loader, Stack, Center, Divider } from "@mantine/core";
 import { useInfiniteProducts, Products, ProductsResponse } from "@/Api/useProducts";
 import ProductsCards from "./sub-components/ProductsCards";
 import { Categories, CategoriesResponse, useCategories } from "@/Api/useCategories";
 import { BusinessData } from "@/Api/useBusiness";
 import CategoriesCards from "./sub-components/CategoriesCards";
 import PromosBanner from "./sub-components/PromosBanner";
+import Hero from "./sub-components/Hero";
+import EmptyState from "./sub-components/EmptyState";
 import { useAppContext } from "@/providers/AppContext";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useDebouncedValue } from "@mantine/hooks";
+import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CartWrapper from "../Cart/CartWrapper";
 import Onboarding from "./sub-components/Onboarding";
+import { FiSearch, FiLayers, FiPackage } from "react-icons/fi";
 
 type Props = {
   initialProducts?: ProductsResponse
@@ -32,17 +32,21 @@ export default function Home({ initialProducts, initialCategories, business }: P
     const [search, setSearch] = useState(initialTitle)
     const [debouncedSearch] = useDebouncedValue(search, 400)
     const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategoryId ? [initialCategoryId] : [])
+    
     const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
         limit,
         title: debouncedSearch,
         categoryId: selectedCategories[0],
         initialData: initialProducts
     })
-    const { data: categoriesData } = useCategories(initialCategories)
+    
+    const { data: categoriesData, isLoading: isLoadingCats } = useCategories(initialCategories)
     const categories: Categories[] = categoriesData?.data ?? []
+    
     const products: Products[] = Array.isArray(data?.pages)
       ? data.pages.flatMap((p) => p?.data?.products ?? [])
       : []
+
     const {
         utils: {
             capitalizeTexts,
@@ -50,12 +54,9 @@ export default function Home({ initialProducts, initialCategories, business }: P
         }
     } = useAppContext()
     
-
     const h1Title = useMemo(() => {
-        if (business?.type && business?.city && business?.name) {
-            return `Bienvenidos a ${business.name}`;
-        }
-        return business?.name || "Tienda Online";
+        if (business?.name) return business.name;
+        return "Tienda Online";
     }, [business]);
 
   useEffect(() => {
@@ -77,16 +78,14 @@ export default function Home({ initialProducts, initialCategories, business }: P
       const el = typeof document !== 'undefined' ? document.getElementById('productos') : null
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, selectedCategories])
+  }, [debouncedSearch, selectedCategories]);
 
     useEffect(() => {
         const spTitle = searchParams.get("title") || ""
         const spCat = searchParams.get("categoryId") || ""
         if (spTitle !== search) setSearch(spTitle)
         if (spCat !== (selectedCategories[0] || "")) setSelectedCategories(spCat ? [spCat] : [])
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams])
+    }, [searchParams]);
 
     const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -104,84 +103,118 @@ export default function Home({ initialProducts, initialCategories, business }: P
     }, [sentinelRef, hasNextPage, fetchNextPage])
 
     return (
-        <Box>
+        <Box pb={80}>
             {!business ? (
                 <Onboarding />
             ) : (
-                <Flex direction="column" justify={"center"}>
-                    {/* SEO Hero Section */}
+                <Flex direction="column">
+                    {/* Hero Section */}
                     {!search && !selectedCategories[0] && (
-                        <Box mt={30} mb={10}>
-                            <Container size="xl">
-                                <Title order={1} mb="xs">{h1Title}</Title>
-                                {business?.description && (
-                                    <Text size="lg" c="dimmed" mb="md" maw={800}>
-                                        {business.description}
-                                    </Text>
-                                )}
-                            </Container>
-                        </Box>
+                        <Hero 
+                          title={h1Title} 
+                          description={business?.description || "Exclusividad y diseño en cada paso. Descubrí nuestra colección curada."}
+                          backgroundImage={business?.hero_image}
+                        />
                     )}
 
                     {/* Promociones destacadas */}
                     {!search && !selectedCategories[0] && <PromosBanner />}
 
-                    <Box my={30}>
+                    {/* Categorías */}
+                    <Box id="categorias" my={50}>
                         <Container size="xl">
-                            <Title order={2} mb="xs">Categorías</Title>
-                            <Text c="dimmed" mb="md">Explorá por categoría y encontrá lo que buscás.</Text>
-                            {isLoading ? (
-                                <Center my={20}><Loader size="sm"/></Center>
-                            ) : (
+                            <Stack gap="xs" mb={30}>
+                              <Title order={2} fw={800} size={32}>Colecciones</Title>
+                              <Text c="dimmed" fz="lg">Explorá nuestras categorías y encontrá tu estilo ideal.</Text>
+                            </Stack>
+                            
+                            {isLoadingCats ? (
+                                <Center h={200}><Loader variant="dots" color="dark"/></Center>
+                            ) : categories.length > 0 ? (
                                 <CategoriesCards categories={categories} />
+                            ) : (
+                                <EmptyState 
+                                  icon={<FiLayers size={40} color="#adb5bd"/>}
+                                  title="Próximamente"
+                                  description="Estamos organizando nuestras colecciones para vos. Volvé pronto."
+                                />
                             )}
                         </Container>
                     </Box>
 
-                    <Box size="xl" p={10}>
-                        <Flex direction={"column"} justify={"center"} align={"flex-start"}>
-                            <Title order={2} mb={10}>
-                                Nuestros productos
-                            </Title>
-                            <Text c="dimmed" mb="md">Busca por nombre, categoría o descripción.</Text>
-                        </Flex>
-                        <Flex gap={10} wrap={"wrap"}>
-                            <Input
-                                mb={10}
-                                placeholder="Buscar"
-                                w={isMobile ? "100%" : 300}
-                                value={search}
-                                onChange={(e) => setSearch(e.currentTarget.value)}
-                                rightSection={isFetchingNextPage ? <Loader size="xs" /> : null}
-                            />
-                            <NativeSelect
-                                mb={10}
-                                value={selectedCategories[0]}
-                                onChange={(e) => setSelectedCategories([e.currentTarget.value])}
-                                data={[
-                                    { value: "", label: "Todos" },
-                                    ...categories.map((category) => ({
-                                        value: category.id,
-                                        label: capitalizeTexts(category.title),
-                                    }))
-                                ]}
-                            />
-                        </Flex>
+                    <Divider my={40} color="rgba(0,0,0,0.05)" />
+
+                    {/* Productos */}
+                    <Box id="productos-seccion" pt={20}>
+                        <Container size="xl">
+                            <Flex justify="space-between" align="flex-end" mb={40} wrap="wrap" gap="md">
+                                <Stack gap="xs">
+                                  <Title order={2} fw={800} size={32}>Nuestros Productos</Title>
+                                  <Text c="dimmed" fz="lg">Calidad artesanal y materiales de primera.</Text>
+                                </Stack>
+
+                                <Flex gap={10} wrap={"wrap"} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}>
+                                    <Input
+                                        placeholder="Buscar..."
+                                        w={isMobile ? "100%" : 280}
+                                        size="md"
+                                        radius="xl"
+                                        leftSection={<FiSearch size={16} />}
+                                        value={search}
+                                        onChange={(e) => setSearch(e.currentTarget.value)}
+                                        rightSection={isFetchingNextPage ? <Loader size="xs" /> : null}
+                                    />
+                                    <NativeSelect
+                                        size="md"
+                                        radius="xl"
+                                        w={isMobile ? "100%" : 180}
+                                        value={selectedCategories[0]}
+                                        onChange={(e) => setSelectedCategories([e.currentTarget.value])}
+                                        data={[
+                                            { value: "", label: "Todas las categorías" },
+                                            ...categories.map((category) => ({
+                                                value: category.id,
+                                                label: capitalizeTexts(category.title),
+                                            }))
+                                        ]}
+                                    />
+                                </Flex>
+                            </Flex>
+
+                            <Flex 
+                              id="productos" 
+                              wrap="wrap" 
+                              justify={products.length > 0 ? "flex-start" : "center"} 
+                              align="flex-start" 
+                              mih={products.length > 0 ? "50vh" : "20vh"} 
+                              gap={30}
+                            >
+                              {products.length > 0 ? (
+                                  products.map((product, index) => (
+                                      <ProductsCards key={product.id} product={product} priority={index < 4} />
+                                  ))
+                              ) : (
+                                  <EmptyState 
+                                    icon={<FiPackage size={40} color="#adb5bd" />}
+                                    title={search ? "Sin resultados" : "Colección en preparación"}
+                                    description={search 
+                                      ? `No encontramos nada que coincida con "${search}". Probá con otros términos.` 
+                                      : "Estamos cargando nuestros últimos diseños. Volvé en unos momentos."
+                                    }
+                                    action={search ? { label: "Limpiar búsqueda", onClick: () => setSearch("") } : undefined}
+                                  />
+                              )}
+                            </Flex>
+
+                            <Box ref={(el) => { sentinelRef.current = el }} w="100%" mt={40}>
+                                {isFetchingNextPage ? (
+                                  <Center><Loader size="md" color="dark" /></Center>
+                                ) : (
+                                  hasNextPage && <Center><Text c="dimmed">Deslizá para ver más</Text></Center>
+                                )}
+                            </Box>
+                        </Container>
                     </Box>
-                    <Flex id="productos" wrap="wrap" justify="space-evenly" align="flex-start" mih={Array.isArray(products) && products.length > 0 ? "100vh" : "10vh"} flex={1} gap={20}>
-                    {Array.isArray(products) && products.length > 0 ? (
-                        products.map((product, index) => (
-                            <ProductsCards key={product.id} product={product} priority={index < 4} />
-                        ))
-                    ) : (
-                            <Stack align="center">
-                                {isLoading ? <Loader size="xs" /> : <Text c="dimmed">No hay productos disponibles</Text>}
-                            </Stack>
-                        )}
-                    <Box ref={(el) => { sentinelRef.current = el }} w="100%" my={20}>
-                        {isFetchingNextPage ? <Loader size="sm" /> : (hasNextPage ? <Text c="dimmed">Cargando más...</Text> : null)}
-                    </Box>
-                    </Flex>
                 </Flex>
             )}
             <CartWrapper/>

@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useCallback } from "react";
 import { useAdminAuth } from "./useAdminAuth";
 import { useMediaQuery } from "@mantine/hooks";
 
@@ -19,13 +19,13 @@ export function AdminContextProvider({ children }: { children: React.ReactNode }
   const isMobile = useMediaQuery("(max-width: 768px)") ?? false;
   const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
-  const capitalizeTexts = (text: string) => {
+  const capitalizeTexts = useCallback((text: string) => {
     if (!text) return "";
     return text
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
-  };
+  }, []);
 
   const value = useMemo<AdminContextValue>(
     () => ({
@@ -36,7 +36,7 @@ export function AdminContextProvider({ children }: { children: React.ReactNode }
         capitalizeTexts,
       },
     }),
-    [auth, baseUrl, isMobile]
+    [auth, baseUrl, isMobile, capitalizeTexts]
   );
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;

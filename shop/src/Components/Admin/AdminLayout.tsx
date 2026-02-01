@@ -65,6 +65,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     []
   );
 
+  const sidebarMenuItems = useMemo(() => menuItems.map(item => ({ href: item.to, label: item.label, icon: item.icon })), [menuItems]);
+
   return (
     <AppShell
       header={{ height: 60 }}
@@ -99,7 +101,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AppShell.Navbar p="md" style={{ background: "var(--mantine-color-body)" }}>
         <SidebarContent
           business={businessData || null}
-          menuItems={menuItems.map(item => ({ href: item.to, label: item.label, icon: item.icon }))}
+          menuItems={sidebarMenuItems}
           pathname={pathname}
           onLinkClick={close}
           topExtra={

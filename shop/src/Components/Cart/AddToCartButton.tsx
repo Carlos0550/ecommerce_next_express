@@ -6,7 +6,7 @@ import { useAppContext } from "@/providers/AppContext"
 import { FaCartPlus } from "react-icons/fa"
 import type { SelectedOption } from "@/providers/useCart"
 
-export default function AddToCartButton({ productId, options = [] }: { productId: string; options?: { name: string; values: string[] }[] }) {
+export default function AddToCartButton({ productId, options = [], fullWidth = false }: { productId: string; options?: { name: string; values: string[] }[]; fullWidth?: boolean }) {
   const {
     utils:{
       isMobile
@@ -66,11 +66,11 @@ export default function AddToCartButton({ productId, options = [] }: { productId
         </Stack>
       )}
       {isMobile ? (
-        <Button variant="light" fullWidth onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : <FaCartPlus />}>
+        <Button variant="light" fullWidth={fullWidth} onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : <FaCartPlus />}>
         Añadir
       </Button>
       ) : (
-        <Button variant="light" onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : null}>
+        <Button variant="light" fullWidth={fullWidth} onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : null}>
         Agregar al carrito
       </Button>
       )}

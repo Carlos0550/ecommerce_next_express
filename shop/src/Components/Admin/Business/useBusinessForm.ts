@@ -1,5 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { useCreateBusiness, useGetBusiness, useUpdateBusiness, useGenerateDescription, useUploadBusinessImage, type BusinessData } from "@/Api/admin/BusinessApi";
+import {
+  useCreateBusiness,
+  useGetBusiness,
+  useUpdateBusiness,
+  useGenerateDescription,
+  useUploadBusinessImage,
+  type BusinessData,
+} from "@/Api/admin/BusinessApi";
 import { notifications } from "@mantine/notifications";
 
 export interface FormErrors {
@@ -28,7 +35,8 @@ const INITIAL_STATE: BusinessData = {
   description: "",
   business_image: "",
   favicon: "",
-  bankData: [{ bank_name: "", account_number: "", account_holder: "" }]
+  hero_image: "",
+  bankData: [{ bank_name: "", account_number: "", account_holder: "" }],
 };
 
 export function useBusinessForm() {
@@ -43,6 +51,7 @@ export function useBusinessForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -58,9 +67,11 @@ export function useBusinessForm() {
         description: data.description || "",
         business_image: data.business_image || "",
         favicon: data.favicon || "",
-        bankData: Array.isArray(data.bankData) && data.bankData.length 
-          ? data.bankData 
-          : [{ bank_name: "", account_number: "", account_holder: "" }]
+        hero_image: data.hero_image || "",
+        bankData:
+          Array.isArray(data.bankData) && data.bankData.length
+            ? data.bankData
+            : [{ bank_name: "", account_number: "", account_holder: "" }],
       });
     }
   }, [data]);
@@ -87,12 +98,17 @@ export function useBusinessForm() {
       isValid = false;
     }
 
-    const bankErrors = data.bankData.map(bank => {
-      const bankError: { bank_name?: string; account_number?: string; account_holder?: string } = {};
+    const bankErrors = data.bankData.map((bank) => {
+      const bankError: {
+        bank_name?: string;
+        account_number?: string;
+        account_holder?: string;
+      } = {};
       let hasBankError = false;
 
-      const isPartiallyFilled = bank.bank_name || bank.account_number || bank.account_holder;
-      
+      const isPartiallyFilled =
+        bank.bank_name || bank.account_number || bank.account_holder;
+
       if (isPartiallyFilled) {
         if (!bank.bank_name) {
           bankError.bank_name = "Nombre del banco requerido";
@@ -107,78 +123,115 @@ export function useBusinessForm() {
           hasBankError = true;
         }
       }
-      
+
       return hasBankError ? bankError : {};
     });
 
-    if (bankErrors.some(e => Object.keys(e).length > 0)) {
-        newErrors.bankData = bankErrors;
-        isValid = false;
+    if (bankErrors.some((e) => Object.keys(e).length > 0)) {
+      newErrors.bankData = bankErrors;
+      isValid = false;
     }
 
     setErrors(newErrors);
     return isValid;
   }, []);
 
-  const handleChange = useCallback((key: keyof BusinessData, value: any) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-    if (errors[key as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [key]: undefined }));
-    }
-  }, [errors]);
+  const handleChange = useCallback(
+    (key: keyof BusinessData, value: any) => {
+      setForm((prev) => ({ ...prev, [key]: value }));
+      if (errors[key as keyof FormErrors]) {
+        setErrors((prev) => ({ ...prev, [key]: undefined }));
+      }
+    },
+    [errors],
+  );
 
-  const handleBankChange = useCallback((idx: number, key: keyof BusinessData["bankData"][number], value: string) => {
-    setForm(prev => ({
-      ...prev,
-      bankData: prev.bankData.map((b, i) => i === idx ? { ...b, [key]: value } : b)
-    }));
-  }, []);
+  const handleBankChange = useCallback(
+    (
+      idx: number,
+      key: keyof BusinessData["bankData"][number],
+      value: string,
+    ) => {
+      setForm((prev) => ({
+        ...prev,
+        bankData: prev.bankData.map((b, i) =>
+          i === idx ? { ...b, [key]: value } : b,
+        ),
+      }));
+    },
+    [],
+  );
 
   const addBankAccount = useCallback(() => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      bankData: [...prev.bankData, { bank_name: "", account_number: "", account_holder: "" }]
+      bankData: [
+        ...prev.bankData,
+        { bank_name: "", account_number: "", account_holder: "" },
+      ],
     }));
   }, []);
 
   const removeBankAccount = useCallback((idx: number) => {
-     setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      bankData: prev.bankData.filter((_, i) => i !== idx)
+      bankData: prev.bankData.filter((_, i) => i !== idx),
     }));
   }, []);
 
   const handleGenerateDescription = async () => {
     if (!form.name || !form.city || !form.state) {
-      notifications.show({ message: "Nombre, Ciudad y Provincia son requeridos para generar descripción", color: "yellow" });
+      notifications.show({
+        message:
+          "Nombre, Ciudad y Provincia son requeridos para generar descripción",
+        color: "yellow",
+      });
       return;
     }
-    const description = await generateDescriptionMutation.mutateAsync({ name: form.name, city: form.city, province: form.state, type: form.type, actualDescription: form.description });
+    const description = await generateDescriptionMutation.mutateAsync({
+      name: form.name,
+      city: form.city,
+      province: form.state,
+      type: form.type,
+      actualDescription: form.description,
+    });
     handleChange("description", description);
   };
 
-  const handleImageUpload = async (file: File | null, type: 'business_image' | 'favicon') => {
+  const handleImageUpload = async (
+    file: File | null,
+    type: "business_image" | "favicon" | "hero_image",
+  ) => {
     if (!file) return;
-    
-    if (type === 'business_image') setIsUploadingImage(true);
-    else setIsUploadingFavicon(true);
+
+    if (type === "business_image") setIsUploadingImage(true);
+    else if (type === "favicon") setIsUploadingFavicon(true);
+    else setIsUploadingHero(true);
 
     try {
-        const url = await uploadImageMutation.mutateAsync({ file, field: type, id: form.id });
-        handleChange(type, url);
+      const url = await uploadImageMutation.mutateAsync({
+        file,
+        field: type,
+        id: form.id,
+      });
+      handleChange(type, url);
     } catch (error) {
-        console.error(error);
+      console.error(error);
     } finally {
-        if (type === 'business_image') setIsUploadingImage(false);
-        else setIsUploadingFavicon(false);
+      if (type === "business_image") setIsUploadingImage(false);
+      else if (type === "favicon") setIsUploadingFavicon(false);
+      else setIsUploadingHero(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(form)) {
-        notifications.show({ message: "Por favor corrija los errores", color: "red" });
-        return;
+      notifications.show({
+        message: "Por favor corrija los errores",
+        color: "red",
+      });
+      return;
     }
 
     setIsSubmitting(true);
@@ -189,7 +242,7 @@ export function useBusinessForm() {
         await createMutation.mutateAsync(form);
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +252,8 @@ export function useBusinessForm() {
     form,
     errors,
     isLoading: isLoadingData,
-    isSubmitting: isSubmitting || createMutation.isPending || updateMutation.isPending,
+    isSubmitting:
+      isSubmitting || createMutation.isPending || updateMutation.isPending,
     handleChange,
     handleBankChange,
     addBankAccount,
@@ -209,6 +263,7 @@ export function useBusinessForm() {
     isGeneratingDescription: generateDescriptionMutation.isPending,
     handleImageUpload,
     isUploadingImage,
-    isUploadingFavicon
+    isUploadingFavicon,
+    isUploadingHero,
   };
 }

@@ -2,12 +2,13 @@
 import { Products } from '@/Api/useProducts'
 import AddToCartButton from '@/Components/Cart/AddToCartButton';
 import { useAppContext } from '@/providers/AppContext'
-import { Badge, Button, Card, Flex, Group, Text, Loader } from '@mantine/core'
-import { FaInfoCircle } from 'react-icons/fa'
+import { Badge, Button, Card, Flex, Group, Text, Loader, Stack } from '@mantine/core'
+import { FiArrowRight, FiInfo } from 'react-icons/fi'
 import { useState } from 'react'
 import Image from 'next/image';
 import Link from 'next/link';
 import { createProductSlug } from '@/utils/slugs';
+import classes from './ProductsCards.module.css';
 
 type Props = {
     product: Products
@@ -19,71 +20,63 @@ function ProductsCards({ product, priority = false }: Props) {
         utils: {
             isMobile,
         },
-
     } = useAppContext()
     const [imageLoading, setImageLoading] = useState(true)
     const [navigating, setNavigating] = useState(false)
  
-    const mobileCardWidth = "calc(50% - 10px)"; 
     const slug = createProductSlug(product.title, product.id);
 
-    const renderLoader = () => (
-        <Flex align="center" justify="center" style={{ position: 'absolute', inset: 0, background: 'rgba(255, 255, 255, 0.9)', zIndex: 1 }}>
-            <Loader type="bars" />
-        </Flex>
-    )
     return (
-        <Card shadow="sm" radius="md" withBorder w={isMobile ? mobileCardWidth : 350}>
-             <Link href={`/producto/${slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <Card.Section style={{ position: 'relative', paddingBottom: '75%', height: '250px', cursor: 'pointer' }}>
-                    {imageLoading && renderLoader()}
+        <Card radius="lg" className={classes.card} w={isMobile ? "calc(50% - 15px)" : 320}>
+             <Link href={`/producto/${slug}`} className={classes.imageLink}>
+                <Card.Section className={classes.imageContainer}>
+                    {imageLoading && (
+                        <Flex align="center" justify="center" className={classes.imageLoader}>
+                            <Loader size="sm" color="gray" />
+                        </Flex>
+                    )}
                     <Image
                         src={product.images[0]}
                         fill
-                        //sizes="(max-width: 768px) 50vw, 350px"
-                        style={{ objectFit: 'cover' }}
+                        className={classes.image}
                         onLoad={() => setImageLoading(false)}
                         priority={priority}
                         alt={product.title}
                     />
+                    <div className={classes.imageOverlay}>
+                        <Button
+                          variant="white"
+                          color="dark"
+                          size="xs"
+                          radius="xl"
+                          leftSection={<FiInfo size={14} />}
+                        >
+                          Ver detalles
+                        </Button>
+                    </div>
                 </Card.Section>
             </Link>
 
-            <Group justify="space-between" mt="md" mb="xs">
-                <div>
-                    <Link href={`/producto/${slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Text fw={500} style={{ cursor: 'pointer' }}>{product.title}</Text>
+            <Stack gap="xs" mt="md" className={classes.body}>
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                   <Link href={`/producto/${slug}`} className={classes.titleLink}>
+                        <Text fw={700} fz="md" lineClamp={1}>{product.title}</Text>
                     </Link>
-                    <Text fw={700} size="lg">${product.price}</Text>
-                </div>
-                <Group>
-                    <Badge >{product.category.title}</Badge>
-                    <Badge variant="outline">En stock</Badge>
+                    <Badge variant="dot" color="gray" size="sm">{product.category.title}</Badge>
                 </Group>
-            </Group>
+               
+                <Text fw={800} fz="xl" c="dark.4">${product.price.toLocaleString('es-AR')}</Text>
 
-            {!isMobile && (
-                <Text size="sm" c="dimmed">
-                    {product.description.slice(0, 100) + "..."}
-                </Text>
-            )}
+                {!isMobile && (
+                    <Text size="xs" c="dimmed" lineClamp={2} className={classes.description}>
+                        {product.description}
+                    </Text>
+                )}
 
-            {isMobile ? (
-                <Flex justify="space-evenly" mt={10} gap={10} wrap='wrap'>
-                    <Button component={Link} href={`/producto/${slug}`} leftSection={<FaInfoCircle />} fullWidth onClick={() => setNavigating(true)} disabled={navigating} rightSection={navigating ? <Loader size="xs" /> : null}>Ver más</Button>
-                    <AddToCartButton productId={product.id} />
-                </Flex>
-            ) : (
-                <Flex
-                    justify="space-evenly"
-                    mt={10}
-                    gap={10}
-                    wrap='nowrap'
-                >
-                    <Button component={Link} href={`/producto/${slug}`} leftSection={<FaInfoCircle />} onClick={() => setNavigating(true)} disabled={navigating} rightSection={navigating ? <Loader size="xs" /> : null}>Más info</Button>
-                    <AddToCartButton productId={product.id} />
-                </Flex>
-            )}
+                <Group gap={8} mt="xs">
+                    <AddToCartButton productId={product.id} fullWidth />
+                </Group>
+            </Stack>
         </Card>
     )
 }

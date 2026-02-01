@@ -10,6 +10,7 @@ export type BusinessData = {
   description?: string;
   business_image?: string;
   favicon?: string;
+  hero_image?: string;
 };
 
 export const getBusinessInfo = async (): Promise<BusinessData | null> => {
