@@ -2,7 +2,7 @@
 import { Products } from '@/Api/useProducts'
 import AddToCartButton from '@/Components/Cart/AddToCartButton';
 import { useAppContext } from '@/providers/AppContext'
-import { Badge, Button, Card, Flex, Group, Text, Loader, Stack } from '@mantine/core'
+import { Badge, Button, Card, Flex, Group, Text, Loader, Stack, Box } from '@mantine/core'
 import { FiArrowRight, FiInfo } from 'react-icons/fi'
 import { useState } from 'react'
 import Image from 'next/image';
@@ -26,9 +26,9 @@ function ProductsCards({ product, priority = false }: Props) {
     const slug = createProductSlug(product.title, product.id);
 
     return (
-        <Card radius="lg" className={classes.card} w={isMobile ? "calc(50% - 15px)" : 320}>
+        <Card radius="xl" className={classes.card} padding={0}>
              <Link href={`/producto/${slug}`} className={classes.imageLink}>
-                <Card.Section className={classes.imageContainer}>
+                <Box className={classes.imageContainer}>
                     {imageLoading && (
                         <Flex align="center" justify="center" className={classes.imageLoader}>
                             <Loader size="sm" color="gray" />
@@ -49,34 +49,49 @@ function ProductsCards({ product, priority = false }: Props) {
                           size="xs"
                           radius="xl"
                           leftSection={<FiInfo size={14} />}
+                          style={{ pointerEvents: 'auto' }}
                         >
                           Ver detalles
                         </Button>
                     </div>
-                </Card.Section>
+                </Box>
             </Link>
 
-            <Stack gap="xs" mt="md" className={classes.body}>
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                   <Link href={`/producto/${slug}`} className={classes.titleLink}>
-                        <Text fw={700} fz="md" lineClamp={1}>{product.title}</Text>
-                    </Link>
-                    {product.category && (
-                        <Badge variant="dot" color="gray" size="sm">{product.category.title}</Badge>
-                    )}
-                </Group>
-               
-                <Text fw={800} fz="xl" c="dark.4">${product.price.toLocaleString('es-AR')}</Text>
+            <Stack gap="xs" className={classes.body}>
+                <Stack gap={4}>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Link href={`/producto/${slug}`} className={classes.titleLink}>
+                            <Text fw={700} fz="lg" lineClamp={1} style={{ letterSpacing: '-0.2px' }}>
+                                {product.title}
+                            </Text>
+                        </Link>
+                        {product.category && (
+                            <Badge 
+                                variant="light" 
+                                color="gray" 
+                                size="xs" 
+                                className={classes.badge}
+                                radius="sm"
+                            >
+                                {product.category.title}
+                            </Badge>
+                        )}
+                    </Group>
+                    
+                    <Text fw={800} fz="xl" className={classes.price}>
+                        ${product.price.toLocaleString('es-AR')}
+                    </Text>
+                </Stack>
 
                 {!isMobile && (
-                    <Text size="xs" c="dimmed" lineClamp={2} className={classes.description}>
+                    <Text size="sm" c="dimmed" lineClamp={2} className={classes.description}>
                         {product.description}
                     </Text>
                 )}
 
-                <Group gap={8} mt="xs">
+                <Box mt="xs" className={classes.footer}>
                     <AddToCartButton productId={product.id} fullWidth />
-                </Group>
+                </Box>
             </Stack>
         </Card>
     )

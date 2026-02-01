@@ -1,14 +1,16 @@
-import { Box, Paper, Table, Text, Loader, Group, Button, Badge, Stack, ScrollArea, SegmentedControl, Checkbox, Textarea, ActionIcon } from "@mantine/core"
+import { Box, Paper, Table, Text, Loader, Group, Button, Badge, Stack, ScrollArea, SegmentedControl, Checkbox, Textarea, ActionIcon, SimpleGrid, Skeleton, Divider } from "@mantine/core"
 import { DatePickerInput } from "@mantine/dates"
+import { AreaChart } from "@mantine/charts"
 import { useMediaQuery } from "@mantine/hooks"
 import { theme } from "@/theme"
 import type { Product } from "@/Api/admin/ProductsApi"
-import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale } from "@/Api/admin/SalesApi"
+import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale, useGetSalesAnalytics } from "@/Api/admin/SalesApi"
 import type { PaymentMethods, SaleSource, ManualProductItem } from "./SalesForm"
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper"
 import React, { useMemo, useState } from "react"
 import { SalesForm } from "./SalesForm"
-import { FiEdit, FiTrash } from "react-icons/fi"
+import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiTrendingDown, FiActivity, FiGlobe, FiArrowLeft, FiArrowRight } from "react-icons/fi"
+import dayjs from "dayjs"
 
 export type SaleItemOption = { name: string; value?: string; values?: string[] }
 export type SaleItem = { id: string; title: string; price: number; quantity: number; options?: SaleItemOption[] }
@@ -85,6 +87,8 @@ export default function SalesTable() {
 
   const [pendingOnly, setPendingOnly] = useState<boolean>(false)
   const { data, isLoading } = useGetSales(currentPage, perPage, start_date, end_date, pendingOnly)
+  const { data: analytics, isLoading: isLoadingAnalytics } = useGetSalesAnalytics(start_date, end_date)
+  
   const processSaleMutation = useProcessSale()
   const getReceiptMutation = useGetSaleReceipt()
   const declineSaleMutation = useDeclineSale()
@@ -127,9 +131,6 @@ export default function SalesTable() {
   const [editOpen, setEditOpen] = useState<boolean>(false)
   const [editSale, setEditSale] = useState<Sales | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  // Derivar totalToday desde data
-  const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
 
   // Handlers que resetean página
   const handlePresetChange = (value: string) => {
@@ -195,35 +196,63 @@ export default function SalesTable() {
 
   const renderActionButtons = (sale: Sales) => {
     return (
-      <Group gap="xs" wrap="wrap">
-        <Button variant="light" onClick={() => openProducts(sale)}>Ver productos</Button>
+      <Group gap="xs" wrap="nowrap">
+        <ActionIcon variant="light" color="blue" onClick={() => openProducts(sale)} title="Ver productos">
+           <FiShoppingCart size={16} />
+        </ActionIcon>
+        
         {sale.source === 'WEB' && (
           <React.Fragment>
             {processSaleMutation.isPending ? (
               <Loader size={"xs"} type="bars" />
             ) : (
-              <Checkbox disabled={sale.processed || processSaleMutation.isPending || sale.declined} size="xs" label="Procesada"
+              <Checkbox 
+                disabled={sale.processed || processSaleMutation.isPending || sale.declined} 
+                size="xs" 
                 checked={sale.processed!}
                 onChange={() => processSaleMutation.mutate(sale.id)}
+                title="Marcar como procesada"
               />
             )}
-            <Button disabled={getReceiptMutation.isPending} loading={getReceiptMutation.isPending} size="xs" variant="light" onClick={() => openReceipt(sale.id)}>Ver comprobante</Button>
-            <Button size="xs" variant="light" color="red"
+            <ActionIcon 
+                disabled={getReceiptMutation.isPending} 
+                loading={getReceiptMutation.isPending} 
+                variant="light" 
+                color="teal" 
+                onClick={() => openReceipt(sale.id)}
+                title="Ver comprobante"
+            >
+                <FiInfo size={16} />
+            </ActionIcon>
+            <ActionIcon 
+              variant="light" 
+              color="orange"
               disabled={sale.processed || sale.declined}
-              onClick={() => handleDeclineSale(sale.id)}>Declinar
-            </Button>
+              onClick={() => handleDeclineSale(sale.id)}
+              title="Declinar venta"
+            >
+                <FiTrash2 size={16} />
+            </ActionIcon>
           </React.Fragment>
         )}
-        <Button size="xs" variant="light" onClick={() => openBuyer(sale)}>Ver comprador</Button>
+        
+        <ActionIcon variant="light" color="indigo" onClick={() => openBuyer(sale)} title="Ver comprador">
+            <FiUsers size={16} />
+        </ActionIcon>
+
         {sale.source !== 'WEB' && (
-          <Button size="xs" variant="light" leftSection={<FiEdit />} onClick={() => { setEditSale(sale); setEditOpen(true); }}>Editar</Button>
+          <ActionIcon variant="light" color="gray" onClick={() => { setEditSale(sale); setEditOpen(true); }} title="Editar">
+             <FiEdit size={16} />
+          </ActionIcon>
         )}
+
         <ActionIcon color="red" variant="light" aria-label="Eliminar"
           onClick={() => { setDeletingId(sale.id); deleteSaleMutation.mutate(sale.id, { onSettled: () => setDeletingId(null) }); }}
           loading={deleteSaleMutation.isPending && deletingId === sale.id}
           disabled={deleteSaleMutation.isPending && deletingId === sale.id}
+          title="Eliminar registro"
         >
-          <FiTrash />
+          <FiTrash size={16} />
         </ActionIcon>
       </Group>
     )
@@ -231,49 +260,148 @@ export default function SalesTable() {
 
   const renderStatusBadge = (sale: Sales) => {
     if (sale.source === "WEB") {
-      if (sale.processed) return <Badge color="green">Procesada</Badge>
-      if (sale.declined) return <Badge color="red">Declinada</Badge>
-      return <Badge color="yellow">Pendiente</Badge>
+      if (sale.processed) return <Badge color="green" variant="dot">Procesada</Badge>
+      if (sale.declined) return <Badge color="red" variant="dot">Declinada</Badge>
+      return <Badge color="yellow" variant="dot">Pendiente</Badge>
     }
+    return <Badge color="gray" variant="dot">Manual</Badge>
   }
+
+  const chartData = useMemo(() => {
+    if (!analytics?.timeseries?.by_day) return []
+    return analytics.timeseries.by_day.map(point => ({
+        date: dayjs(point.date).format('DD MMM'),
+        ventas: point.revenue
+    }))
+  }, [analytics])
+
+  const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
+  const pendingCount = useMemo(() => sales.filter(s => s.source === 'WEB' && !s.processed && !s.declined).length, [sales])
+
   return (
     <Box>
-      <Group mb="md" gap="md" align="center" wrap="wrap">
-        <SegmentedControl
-          value={preset}
-          onChange={handlePresetChange}
-          style={{ flexWrap: "wrap" }}
-          data={[
-            { label: "Hoy", value: "HOY" },
-            { label: "Ayer", value: "AYER" },
-            { label: "Últimos 3", value: "ULTIMOS_3" },
-            { label: "Últimos 7", value: "ULTIMOS_7" },
-            { label: "Mes", value: "MES" },
-            { label: "Personalizado", value: "PERSONALIZADO" },
-          ]}
-        />
-        <Checkbox label="Órdenes pendientes" checked={pendingOnly} onChange={(e) => { setPendingOnly(e.currentTarget.checked); setCurrentPage(1); }} />
-        {preset === "PERSONALIZADO" && (
-          <DatePickerInput
-            type="range"
-            value={range}
-            onChange={(value) => handleRangeChange(value as [Date | null, Date | null])}
-            placeholder="Selecciona rango"
-            locale="es"
-          />
-        )}
-      </Group>
+      {/* Dashboard Stats */}
+      <SimpleGrid cols={{ base: 1, sm: 3 }} mb="xl" spacing="lg">
+        <Paper withBorder p="md" radius="md" bg="rose.6" c="white">
+            <Group justify="space-between" mb="xs">
+                <Text size="xs" fw={700} style={{ textTransform: 'uppercase', opacity: 0.9 }}>Ingresos Totales</Text>
+                <FiDollarSign size={20} />
+            </Group>
+            {isLoadingAnalytics ? <Skeleton h={40} mt="sm" /> : (
+                <Stack gap={0}>
+                    <Text fz="24px" fw={800}>{currency.format(analytics?.totals.revenue_total || 0)}</Text>
+                    <Text size="xs" fw={500} style={{ opacity: 0.8 }}>En el periodo seleccionado</Text>
+                </Stack>
+            )}
+        </Paper>
+
+        <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" mb="xs">
+                <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Vendido Hoy</Text>
+                <Box p={8} bg="blue.0" style={{ borderRadius: '8px' }}>
+                    <FiTrendingUp size={18} color="var(--mantine-color-blue-6)" />
+                </Box>
+            </Group>
+            <Stack gap={0}>
+                <Text fz="24px" fw={800}>{currency.format(totalToday)}</Text>
+                <Text size="xs" c="dimmed">Ingresos brutos de hoy</Text>
+            </Stack>
+        </Paper>
+
+        <Paper withBorder p="md" radius="md">
+            <Group justify="space-between" mb="xs">
+                <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Ventas Totales</Text>
+                <Box p={8} bg="teal.0" style={{ borderRadius: '8px' }}>
+                    <FiShoppingCart size={18} color="var(--mantine-color-teal-6)" />
+                </Box>
+            </Group>
+             <Stack gap={0}>
+                <Text fz="24px" fw={800}>{analytics?.totals.sales_count || 0}</Text>
+                <Text size="xs" c="dimmed">Cantidad de pedidos realizados</Text>
+            </Stack>
+        </Paper>
+      </SimpleGrid>
+
+      {/* Trend Chart */}
+      {!isMobile && (preset === "ULTIMOS_7" || preset === "MES") && analytics?.timeseries?.by_day && analytics.timeseries.by_day.length >= 1 && (
+        <Paper withBorder p="xl" radius="md" mb="xl">
+            <Text fw={700} mb="lg">Tendencia de Ingresos</Text>
+            <AreaChart
+                h={200}
+                data={chartData}
+                dataKey="date"
+                series={[{ name: 'ventas', color: 'rose.6', label: 'Ingresos ($)' }]}
+                curveType="monotone"
+                withDots={chartData.length <= 7}
+                valueFormatter={(value) => currency.format(value)}
+            />
+        </Paper>
+      )}
+
+      {/* Filters Section */}
+      <Paper withBorder p="sm" radius="md" mb="md" bg="gray.0">
+        <Group justify="space-between" align="center" wrap="wrap">
+            <Group gap="md">
+                <SegmentedControl
+                    value={preset}
+                    onChange={handlePresetChange}
+                    radius="xl"
+                    size="sm"
+                    data={[
+                        { label: "Hoy", value: "HOY" },
+                        { label: "Ayer", value: "AYER" },
+                        { label: "7 días", value: "ULTIMOS_7" },
+                        { label: "Mes", value: "MES" },
+                        { label: "Personalizado", value: "PERSONALIZADO" },
+                    ]}
+                />
+                {preset === "PERSONALIZADO" && (
+                    <DatePickerInput
+                        type="range"
+                        value={range}
+                        onChange={(value) => handleRangeChange(value as [Date | null, Date | null])}
+                        placeholder="Selecciona rango"
+                        locale="es"
+                        size="sm"
+                        radius="xl"
+                        w={220}
+                    />
+                )}
+            </Group>
+            
+            <Group gap="lg">
+                <Checkbox 
+                    label="Pendientes" 
+                    fw={500}
+                    checked={pendingOnly} 
+                    onChange={(e) => { setPendingOnly(e.currentTarget.checked); setCurrentPage(1); }} 
+                />
+                
+                <Group gap="xs" align="center">
+                    <Text size="sm" fw={600} c="dimmed">Resultados:</Text>
+                    <SegmentedControl
+                      size="xs"
+                      radius="xl"
+                      value={String(perPage)}
+                      onChange={(val) => { setPerPage(Number(val)); setCurrentPage(1); }}
+                      data={['5', '10', '25', '50']}
+                    />
+                </Group>
+            </Group>
+        </Group>
+      </Paper>
+
       {isLoading ? (
         <Group justify="center" align="center" h={200}>
-          <Loader />
+          <Loader color="rose" />
         </Group>
       ) : (!sales || sales.length === 0) ? (
-        <Text ta="center">No se encontraron ventas</Text>
+        <Paper withBorder p="xl" radius="md" ta="center">
+            <FiInfo size={40} color="var(--mantine-color-gray-4)" style={{ marginBottom: '10px' }} />
+            <Text c="dimmed">No se encontraron ventas para este periodo.</Text>
+        </Paper>
       ) : isMobile ? (
         <Stack>
-          <Text c={"dimmed"} size="xl">
-            Total vendido hoy: {currency.format(totalToday)}
-          </Text>
           {sales.map((sale) => {
             const finalTotal = Number(sale.total) || 0
             const taxPct = Number(sale.tax) || 0
@@ -283,39 +411,25 @@ export default function SalesTable() {
             return (
               <Paper key={sale.id} withBorder p="md" radius="md" >
                 <Stack gap="xs">
-                {renderStatusBadge(sale)}
+                 <Group justify="space-between">
+                    <Text fw={700} fz="sm">#{sale.id.slice(-6)}</Text>
+                    {renderStatusBadge(sale)}
+                  </Group>
+                  <Group justify="space-between" align="flex-start">
+                    <Stack gap={2}>
+                        <Text fw={600} size="md">{sale.user?.name || sale.orders?.[0]?.buyer_name || 'Consumidor Final'}</Text>
+                        <Text c="dimmed" size="xs">{formatDate(sale.created_at)}</Text>
+                    </Stack>
+                    <Badge color="blue" variant="light" size="sm">{sale.payment_method}</Badge>
+                  </Group>
+                  
+                  <Divider variant="dashed" />
+                  
                   <Group justify="space-between">
-                    <Text fw={600}>Venta #{sale.id}</Text>
-                    <Badge variant="light">{sale.source}</Badge>
+                    <Text size="sm">Total</Text>
+                    <Text fw={800} fz="lg" c="rose.7">{currency.format(finalTotal)}</Text>
                   </Group>
-                  <Text c="dimmed">Fecha: {formatDate(sale.created_at)}</Text>
-                  <Group gap="xs">
-                    <Badge color="blue" variant="light">{sale.payment_method}</Badge>
-                    {taxPct > 0 && <Badge color="grape" variant="light">Impuesto {taxPct}%</Badge>}
-                  </Group>
-                  <Group justify="space-between">
-                    <Text>Subtotal</Text>
-                    <Text fw={600}>{currency.format(subtotal)}</Text>
-                  </Group>
-                  {taxPct > 0 && (
-                    <Group justify="space-between">
-                      <Text>Impuesto</Text>
-                      <Text fw={600}>{currency.format(taxAmount)}</Text>
-                    </Group>
-                  )}
-                  <Group justify="space-between">
-                    <Text>Total</Text>
-                    <Text fw={700}>{currency.format(finalTotal)}</Text>
-                  </Group>
-                  {/* Items detallados se muestran en el modal de \"Ver productos\" */}
-                  <Group justify="space-between">
-                    <Text>Cliente</Text>
-                    <Text>{sale.user?.name || sale.orders?.[0]?.buyer_name || '—'} {sale.user?.email || sale.orders?.[0]?.buyer_email ? `(${sale.user?.email || sale.orders?.[0]?.buyer_email})` : ''}</Text>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text>Productos</Text>
-                    <Badge>{itemsCount}</Badge>
-                  </Group>
+                  
                   {renderActionButtons(sale)}
                 </Stack>
               </Paper>
@@ -324,26 +438,19 @@ export default function SalesTable() {
         </Stack>
       ) : (
         <React.Fragment>
-          <Stack mb={"md"}>
-            <Text c={"dimmed"} size="xl">
-              Total vendido hoy: {currency.format(totalToday)}
-            </Text>
-          </Stack>
-          <Paper withBorder radius="md" p="sm">
-
+          <Paper withBorder radius="md" shadow="sm" style={{ overflow: 'hidden' }}>
             <ScrollArea>
-              <Table striped highlightOnHover>
-                <Table.Thead>
+              <Table verticalSpacing="md" highlightOnHover>
+                <Table.Thead bg="gray.0">
                   <Table.Tr>
-                    <Table.Th></Table.Th>
+                    <Table.Th style={{ width: 40 }}></Table.Th>
+                    <Table.Th>Orden</Table.Th>
                     <Table.Th>Fecha</Table.Th>
                     <Table.Th>Cliente</Table.Th>
                     <Table.Th>Método</Table.Th>
-                    <Table.Th>Fuente</Table.Th>
-                    <Table.Th>Impuesto %</Table.Th>
-                    <Table.Th>Subtotal</Table.Th>
-                    <Table.Th>Total</Table.Th>
-                    <Table.Th>Productos</Table.Th>
+                    <Table.Th>Facturación</Table.Th>
+                    <Table.Th ta="right">Total</Table.Th>
+                    <Table.Th ta="center">Items</Table.Th>
                     <Table.Th>Acciones</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -356,24 +463,37 @@ export default function SalesTable() {
                     return (
                       <Table.Tr key={sale.id}>
                         <Table.Td>{renderStatusBadge(sale)}</Table.Td>
-                        <Table.Td>{formatDate(sale.created_at)}</Table.Td>
+                        <Table.Td>
+                            <Text fw={700} fz="xs" c="rose.8" style={{ fontFamily: 'monospace' }}>
+                                #{sale.id.slice(-8).toUpperCase()}
+                            </Text>
+                        </Table.Td>
+                        <Table.Td>
+                            <Text size="sm">{dayjs(sale.created_at).format('DD/MM/YY')}</Text>
+                            <Text size="xs" c="dimmed">{dayjs(sale.created_at).format('HH:mm')} hs</Text>
+                        </Table.Td>
                         <Table.Td>
                           <Stack gap={2}>
-                            <Text fw={600}>{sale.user?.name || sale.orders?.[0]?.buyer_name || '—'}</Text>
-                            <Text c="dimmed" size="sm">{sale.user?.email || sale.orders?.[0]?.buyer_email || '—'}</Text>
+                            <Text fw={600} size="sm">{sale.user?.name || sale.orders?.[0]?.buyer_name || 'Invitado'}</Text>
+                            <Text c="dimmed" size="xs" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {sale.user?.email || sale.orders?.[0]?.buyer_email || '—'}
+                            </Text>
                           </Stack>
                         </Table.Td>
                         <Table.Td>
-                          <Badge color="blue" variant="light">{sale.payment_method}</Badge>
+                          <Badge color="blue" variant="light" size="sm">{sale.payment_method}</Badge>
                         </Table.Td>
                         <Table.Td>
-                          <Badge variant="light">{sale.source}</Badge>
+                            <Stack gap={0}>
+                                <Text size="xs" fw={500}>Sub: {currency.format(subtotal)}</Text>
+                                {taxPct > 0 && <Text fz="10px" c="rose">Tax: {taxPct}%</Text>}
+                            </Stack>
                         </Table.Td>
-                        <Table.Td>{taxPct}</Table.Td>
-                        <Table.Td>{currency.format(subtotal)}</Table.Td>
-                        <Table.Td>{currency.format(finalTotal)}</Table.Td>
-                        <Table.Td>
-                          <Badge>{itemsCount}</Badge>
+                        <Table.Td ta="right">
+                            <Text fw={800} c="dark">{currency.format(finalTotal)}</Text>
+                        </Table.Td>
+                        <Table.Td ta="center">
+                          <Badge size="xs" variant="outline" circle color="gray">{itemsCount}</Badge>
                         </Table.Td>
                         <Table.Td>
                           {renderActionButtons(sale)}
@@ -389,32 +509,31 @@ export default function SalesTable() {
       )}
 
       {pagination && (
-        <Group justify="center" mt="md" gap="md">
-          <Text>
-            Página {pagination.page} de {pagination.totalPages} ({pagination.total} ventas)
+        <Group justify="space-between" mt="xl" px="sm">
+          <Text size="sm" c="dimmed" fw={500}>
+            Mostrando página <Text span c="dark" fw={700}>{pagination.page}</Text> de <Text span c="dark" fw={700}>{pagination.totalPages}</Text> ({pagination.total} ventas en total)
           </Text>
           <Group gap="xs">
             <Button
+              variant="subtle"
+              color="gray"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={!pagination.hasPrevPage}
+              leftSection={<FiArrowLeft />}
               size="sm"
             >
               Anterior
             </Button>
             <Button
+              variant="subtle"
+              color="gray"
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={!pagination.hasNextPage}
+              rightSection={<FiArrowRight />}
               size="sm"
             >
               Siguiente
             </Button>
-          </Group>
-          <Group gap="xs" align="center">
-            <Text size="sm">Por página:</Text>
-            <Button size="xs" variant={perPage === 5 ? 'filled' : 'light'} onClick={() => { setPerPage(5); setCurrentPage(1); }}>5</Button>
-            <Button size="xs" variant={perPage === 10 ? 'filled' : 'light'} onClick={() => { setPerPage(10); setCurrentPage(1); }}>10</Button>
-            <Button size="xs" variant={perPage === 20 ? 'filled' : 'light'} onClick={() => { setPerPage(20); setCurrentPage(1); }}>20</Button>
-            <Button size="xs" variant={perPage === 50 ? 'filled' : 'light'} onClick={() => { setPerPage(50); setCurrentPage(1); }}>50</Button>
           </Group>
         </Group>
       )}

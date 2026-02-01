@@ -1,9 +1,9 @@
-import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Switch, Textarea } from "@mantine/core";
+import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Switch, Textarea, SegmentedControl, Title, rem } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { showNotification } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { useState, useMemo, useEffect } from "react";
-import { FiTrash, FiShoppingCart } from "react-icons/fi";
+import { FiTrash, FiShoppingCart, FiCalendar, FiCreditCard, FiPlus, FiSave, FiList, FiEdit3 } from "react-icons/fi";
 import { useGetAllProducts, type GetProductsParams, type Product } from "@/Api/admin/ProductsApi";
 import { useSaveSale, useUpdateSale } from "@/Api/admin/SalesApi";
 import type { Sales } from "./SalesTable";
@@ -233,203 +233,302 @@ export function SalesForm({ onClose, sale }: Props) {
 
     return (
         <Box>
-
-            <Paper withBorder p="md" radius="md">
-                <Switch
-                    label="Cargar manualmente"
-                    name="loadedManually"
-                    checked={formValue.loadedManually}
-                    onChange={handleChangeValues}
-                />
-                <Grid gutter={16}>
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <DateInput
-                            label="Fecha de venta"
-                            value={saleDate}
-                            onChange={(value) => { const v = value || null; setSaleDate(v as Date | null); setFormValue(s => ({ ...s, sale_date: v ? dayjs(v).format('YYYY-MM-DD') : undefined })); }}
-                            locale="es"
+            <Paper withBorder p="lg" radius="md" style={{ backgroundColor: '#fcfcfc' }}>
+                <Stack gap="xl">
+                    <Group justify="space-between">
+                        <Group gap="xs">
+                            {sale ? <FiEdit3 size={24} /> : <FiPlus size={24} />}
+                            <Title order={3}>{sale ? 'Editar Venta' : 'Nueva Venta'}</Title>
+                        </Group>
+                        <SegmentedControl
+                            value={formValue.loadedManually ? 'manual' : 'catalog'}
+                            onChange={(value) => {
+                                setFormValue(v => ({ ...v, loadedManually: value === 'manual' }));
+                            }}
+                            data={[
+                                { label: 'Catálogo', value: 'catalog' },
+                                { label: 'Manual', value: 'manual' },
+                            ]}
+                            size="sm"
                         />
-                    </Grid.Col>
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        {!formValue.loadedManually ? (
-                            <Stack gap="sm">
-                                <Select
-                                    label="Productos"
-                                    name="product_ids"
-                                    placeholder={isLoading ? "Cargando productos..." : "Buscar y seleccionar"}
-                                    data={productsOptions}
-                                    searchable
-                                    leftSection={isLoading && <Loader size={"xs"} />}
-                                    searchValue={searchTitle}
-                                    onSearchChange={setSearchTitle}
-                                    value={selectValue}
-                                    onChange={(value) => {
-                                        addProductById(value);
-                                        setSelectValue(null);
-                                        setSearchTitle("");
-                                    }}
-                                    withCheckIcon={false}
-                                />
+                    </Group>
 
-                                <Card withBorder shadow="sm" radius="md">
-                                    <Group justify="space-between" mb="xs">
-                                        <Group>
-                                            <FiShoppingCart />
-                                            <Text fw={500}>Seleccionados</Text>
-                                        </Group>
-                                        <Badge color="blue" variant="light">{selectedProducts.length}</Badge>
-                                    </Group>
-                                    <Divider my="sm" />
+                    <Grid gutter="xl">
+                        <Grid.Col span={{ base: 12, md: 4 }}>
+                            <Stack gap="lg">
+                                <Card withBorder shadow="sm" radius="md" p="md">
                                     <Stack gap="xs">
-                                        {selectedProducts.length === 0 ? (
-                                            <Text c="dimmed">No hay productos seleccionados</Text>
-                                        ) : (
-                                            selectedProducts.map(p => (
-                                                <Group key={p.id} justify="space-between">
-                                                    <Group gap="xs">
-                                                        <Badge color="green" variant="light">{currency.format(typeof p.price === 'number' ? p.price : 0)}</Badge>
-                                                        <Text>{p.title}</Text>
+                                        <Group gap="xs" mb="xs">
+                                            <FiCalendar />
+                                            <Text fw={600} size="sm">Información General</Text>
+                                        </Group>
+                                        <DateInput
+                                            label="Fecha de venta"
+                                            value={saleDate}
+                                            onChange={(value) => { 
+                                                const v = value || null; 
+                                                setSaleDate(v as Date | null); 
+                                                setFormValue(s => ({ ...s, sale_date: v ? dayjs(v).format('YYYY-MM-DD') : undefined })); 
+                                            }}
+                                            locale="es"
+                                            placeholder="Seleccionar fecha"
+                                        />
+                                    </Stack>
+                                </Card>
+
+                                <Card withBorder shadow="sm" radius="md" p="md">
+                                    <Stack gap="sm">
+                                        <Group justify="space-between">
+                                            <Group gap="xs">
+                                                <FiCreditCard  />
+                                                <Text fw={600} size="sm">Métodos de Pago</Text>
+                                            </Group>
+                                            <Button 
+                                                size="compact-xs" 
+                                                variant="light" 
+                                       
+                                                leftSection={<FiPlus size={14} />}
+                                                disabled={(formValue.payment_methods?.length || 0) >= 2}
+                                                onClick={() => setFormValue(v => ({
+                                                    ...v,
+                                                    payment_methods: [
+                                                        ...(v.payment_methods || []),
+                                                        { method: "EFECTIVO", amount: 0 }
+                                                    ]
+                                                }))}
+                                            >
+                                                Agregar
+                                            </Button>
+                                        </Group>
+                                        
+                                        <Divider />
+                                        
+                                        <Stack gap="md">
+                                            {(formValue.payment_methods || []).map((pm, idx) => (
+                                                <Paper key={idx} withBorder p="xs" radius="sm" style={{ backgroundColor: '#fdfdfd' }}>
+                                                    <Group align="flex-end" gap="xs">
+                                                        <Select
+                                                            label={`Método ${idx + 1}`}
+                                                            style={{ flex: 1 }}
+                                                            data={PaymentMethods.map(m => ({ value: m, label: m }))}
+                                                            value={pm.method}
+                                                            onChange={(value) => {
+                                                                if (!value) return;
+                                                                setFormValue(v => ({
+                                                                    ...v,
+                                                                    payment_methods: (v.payment_methods || []).map((x, i) => i === idx ? { ...x, method: value as PaymentMethods } : x)
+                                                                }))
+                                                            }}
+                                                        />
+                                                        <TextInput
+                                                            label="Monto"
+                                                            placeholder="0"
+                                                            style={{ width: rem(120) }}
+                                                            value={String(pm.amount ?? 0)}
+                                                            onChange={(e) => {
+                                                                const amount = Number(e.target.value || 0);
+                                                                setFormValue(v => ({
+                                                                    ...v,
+                                                                    payment_methods: (v.payment_methods || []).map((x, i) => i === idx ? { ...x, amount: Number.isFinite(amount) ? amount : 0 } : x)
+                                                                }))
+                                                            }}
+                                                        />
+                                                        {(formValue.payment_methods || []).length > 1 && (
+                                                            <ActionIcon 
+                                                                color="red" 
+                                                                variant="subtle" 
+                                                                mb={4}
+                                                                onClick={() => {
+                                                                    setFormValue(v => ({
+                                                                        ...v,
+                                                                        payment_methods: (v.payment_methods || []).filter((_, i) => i !== idx)
+                                                                    }))
+                                                                }}
+                                                            >
+                                                                <FiTrash />
+                                                            </ActionIcon>
+                                                        )}
                                                     </Group>
-                                                    <ActionIcon color="red" variant="light" aria-label="Eliminar" onClick={() => removeProduct(p.id)}>
-                                                        <FiTrash />
-                                                    </ActionIcon>
-                                                </Group>
-                                            ))
-                                        )}
+                                                </Paper>
+                                            ))}
+                                            
+                                            {remainingAmount > 0 && ((formValue.payment_methods?.length || 0) > 1) && (
+                                                <Badge color="orange" variant="light" py="md" style={{ width: '100%' }}>
+                                                    Faltan {currency.format(remainingAmount)} {effectiveTax > 0 ? "(sobre base)" : ""}
+                                                </Badge>
+                                            )}
+                                        </Stack>
                                     </Stack>
                                 </Card>
                             </Stack>
-                        ) : (
-                            <Stack gap="xs">
-                                <Textarea
-                                    label="Productos manuales"
-                                    placeholder='Formato: "CANTIDAD PRODUCTO PRECIO" por línea. Ej: "1 gloss 1500"'
-                                    name="manualText"
-                                    value={manualText}
-                                    autosize
-                                    minRows={3}
-                                    maxRows={40}
-                                    onChange={handleChangeValues}
-                                />
-                                {manualInvalid && (
-                                    <Text c="red" size="sm">Hay productos con formato inválido o vacío. Corrige antes de guardar.</Text>
-                                )}
-                            </Stack>
-                        )}
+                        </Grid.Col>
 
-                    </Grid.Col>
-
-                    <Grid.Col span={{ base: 12, md: 6 }}>
-                        <Stack gap="sm">
-                            <Card withBorder shadow="sm" radius="md">
-                                <Stack gap="xs">
-                                    <Group justify="space-between">
-                                        <Text fw={500}>Métodos de pago (máx. 2)</Text>
-                                        <Button size="xs" variant="light" disabled={(formValue.payment_methods?.length || 0) >= 2}
-                                            onClick={() => setFormValue(v => ({
-                                                ...v,
-                                                payment_methods: [
-                                                    ...(v.payment_methods || []),
-                                                    { method: "EFECTIVO", amount: 0 }
-                                                ]
-                                            }))}
-                                        >Agregar método</Button>
-                                    </Group>
-                                    <Divider my="xs" />
-                                    {(formValue.payment_methods || []).map((pm, idx) => (
-                                        <Group key={idx} align="end" justify="space-between">
+                        {/* Panel Derecho: Productos */}
+                        <Grid.Col span={{ base: 12, md: 8 }}>
+                            <Stack gap="lg" h="100%">
+                                <Card withBorder shadow="sm" radius="md" p="md" style={{ flex: 1 }}>
+                                    {!formValue.loadedManually ? (
+                                        <Stack gap="md" h="100%">
+                                            <Group gap="xs">
+                                                <FiShoppingCart />
+                                                <Text fw={600} size="sm">Selección de Productos</Text>
+                                            </Group>
+                                            
                                             <Select
-                                                label={`Método ${idx + 1}`}
-                                                data={PaymentMethods.map(m => ({ value: m, label: m }))}
-                                                value={pm.method}
+                                                placeholder={isLoading ? "Cargando productos..." : "Buscar por nombre..."}
+                                                data={productsOptions}
+                                                searchable
+                                                leftSection={isLoading ? <Loader size="xs" /> : <FiList />}
+                                                searchValue={searchTitle}
+                                                onSearchChange={setSearchTitle}
+                                                value={selectValue}
                                                 onChange={(value) => {
-                                                    if (!value) return;
-                                                    setFormValue(v => ({
-                                                        ...v,
-                                                        payment_methods: (v.payment_methods || []).map((x, i) => i === idx ? { ...x, method: value as PaymentMethods } : x)
-                                                    }))
+                                                    addProductById(value);
+                                                    setSelectValue(null);
+                                                    setSearchTitle("");
                                                 }}
+                                                withCheckIcon={false}
                                             />
-                                            <TextInput
-                                                label="Monto"
-                                                placeholder="0"
-                                                value={String(pm.amount ?? 0)}
-                                                onChange={(e) => {
-                                                    const amount = Number(e.target.value || 0);
-                                                    setFormValue(v => ({
-                                                        ...v,
-                                                        payment_methods: (v.payment_methods || []).map((x, i) => i === idx ? { ...x, amount: Number.isFinite(amount) ? amount : 0 } : x)
-                                                    }))
+
+                                            <Paper withBorder radius="md" p="sm" style={{ backgroundColor: '#f8f9fa', flex: 1, minHeight: rem(200) }}>
+                                                <Group justify="space-between" mb="sm">
+                                                    <Text size="sm" fw={600} c="dimmed">Items Seleccionados</Text>
+                                                    <Badge variant="filled">{selectedProducts.length}</Badge>
+                                                </Group>
+                                                
+                                                <Stack gap="xs" style={{ maxHeight: rem(400), overflowY: 'auto' }}>
+                                                    {selectedProducts.length === 0 ? (
+                                                        <Stack align="center" gap="xs" py="xl">
+                                                            <FiShoppingCart size={40} color="var(--mantine-color-gray-4)" />
+                                                            <Text c="dimmed" size="sm">No hay productos seleccionados</Text>
+                                                        </Stack>
+                                                    ) : (
+                                                        selectedProducts.map(p => (
+                                                            <Paper key={p.id} withBorder p="xs" radius="sm" shadow="xs">
+                                                                <Group justify="space-between">
+                                                                    <Group gap="sm">
+                                                                        <Badge color="green" variant="light" size="lg" radius="sm">
+                                                                            {currency.format(typeof p.price === 'number' ? p.price : 0)}
+                                                                        </Badge>
+                                                                        <Text size="sm" fw={500}>{p.title}</Text>
+                                                                    </Group>
+                                                                    <ActionIcon color="red" variant="subtle" onClick={() => removeProduct(p.id)}>
+                                                                        <FiTrash />
+                                                                    </ActionIcon>
+                                                                </Group>
+                                                            </Paper>
+                                                        ))
+                                                    )}
+                                                </Stack>
+                                            </Paper>
+                                        </Stack>
+                                    ) : (
+                                        <Stack gap="md" h="100%">
+                                            <Stack gap={2}>
+                                                <Group gap="xs">
+                                                    <FiList  />
+                                                    <Text fw={600} size="sm">Carga Manual</Text>
+                                                </Group>
+                                                <Text size="xs" c="dimmed">Formato: "CANTIDAD PRODUCTO PRECIO" por línea</Text>
+                                            </Stack>
+                                            
+                                            <Textarea
+                                                placeholder='Ej: "2 Labial Mate 3500"'
+                                                name="manualText"
+                                                value={manualText}
+                                                autosize
+                                                minRows={10}
+                                                styles={{
+                                                    input: {
+                                                        fontFamily: 'monospace',
+                                                        fontSize: rem(13),
+                                                        backgroundColor: '#fafafa'
+                                                    }
                                                 }}
+                                                onChange={handleChangeValues}
                                             />
-                                            {(formValue.payment_methods || []).length > 1 && (
-                                                <ActionIcon color="red" variant="light" aria-label="Eliminar" onClick={() => {
-                                                    setFormValue(v => ({
-                                                        ...v,
-                                                        payment_methods: (v.payment_methods || []).filter((_, i) => i !== idx)
-                                                    }))
-                                                }}>
-                                                    <FiTrash />
-                                                </ActionIcon>
+                                            {manualInvalid && (
+                                                <Badge color="red" variant="light" fullWidth py="md">
+                                                    Formato inválido o lista vacía
+                                                </Badge>
                                             )}
-                                        </Group>
-                                    ))}
-                                    {/* {paymentMismatch && (
-                                        <Text c="red">Advertencia: la suma de los métodos de pago ({currency.format(paymentSum)}) no coincide con el total ({currency.format(finalTotal)}).</Text>
-                                    )} */}
-                                    {remainingAmount > 0 && ((formValue.payment_methods?.length || 0) > 1) && (
-                                        <Text c="orange">Faltan {currency.format(remainingAmount)} {effectiveTax > 0 ? "(calculado sobre subtotal sin impuesto)" : ""}</Text>
+                                        </Stack>
                                     )}
-                                </Stack>
-                            </Card>
-                            {["TARJETA", "QR", "TRANSFERENCIA"].includes(primaryPaymentMethod) && (
-                                <TextInput
-                                    label="Agregar impuesto"
-                                    placeholder="Ingresar impuesto"
-                                    name="tax"
-                                    value={formValue.tax}
-                                    onChange={handleChangeValues}
-                                />
-                            )}
-                            <Card withBorder shadow="sm" radius="md">
-                                {effectiveTax > 0 && (
-                                    <Group justify="space-between">
-                                        <Text>Impuesto ({effectiveTax}%)</Text>
-                                        <Text>{currency.format(Number(subtotal) * Number(effectiveTax) / 100)}</Text>
-                                    </Group>
+                                </Card>
+                            </Stack>
+                        </Grid.Col>
+                    </Grid>
+
+                    <Divider />
+
+                    <Grid align="center">
+                        <Grid.Col span={{ base: 12, md: 8 }}>
+                            <Group gap="xl">
+                                {["TARJETA", "QR", "TRANSFERENCIA"].includes(primaryPaymentMethod) && (
+                                    <TextInput
+                                        label="Impuesto (%)"
+                                        placeholder="0"
+                                        style={{ width: rem(120) }}
+                                        name="tax"
+                                        value={formValue.tax}
+                                        onChange={handleChangeValues}
+                                    />
                                 )}
-                                <Group justify="space-between">
-                                    <Text fw={500}>Total</Text>
-                                    <Text fw={700}>{currency.format(finalTotal)}</Text>
+                                
+                                <Group gap="lg">
+                                    <Stack gap={0}>
+                                        <Text size="xs" c="dimmed" fw={600}>SUBTOTAL</Text>
+                                        <Text size="lg" fw={600}>{currency.format(subtotal)}</Text>
+                                    </Stack>
+                                    
+                                    {effectiveTax > 0 && (
+                                        <Stack gap={0}>
+                                            <Text size="xs" c="dimmed" fw={600}>IMPUESTO ({effectiveTax}%)</Text>
+                                            <Text size="lg" fw={600} c="orange">{currency.format(Number(subtotal) * Number(effectiveTax) / 100)}</Text>
+                                        </Stack>
+                                    )}
+
+                                    <Stack gap={0}>
+                                        <Text size="xs" c="dimmed" fw={600}>TOTAL FINAL</Text>
+                                        <Title order={2}>{currency.format(finalTotal)}</Title>
+                                    </Stack>
                                 </Group>
-                            </Card>
-                        </Stack>
-                    </Grid.Col>
-                    <Button
-                        disabled={(sale ? updateSale.isPending : false) || manualInvalid}
-                        loading={sale ? updateSale.isPending : false}
-                        onClick={() => {
-                            const payload = { 
-                                ...formValue, 
-                                total: finalTotal, 
-                                tax: effectiveTax,
-                                payment_method: primaryPaymentMethod 
-                            };
-                            if (sale) {
-                                updateSale.mutate({ id: sale.id, request: payload });
-                            } else {
-                                showNotification({
-                                    message: "Guardando venta en segundo plano...",
-                                    color: "blue",
-                                });
-                                saveSale.mutate(payload);
-                                resetForm();
-                            }
-                        }}
-                    >{sale ? 'Guardar cambios' : 'Guardar venta'}</Button>
-                </Grid>
+                            </Group>
+                        </Grid.Col>
+                        
+                        <Grid.Col span={{ base: 12, md: 4 }}>
+                            <Button
+                                fullWidth
+                                size="lg"
+                                leftSection={<FiSave />}
+                                disabled={(sale ? updateSale.isPending : false) || manualInvalid}
+                                loading={sale ? updateSale.isPending : false}
+                                onClick={() => {
+                                    const payload = { 
+                                        ...formValue, 
+                                        total: finalTotal, 
+                                        tax: effectiveTax,
+                                        payment_method: primaryPaymentMethod 
+                                    };
+                                    if (sale) {
+                                        updateSale.mutate({ id: sale.id, request: payload });
+                                    } else {
+                                        showNotification({
+                                            message: "Guardando venta en segundo plano...",
+                                            color: "blue",
+                                        });
+                                        saveSale.mutate(payload);
+                                        resetForm();
+                                    }
+                                }}
+                            >
+                                {sale ? 'Guardar Cambios' : 'Confirmar Venta'}
+                            </Button>
+                        </Grid.Col>
+                    </Grid>
+                </Stack>
             </Paper>
         </Box>
-    )
+    );
 }
 

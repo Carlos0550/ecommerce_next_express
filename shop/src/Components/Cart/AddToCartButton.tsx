@@ -66,13 +66,29 @@ export default function AddToCartButton({ productId, options = [], fullWidth = f
         </Stack>
       )}
       {isMobile ? (
-        <Button variant="light" fullWidth={fullWidth} onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : <FaCartPlus />}>
-        Añadir
-      </Button>
+        <Button 
+          variant="filled" 
+          color="dark"
+          fullWidth={fullWidth} 
+          onClick={handleClick} 
+          disabled={busy} 
+          radius="xl"
+          rightSection={busy ? <Loader size="xs" color="white" /> : <FaCartPlus size={14} />}
+        >
+          Añadir
+        </Button>
       ) : (
-        <Button variant="light" fullWidth={fullWidth} onClick={handleClick} disabled={busy} rightSection={busy ? <Loader size="xs" /> : null}>
-        Agregar al carrito
-      </Button>
+        <Button 
+          variant="filled" 
+          color="dark.4"
+          fullWidth={fullWidth} 
+          onClick={handleClick} 
+          disabled={busy} 
+          radius="xl"
+          rightSection={busy ? <Loader size="xs" color="white" /> : null}
+        >
+          Agregar al carrito
+        </Button>
       )}
     </Stack>
   )

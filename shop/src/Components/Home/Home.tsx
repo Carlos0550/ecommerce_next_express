@@ -11,6 +11,7 @@ import {
   Stack,
   Center,
   Divider,
+  SimpleGrid,
 } from "@mantine/core";
 import { useInfiniteProducts, Products, ProductsResponse } from "@/Api/useProducts";
 import ProductsCards from "./sub-components/ProductsCards";
@@ -214,31 +215,32 @@ export default function Home({ initialProducts, initialCategories, business }: P
                 </Flex>
               </Flex>
 
-              <Flex
+              <SimpleGrid
                 id="productos"
-                wrap="wrap"
-                justify={products.length > 0 ? "flex-start" : "center"}
-                align="flex-start"
+                cols={{ base: 2, sm: 3, lg: 4 }}
+                spacing={{ base: 15, sm: 20, lg: 25 }}
+                verticalSpacing={{ base: 25, sm: 30, lg: 40 }}
                 mih={products.length > 0 ? "50vh" : "20vh"}
-                gap={30}
               >
                 {products.length > 0 ? (
                   products.map((product, index) => (
                     <ProductsCards key={product.id} product={product} priority={index < 4} />
                   ))
                 ) : (
-                  <EmptyState
-                    icon={<FiPackage size={40} color="#adb5bd" />}
-                    title={debouncedSearch ? "Sin resultados" : "Colección en preparación"}
-                    description={
-                      debouncedSearch
-                        ? `No encontramos nada que coincida con "${debouncedSearch}". Probá con otros términos.`
-                        : "Estamos cargando nuestros últimos diseños. Volvé en unos momentos."
-                    }
-                    action={debouncedSearch ? { label: "Limpiar búsqueda", onClick: () => setSearch("") } : undefined}
-                  />
+                  <Box style={{ gridColumn: '1 / -1' }}>
+                    <EmptyState
+                      icon={<FiPackage size={40} color="#adb5bd" />}
+                      title={debouncedSearch ? "Sin resultados" : "Colección en preparación"}
+                      description={
+                        debouncedSearch
+                          ? `No encontramos nada que coincida con "${debouncedSearch}". Probá con otros términos.`
+                          : "Estamos cargando nuestros últimos diseños. Volvé en unos momentos."
+                      }
+                      action={debouncedSearch ? { label: "Limpiar búsqueda", onClick: () => setSearch("") } : undefined}
+                    />
+                  </Box>
                 )}
-              </Flex>
+              </SimpleGrid>
 
               <Box
                 ref={(el) => {
