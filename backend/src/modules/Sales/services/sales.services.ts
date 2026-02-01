@@ -450,20 +450,38 @@ class SalesServices {
       const prevEnd = start.subtract(1, "day").endOf("day");
       const prevStart = prevEnd.subtract(rangeDays - 1, "day").startOf("day");
 
-      const [currentSales, previousSales] = await Promise.all([
+      const [currentSales, previousSales, allCategories] = await Promise.all([
         prisma.sales.findMany({
           where: {
             created_at: {
               gte: start.toDate(),
               lte: end.toDate(),
             },
+            declined: false,
           },
           select: {
             id: true,
             total: true,
+            tax: true,
             payment_method: true,
             source: true,
             created_at: true,
+            items: true,
+            manualProducts: true,
+            loadedManually: true,
+            products: {
+              select: {
+                id: true,
+                title: true,
+                categoryId: true,
+                category: {
+                  select: {
+                    id: true,
+                    title: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: [{ created_at: "asc" } as any],
         }),
@@ -473,25 +491,134 @@ class SalesServices {
               gte: prevStart.toDate(),
               lte: prevEnd.toDate(),
             },
+            declined: false,
           },
-          select: { id: true, total: true },
+          select: { id: true, total: true, tax: true, items: true },
+        }),
+        prisma.categories.findMany({
+          where: { status: "active" },
+          select: { id: true, title: true },
         }),
       ]);
 
       const salesCount = currentSales.length;
       const revenueTotal = currentSales.reduce(
-        (acc: number, s: { total: number | null }) =>
-          acc + Number(s.total || 0),
+        (acc: number, s) => acc + Number(s.total || 0),
         0,
       );
       const avgOrderValue = salesCount > 0 ? revenueTotal / salesCount : 0;
 
+      let totalUnitsSold = 0;
+      let totalTaxCollected = 0;
+
+      const productSalesMap: Record<
+        string,
+        {
+          product_id: string;
+          title: string;
+          quantity_sold: number;
+          revenue: number;
+        }
+      > = {};
+      const categoryMap: Record<
+        string,
+        { category_id: string; name: string; count: number; revenue: number }
+      > = {};
+      const hourMap: Record<
+        number,
+        { hour: number; count: number; revenue: number }
+      > = {};
+
+      for (let h = 0; h < 24; h++) {
+        hourMap[h] = { hour: h, count: 0, revenue: 0 };
+      }
+
+      allCategories.forEach((cat) => {
+        categoryMap[cat.id] = {
+          category_id: cat.id,
+          name: cat.title,
+          count: 0,
+          revenue: 0,
+        };
+      });
+      categoryMap["sin_categoria"] = {
+        category_id: "sin_categoria",
+        name: "Sin categoría",
+        count: 0,
+        revenue: 0,
+      };
+
+      currentSales.forEach((sale) => {
+        const taxPercent = Number(sale.tax) || 0;
+        const saleTotal = Number(sale.total) || 0;
+        if (taxPercent > 0) {
+          const taxAmount = saleTotal - saleTotal / (1 + taxPercent / 100);
+          totalTaxCollected += taxAmount;
+        }
+
+        const hour = dayjs.tz(sale.created_at).hour();
+        hourMap[hour].count += 1;
+        hourMap[hour].revenue += saleTotal;
+
+        const items = (sale.items as any[]) || [];
+        items.forEach((item: any) => {
+          const qty = Number(item.quantity) || 1;
+          totalUnitsSold += qty;
+
+          const productId = item.id || "manual";
+          const title = item.title || "Producto";
+          const itemRevenue = Number(item.price) || 0;
+
+          if (!productSalesMap[productId]) {
+            productSalesMap[productId] = {
+              product_id: productId,
+              title,
+              quantity_sold: 0,
+              revenue: 0,
+            };
+          }
+          productSalesMap[productId].quantity_sold += qty;
+          productSalesMap[productId].revenue += itemRevenue;
+        });
+
+        sale.products.forEach((prod) => {
+          const catId = prod.categoryId || "sin_categoria";
+          if (categoryMap[catId]) {
+            categoryMap[catId].count += 1;
+          }
+        });
+
+        if (sale.loadedManually) {
+          categoryMap["sin_categoria"].count += items.length;
+        }
+      });
+
+      Object.keys(categoryMap).forEach((catId) => {
+        const catSales = currentSales.filter(
+          (s) =>
+            s.products.some(
+              (p) => (p.categoryId || "sin_categoria") === catId,
+            ) ||
+            (catId === "sin_categoria" && s.loadedManually),
+        );
+        categoryMap[catId].revenue = catSales.reduce(
+          (acc, s) => acc + Number(s.total || 0),
+          0,
+        );
+      });
+
       const prevCount = previousSales.length;
       const prevRevenue = previousSales.reduce(
-        (acc: number, s: { total: number | null }) =>
-          acc + Number(s.total || 0),
+        (acc: number, s) => acc + Number(s.total || 0),
         0,
       );
+      let prevUnitsSold = 0;
+      previousSales.forEach((sale) => {
+        const items = (sale.items as any[]) || [];
+        items.forEach((item: any) => {
+          prevUnitsSold += Number(item.quantity) || 1;
+        });
+      });
 
       const growthPercentRevenue =
         prevRevenue > 0
@@ -503,6 +630,12 @@ class SalesServices {
         prevCount > 0
           ? ((salesCount - prevCount) / prevCount) * 100
           : salesCount > 0
+            ? 100
+            : 0;
+      const growthPercentUnits =
+        prevUnitsSold > 0
+          ? ((totalUnitsSold - prevUnitsSold) / prevUnitsSold) * 100
+          : totalUnitsSold > 0
             ? 100
             : 0;
 
@@ -525,6 +658,23 @@ class SalesServices {
       });
       const timeseriesByDay = Object.values(byDayMap);
 
+      const daysWithSales = timeseriesByDay.filter((d) => d.count > 0);
+      let bestDay = { date: "", revenue: 0, count: 0 };
+      let worstDay = { date: "", revenue: Infinity, count: 0 };
+
+      if (daysWithSales.length > 0) {
+        daysWithSales.forEach((d) => {
+          if (d.revenue > bestDay.revenue) {
+            bestDay = { date: d.date, revenue: d.revenue, count: d.count };
+          }
+          if (d.revenue < worstDay.revenue) {
+            worstDay = { date: d.date, revenue: d.revenue, count: d.count };
+          }
+        });
+      } else {
+        worstDay = { date: "", revenue: 0, count: 0 };
+      }
+
       const methodMap: Record<
         string,
         { method: string; count: number; revenue: number }
@@ -546,6 +696,16 @@ class SalesServices {
         sourceMap[sKey].revenue += Number(s.total || 0);
       });
 
+      const topProducts = Object.values(productSalesMap)
+        .sort((a, b) => b.quantity_sold - a.quantity_sold)
+        .slice(0, 5);
+
+      const byCategory = Object.values(categoryMap)
+        .filter((c) => c.count > 0 || c.revenue > 0)
+        .sort((a, b) => b.revenue - a.revenue);
+
+      const byHour = Object.values(hourMap);
+
       return {
         range: {
           start_date: start.format("YYYY-MM-DD"),
@@ -556,14 +716,20 @@ class SalesServices {
           sales_count: salesCount,
           revenue_total: revenueTotal,
           avg_order_value: avgOrderValue,
+          total_units_sold: totalUnitsSold,
+          total_tax_collected: totalTaxCollected,
+          best_day: bestDay,
+          worst_day: worstDay,
         },
         previous: {
           sales_count: prevCount,
           revenue_total: prevRevenue,
+          total_units_sold: prevUnitsSold,
         },
         growth: {
           revenue_percent: growthPercentRevenue,
           count_percent: growthPercentCount,
+          units_percent: growthPercentUnits,
         },
         timeseries: {
           by_day: timeseriesByDay,
@@ -571,7 +737,10 @@ class SalesServices {
         breakdowns: {
           payment_methods: Object.values(methodMap),
           sources: Object.values(sourceMap),
+          by_category: byCategory,
+          by_hour: byHour,
         },
+        top_products: topProducts,
       };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);

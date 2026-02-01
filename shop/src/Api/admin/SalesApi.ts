@@ -123,14 +123,39 @@ export type SalesAnalyticsResponse = {
     sales_count: number;
     revenue_total: number;
     avg_order_value: number;
+    total_units_sold: number;
+    total_tax_collected: number;
+    best_day: { date: string; revenue: number; count: number };
+    worst_day: { date: string; revenue: number; count: number };
   };
-  previous: { sales_count: number; revenue_total: number };
-  growth: { revenue_percent: number; count_percent: number };
+  previous: {
+    sales_count: number;
+    revenue_total: number;
+    total_units_sold: number;
+  };
+  growth: {
+    revenue_percent: number;
+    count_percent: number;
+    units_percent: number;
+  };
   timeseries: { by_day: { date: string; count: number; revenue: number }[] };
   breakdowns: {
     payment_methods: { method: string; count: number; revenue: number }[];
     sources: { source: string; count: number; revenue: number }[];
+    by_category: {
+      category_id: string;
+      name: string;
+      count: number;
+      revenue: number;
+    }[];
+    by_hour: { hour: number; count: number; revenue: number }[];
   };
+  top_products: {
+    product_id: string;
+    title: string;
+    quantity_sold: number;
+    revenue: number;
+  }[];
 };
 
 export const useGetSalesAnalytics = (
