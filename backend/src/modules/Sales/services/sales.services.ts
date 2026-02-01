@@ -376,8 +376,8 @@ class SalesServices {
       }
 
       const [total, sales, totalSalesByDate] = await Promise.all([
-        await prisma.sales.count({ where }),
-        await prisma.sales.findMany({
+        prisma.sales.count({ where }),
+        prisma.sales.findMany({
           skip,
           take,
           where,
@@ -386,10 +386,9 @@ class SalesServices {
             user: true,
             orders: true,
           },
-          orderBy: [{ created_at: "desc" } as any],
+          orderBy: { created_at: "desc" },
         }),
-
-        await prisma.sales.aggregate({
+        prisma.sales.aggregate({
           where: {
             ...where,
             declined: false,
@@ -399,9 +398,6 @@ class SalesServices {
           },
         }),
       ]);
-      if (Array.isArray(sales) && sales.length > 0) {
-        console.log("Sales", (sales[0] as any)?.orders);
-      }
       const totalPages = Math.ceil(total / take) || 1;
       const pagination = {
         total,

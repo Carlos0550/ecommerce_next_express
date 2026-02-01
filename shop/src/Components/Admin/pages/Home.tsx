@@ -462,7 +462,7 @@ export default function Home() {
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mb="md">
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
-                <Text fw={600}>
+                <Text fw={600} component="div">
                   <Group gap={8}>
                     <FiAward size={16} />
                     Top 5 Productos más vendidos
@@ -502,7 +502,7 @@ export default function Home() {
 
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
-                <Text fw={600}>
+                <Text fw={600} component="div">
                   <Group gap={8}>
                     <FiClock size={16} />
                     Ventas por hora del día
@@ -624,7 +624,7 @@ export default function Home() {
           <Divider my="lg" />
 
           <Paper p="md" radius="md" withBorder>
-            <Text fw={600} mb="md">
+            <Text fw={600} mb="md" component="div">
               <Group gap={8}>
                 <FiCalendar size={16} />
                 Resumen del periodo
