@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CartWrapper from "../Cart/CartWrapper";
+import Onboarding from "./sub-components/Onboarding";
 
 type Props = {
   initialProducts?: ProductsResponse
@@ -103,82 +104,86 @@ export default function Home({ initialProducts, initialCategories, business }: P
     }, [sentinelRef, hasNextPage, fetchNextPage])
 
     return (
-        <Box >
-            <Flex direction="column" justify={"center"}>
-                {/* SEO Hero Section */}
-                {!search && !selectedCategories[0] && (
-                    <Box mt={30} mb={10}>
+        <Box>
+            {!business ? (
+                <Onboarding />
+            ) : (
+                <Flex direction="column" justify={"center"}>
+                    {/* SEO Hero Section */}
+                    {!search && !selectedCategories[0] && (
+                        <Box mt={30} mb={10}>
+                            <Container size="xl">
+                                <Title order={1} mb="xs">{h1Title}</Title>
+                                {business?.description && (
+                                    <Text size="lg" c="dimmed" mb="md" maw={800}>
+                                        {business.description}
+                                    </Text>
+                                )}
+                            </Container>
+                        </Box>
+                    )}
+
+                    {/* Promociones destacadas */}
+                    {!search && !selectedCategories[0] && <PromosBanner />}
+
+                    <Box my={30}>
                         <Container size="xl">
-                            <Title order={1} mb="xs">{h1Title}</Title>
-                            {business?.description && (
-                                <Text size="lg" c="dimmed" mb="md" maw={800}>
-                                    {business.description}
-                                </Text>
+                            <Title order={2} mb="xs">Categorías</Title>
+                            <Text c="dimmed" mb="md">Explorá por categoría y encontrá lo que buscás.</Text>
+                            {isLoading ? (
+                                <Center my={20}><Loader size="sm"/></Center>
+                            ) : (
+                                <CategoriesCards categories={categories} />
                             )}
                         </Container>
                     </Box>
-                )}
 
-                {/* Promociones destacadas */}
-                {!search && !selectedCategories[0] && <PromosBanner />}
-
-                <Box my={30}>
-                    <Container size="xl">
-                        <Title order={2} mb="xs">Categorías</Title>
-                        <Text c="dimmed" mb="md">Explorá por categoría y encontrá lo que buscás.</Text>
-                        {isLoading ? (
-                          <Center my={20}><Loader size="sm"/></Center>
-                        ) : (
-                          <CategoriesCards categories={categories} />
+                    <Box size="xl" p={10}>
+                        <Flex direction={"column"} justify={"center"} align={"flex-start"}>
+                            <Title order={2} mb={10}>
+                                Nuestros productos
+                            </Title>
+                            <Text c="dimmed" mb="md">Busca por nombre, categoría o descripción.</Text>
+                        </Flex>
+                        <Flex gap={10} wrap={"wrap"}>
+                            <Input
+                                mb={10}
+                                placeholder="Buscar"
+                                w={isMobile ? "100%" : 300}
+                                value={search}
+                                onChange={(e) => setSearch(e.currentTarget.value)}
+                                rightSection={isFetchingNextPage ? <Loader size="xs" /> : null}
+                            />
+                            <NativeSelect
+                                mb={10}
+                                value={selectedCategories[0]}
+                                onChange={(e) => setSelectedCategories([e.currentTarget.value])}
+                                data={[
+                                    { value: "", label: "Todos" },
+                                    ...categories.map((category) => ({
+                                        value: category.id,
+                                        label: capitalizeTexts(category.title),
+                                    }))
+                                ]}
+                            />
+                        </Flex>
+                    </Box>
+                    <Flex id="productos" wrap="wrap" justify="space-evenly" align="flex-start" mih={Array.isArray(products) && products.length > 0 ? "100vh" : "10vh"} flex={1} gap={20}>
+                    {Array.isArray(products) && products.length > 0 ? (
+                        products.map((product, index) => (
+                            <ProductsCards key={product.id} product={product} priority={index < 4} />
+                        ))
+                    ) : (
+                            <Stack align="center">
+                                {isLoading ? <Loader size="xs" /> : <Text c="dimmed">No hay productos disponibles</Text>}
+                            </Stack>
                         )}
-                    </Container>
-                </Box>
-
-                <Box size="xl" p={10}>
-                    <Flex direction={"column"} justify={"center"} align={"flex-start"}>
-                        <Title order={2} mb={10}>
-                            Nuestros productos
-                        </Title>
-                        <Text c="dimmed" mb="md">Busca por nombre, categoría o descripción.</Text>
+                    <Box ref={(el) => { sentinelRef.current = el }} w="100%" my={20}>
+                        {isFetchingNextPage ? <Loader size="sm" /> : (hasNextPage ? <Text c="dimmed">Cargando más...</Text> : null)}
+                    </Box>
                     </Flex>
-                    <Flex gap={10} wrap={"wrap"}>
-                        <Input
-                            mb={10}
-                            placeholder="Buscar"
-                            w={isMobile ? "100%" : 300}
-                            value={search}
-                            onChange={(e) => setSearch(e.currentTarget.value)}
-                            rightSection={isFetchingNextPage ? <Loader size="xs" /> : null}
-                        />
-                        <NativeSelect
-                            mb={10}
-                            value={selectedCategories[0]}
-                            onChange={(e) => setSelectedCategories([e.currentTarget.value])}
-                            data={[
-                                { value: "", label: "Todos" },
-                                ...categories.map((category) => ({
-                                    value: category.id,
-                                    label: capitalizeTexts(category.title),
-                                }))
-                            ]}
-                        />
-                    </Flex>
-                </Box>
-                <Flex id="productos" wrap="wrap" justify="space-evenly" align="flex-start" mih={Array.isArray(products) && products.length > 0 ? "100vh" : "10vh"} flex={1} gap={20}>
-                  {Array.isArray(products) && products.length > 0 ? (
-                      products.map((product, index) => (
-                          <ProductsCards key={product.id} product={product} priority={index < 4} />
-                      ))
-                  ) : (
-                        <Stack align="center">
-                            {isLoading ? <Loader size="xs" /> : <Text c="dimmed">No hay productos disponibles</Text>}
-                        </Stack>
-                    )}
-                  <Box ref={(el) => { sentinelRef.current = el }} w="100%" my={20}>
-                    {isFetchingNextPage ? <Loader size="sm" /> : (hasNextPage ? <Text c="dimmed">Cargando más...</Text> : null)}
-                  </Box>
                 </Flex>
-            </Flex>
+            )}
             <CartWrapper/>
         </Box>
     )

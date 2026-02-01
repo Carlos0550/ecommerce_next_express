@@ -77,7 +77,7 @@ export default async function RootLayout({
       </head>
       <body>
           <AppProvider>
-              <SiteLayout>{children}</SiteLayout>
+              {children}
           </AppProvider>
       </body>
     </html>

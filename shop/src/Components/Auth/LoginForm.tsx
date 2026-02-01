@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAppContext } from "@/providers/AppContext";
-import { Button, Stack, TextInput, Title, Text, Flex, PasswordInput, Group } from "@mantine/core";
+import { Button, Stack, TextInput, Title, Text, Flex, PasswordInput, Group, Checkbox } from "@mantine/core";
 import { Form, useForm } from "@mantine/form";
 import { showNotification } from "@mantine/notifications";
 import useBankInfo from "@/Api/useBankInfo";
@@ -28,7 +28,7 @@ export default function LoginForm({ onClose }: Props) {
   });
 
   const registerForm = useForm({
-    initialValues: { name: "", email: "", password: "" },
+    initialValues: { name: "", email: "", password: "", asAdmin: false },
     validate: {
       name: (value) => (value.length > 2 ? null : "Nombre muy corto"),
       email: (value) => (/^\S+@\S+$/.test(value) ? null : "Email inválido"),
@@ -58,11 +58,23 @@ export default function LoginForm({ onClose }: Props) {
     }
   };
 
-  const onRegisterSubmit = async (values: { name: string; email: string; password: string }) => {
+  const onRegisterSubmit = async (values: { name: string; email: string; password: string; asAdmin: boolean }) => {
     setError(null);
     setLoading(true);
     try {
-      const result = await auth.signUp(values.name, values.email, values.password);
+      const result = await auth.signUp(values.name, values.email, values.password, values.asAdmin);
+      
+      if (result?.pending) {
+          showNotification({
+              title: "Registro exitoso",
+              message: result.message,
+              color: "blue",
+              autoClose: 10000,
+          });
+          onClose();
+          return;
+      }
+
       if (result?.user) {
         showNotification({
           title: `Bienvenido a ${business?.name || "Tienda online"}, ${utils.capitalizeTexts(result?.user?.name)}`,
@@ -164,8 +176,13 @@ export default function LoginForm({ onClose }: Props) {
                 placeholder="••••••••"
                 {...registerForm.getInputProps("password")}
               />
+              <Checkbox
+                mt="xs"
+                label="Registrar como administrador"
+                {...registerForm.getInputProps("asAdmin", { type: 'checkbox' })}
+              />
               {error && <Text c="red">{error}</Text>}
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={loading} mt="sm">
                 Registrarse
               </Button>
               

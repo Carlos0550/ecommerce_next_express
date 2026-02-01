@@ -54,23 +54,28 @@ export type CheckoutFormValues = {
 }
 
 function useCart(baseUrl: string, token: string | null) {
-    const [cart, setCart] = useState<Cart>(() => {
-        if (typeof window === 'undefined') return { items: [], total: 0, promo_code: "", discount: 0 }
+    const [cart, setCart] = useState<Cart>({ items: [], total: 0, promo_code: "", discount: 0 })
+    const [isInitialized, setIsInitialized] = useState(false)
+
+    useEffect(() => {
         try {
             const raw = localStorage.getItem('shop_cart')
-            if (!raw) return { items: [], total: 0, promo_code: "", discount: 0 }
-            const parsed = JSON.parse(raw)
-            return { 
-                items: Array.isArray(parsed.items) ? parsed.items : [], 
-                total: Number(parsed.total) || 0, 
-                promo_code: parsed.promo_code || "",
-                discount: Number(parsed.discount) || 0,
-                promo_title: parsed.promo_title || ""
+            if (raw) {
+                const parsed = JSON.parse(raw)
+                setCart({ 
+                    items: Array.isArray(parsed.items) ? parsed.items : [], 
+                    total: Number(parsed.total) || 0, 
+                    promo_code: parsed.promo_code || "",
+                    discount: Number(parsed.discount) || 0,
+                    promo_title: parsed.promo_title || ""
+                })
             }
-        } catch {
-            return { items: [], total: 0, promo_code: "", discount: 0 }
+        } catch (e) {
+            console.error("[Cart] Error loading from localStorage", e)
+        } finally {
+            setIsInitialized(true)
         }
-    })
+    }, [])
 
     const [formValues, setFormValues] = useState<CheckoutFormValues>({
         pickup: false,
@@ -295,10 +300,11 @@ function useCart(baseUrl: string, token: string | null) {
     }, [cart, token, baseUrl])
 
     useEffect(() => {
+        if (!isInitialized) return
         try {
             localStorage.setItem('shop_cart', JSON.stringify(cart))
         } catch {}
-    },[cart])
+    },[cart, isInitialized])
 
     const processOrder = useCallback(async (baseUrl: string, token: string | null) => {
         const items = cart.items.map(it => ({ product_id: it.product_id, quantity: it.quantity, options: it.options }))

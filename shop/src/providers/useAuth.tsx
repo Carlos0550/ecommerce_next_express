@@ -73,12 +73,12 @@ export function useAuth() {
     return { token, user };
   }, [baseUrl]);
 
-  const signUp = useCallback(async (name: string, email: string, password: string) => {
+  const signUp = useCallback(async (name: string, email: string, password: string, asAdmin: boolean = false) => {
     setState((s) => ({ ...s, loading: true }));
     const res = await fetchWithTimeout(`${baseUrl}/shop/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, asAdmin }),
       timeout: 10000,
     });
     if (!res.ok) {
@@ -87,6 +87,10 @@ export function useAuth() {
       throw new Error(err?.error || 'register_failed');
     }
     const data = await res.json();
+    if (data.pending) {
+      setState((s) => ({ ...s, loading: false }));
+      return { pending: true, message: data.message };
+    }
     const token = data.token as string;
     const user: AuthProps = {
       email: data.user.email,

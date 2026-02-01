@@ -1,6 +1,6 @@
 "use client";
 import { useAppContext } from "@/providers/AppContext";
-import { AppShell, Burger, Group, Stack, Flex, Text, Avatar, Button, useMantineColorScheme, ActionIcon, Box, Paper, Divider } from "@mantine/core";
+import { AppShell, Burger, Group, Stack, Text, Avatar, Button, Box, Paper, Divider, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
 import LoginForm from "../Auth/LoginForm";
@@ -9,6 +9,8 @@ import { useEffect, useMemo, useState } from "react";
 import { FiHome, FiUser, FiBox, FiHelpCircle, FiLogIn } from "react-icons/fi";
 import { usePathname } from "next/navigation";
 import type { BusinessData } from "@/Api/useBusiness";
+import { SidebarContent } from "../Common/SidebarContent";
+
 type Props = {
   children: React.ReactNode;
 };
@@ -33,16 +35,13 @@ export default function SiteLayout({ children }: Props) {
       return r.json()
     }).then((d) => setBusiness(d as BusinessData | null)).catch(() => setBusiness(null))
   }, [utils.baseUrl])
+  
   const menuItems = useMemo(() => ([
     { href: "/", label: "Inicio", icon: FiHome },
     { href: "/account", label: "Mi cuenta", icon: FiUser },
     { href: "/orders", label: "Mis ordenes", icon: FiBox },
     { href: "/faq", label: "FAQ", icon: FiHelpCircle },
   ]), [])
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/"
-    return pathname?.startsWith(href)
-  }
 
   return (
     <AppShell
@@ -89,66 +88,57 @@ export default function SiteLayout({ children }: Props) {
       </AppShell.Header>
 
       <AppShell.Navbar p="md" style={{ background: "var(--mantine-color-body)" }}>
-        <Flex direction="column" h="100%" justify="space-between">
-          <Stack gap="md" onClick={close}>
-            <Paper p="md" radius="md" withBorder>
-              <Group align="center" justify="space-between">
-                <Group align="center">
-                  <Avatar src={business?.favicon || "/logo.png"} radius="xl" />
-                  <Stack gap={2}>
-                    <Text fw={600}>{business?.name || "Tu Tienda"}</Text>
-                  </Stack>
-                </Group>
-                <ColorSchemeToggle />
-              </Group>
-              {!auth.isAuthenticated && (
-                <Button mt="md" fullWidth variant="default" leftSection={<FiLogIn size={16} />} onClick={openAuth}>
-                  Iniciar sesión
-                </Button>
-              )}
-            </Paper>
-            <Text size="xs" fw={700} c="dimmed">MENÚ</Text>
-            <Stack gap="xs">
-              {menuItems.map(item => {
-                const Icon = item.icon
-                const active = isActive(item.href)
-                return (
+        <SidebarContent
+          business={business}
+          menuItems={menuItems}
+          pathname={pathname}
+          onLinkClick={close}
+          topExtra={
+            !auth.isAuthenticated && (
+              <Button
+                mt="md"
+                fullWidth
+                variant="default"
+                leftSection={<FiLogIn size={16} />}
+                onClick={openAuth}
+              >
+                Iniciar sesión
+              </Button>
+            )
+          }
+          bottomExtra={
+            <Box>
+              <Divider my="md" />
+              <Button
+                component={Link}
+                href="/admin"
+                variant="subtle"
+                fullWidth
+                mb="md"
+                leftSection={<FiUser size={16} />}
+              >
+                Panel de Administración
+              </Button>
+              <Paper p="md" radius="md" withBorder>
+                <Stack gap="xs">
+                  <Text fw={700}>¿Necesitas ayuda?</Text>
+                  <Text size="sm" c="dimmed">
+                    Contáctanos para cualquier consulta
+                  </Text>
                   <Button
-                    key={item.href}
-                    component={Link}
-                    href={item.href}
-                    variant={active ? "default" : "subtle"}
-                    radius="md"
-                    fullWidth
-                    justify="space-between"
-                    leftSection={<Icon />}
-                    style={active ? { background: "var(--mantine-color-white)", color: "var(--mantine-color-black)" } : undefined}
+                    component="a"
+                    href={`https://wa.me/${business?.phone?.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="default"
                   >
-                    {item.label}
+                    Contactar soporte
                   </Button>
-                )
-              })}
-            </Stack>
-          </Stack>
-          <Box>
-            <Divider my="md" />
-            <Paper p="md" radius="md" withBorder>
-              <Stack gap="xs">
-                <Text fw={700}>¿Necesitas ayuda?</Text>
-                <Text size="sm" c="dimmed">Contáctanos para cualquier consulta</Text>
-                <Button
-                  component="a"
-                  href={`https://wa.me/${business?.phone?.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="default"
-                >
-                  Contactar soporte
-                </Button>
-              </Stack>
-            </Paper>
-          </Box>
-        </Flex>
+                </Stack>
+              </Paper>
+            </Box>
+          }
+        />
       </AppShell.Navbar>
 
       <AppShell.Main bg="var(--mantine-color-body)">
@@ -158,41 +148,5 @@ export default function SiteLayout({ children }: Props) {
         <LoginForm onClose={closeAuth} />
       </AuthModal>
     </AppShell>
-  );
-}
-
-function ColorSchemeToggle() {
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Evitar hidratación mismatch: solo renderizar después del mount
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
-
-  // Durante SSR, renderizar un estado neutral
-  if (!mounted) {
-    return (
-      <ActionIcon
-        variant="light"
-        aria-label="Toggle color scheme"
-        title="Cambiar tema"
-      >
-        <span style={{ fontSize: 18 }}>🌙</span>
-      </ActionIcon>
-    );
-  }
-
-  const isDark = colorScheme === "dark";
-  return (
-    <ActionIcon
-      variant="light"
-      aria-label="Toggle color scheme"
-      onClick={() => setColorScheme(isDark ? "light" : "dark")}
-      title={isDark ? "Cambiar a claro" : "Cambiar a oscuro"}
-    >
-      <span style={{ fontSize: 18 }}>{isDark ? "☀️" : "🌙"}</span>
-    </ActionIcon>
   );
 }
