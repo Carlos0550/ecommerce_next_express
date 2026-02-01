@@ -225,18 +225,19 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
     {!product && (
       <TextInput label="Stock" name="stock" placeholder="Ej. 10" value={formValues.stock} onChange={handleChangeValues} />
     )}
-    <Select
-      label="Categoría"
-      name="category" 
-      placeholder="Selecciona una categoría"
-      data={Array.isArray(categories?.categories) ? categories.categories.map((cat: { id: string; title: string }) => ({ 
-        value: cat.id, 
-        label: capitalizeFirstLetter(cat.title)
-      })) : []}
-      value={formValues.category}
-      onChange={(value) => setFormValues(prev => ({ ...prev, category: value || "" }))}
-      required={fillWithAI}
-    />
+      <Select
+        label="Categoría"
+        name="category" 
+        placeholder="Selecciona una categoría"
+        data={Array.isArray(categories?.categories) ? categories.categories.map((cat: { id: string; title: string }) => ({ 
+          value: cat.id, 
+          label: capitalizeFirstLetter(cat.title)
+        })) : []}
+        value={formValues.category}
+        onChange={(value) => setFormValues(prev => ({ ...prev, category: value || "" }))}
+        required={fillWithAI}
+        clearable
+      />
   </Group>
 
       {!fillWithAI && (

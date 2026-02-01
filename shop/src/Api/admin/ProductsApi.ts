@@ -9,14 +9,14 @@ export type Category_info = {
   active: boolean;
   image: string;
   created_at: string | number | Date;
-}
+};
 
 export type ProductState =
-  | 'active'
-  | 'inactive'
-  | 'draft'
-  | 'out_stock'
-  | 'deleted';
+  | "active"
+  | "inactive"
+  | "draft"
+  | "out_stock"
+  | "deleted";
 
 export type Product = {
   id: string;
@@ -34,12 +34,12 @@ export type Product = {
 };
 
 export type Pagination = {
-  hasNextPage: boolean
-  hasPrevPage: boolean
-  limit: number
-  page: number
-  total: number
-  totalPages: number
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  limit: number;
+  page: number;
+  total: number;
+  totalPages: number;
 };
 
 export type GetProductsResponse = {
@@ -70,9 +70,7 @@ type SaveProductPayload = {
 export const useSaveProduct = () => {
   const queryClient = useQueryClient();
   const {
-    auth: {
-      token
-    }
+    auth: { token },
   } = useAdminContext();
 
   return useMutation({
@@ -81,7 +79,7 @@ export const useSaveProduct = () => {
       try {
         console.log("📤 useSaveProduct - value.fillWithAI:", value.fillWithAI);
         console.log("📤 useSaveProduct - value.state:", value.state);
-        
+
         const formData = new FormData();
         formData.append("title", value.title);
         formData.append("price", String(value.price));
@@ -89,7 +87,7 @@ export const useSaveProduct = () => {
         if (value.tags) {
           formData.append("tags", JSON.stringify(value.tags));
         }
-        if (value.category) {
+        if (value.category !== undefined) {
           formData.append("category_id", value.category);
         }
         if (value.description) {
@@ -102,19 +100,25 @@ export const useSaveProduct = () => {
           formData.append("product_id", value.productId);
         }
         if (Array.isArray(value.existingImageUrls)) {
-          formData.append("existing_image_urls", JSON.stringify(value.existingImageUrls));
+          formData.append(
+            "existing_image_urls",
+            JSON.stringify(value.existingImageUrls),
+          );
         }
         if (Array.isArray(value.deletedImageUrls)) {
-          formData.append("deleted_image_urls", JSON.stringify(value.deletedImageUrls));
+          formData.append(
+            "deleted_image_urls",
+            JSON.stringify(value.deletedImageUrls),
+          );
         }
         value.images.forEach((image: File) => {
           formData.append("productImages", image);
         });
 
         formData.append("fillWithAI", value.fillWithAI ? "true" : "false");
-        formData.append("state", value.state || "active"); 
+        formData.append("state", value.state || "active");
 
-        if(value.publishAutomatically) {
+        if (value.publishAutomatically) {
           formData.append("publishAutomatically", "true");
         }
         if (value.additionalContext) {
@@ -127,7 +131,7 @@ export const useSaveProduct = () => {
         const res = await fetch(baseUrl + "/products/save-product", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
         });
@@ -148,15 +152,15 @@ export const useSaveProduct = () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       notifications.show({
         message: "Producto creado con éxito",
-        color: "green"
+        color: "green",
       });
     },
     onError: (error: Error) => {
       notifications.show({
         message: error?.message ?? "Error al crear el producto",
-        color: "red"
+        color: "red",
       });
-    }
+    },
   });
 };
 
@@ -174,12 +178,10 @@ export type GetProductsParams = {
 };
 
 export const useGetAllProducts = (
-  params: GetProductsParams = { page: 1, limit: 10, state: 'active' }
+  params: GetProductsParams = { page: 1, limit: 10, state: "active" },
 ) => {
   const {
-    auth: {
-      token
-    }
+    auth: { token },
   } = useAdminContext();
 
   return useQuery<GetProductsResponse, Error>({
@@ -209,13 +211,13 @@ const buildQueryString = (queryParams: GetProductsParams): string => {
 
 const getAllProducts = async (
   queryParams: GetProductsParams,
-  token: string | null
+  token: string | null,
 ): Promise<GetProductsResponse> => {
   try {
     const qs = buildQueryString(queryParams);
     const res = await fetch(`${baseUrl}/products?${qs}`, {
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
     const json = await res.json();
@@ -230,10 +232,10 @@ const getAllProducts = async (
     const products = Array.isArray(json?.data?.products)
       ? (json.data.products as Product[])
       : Array.isArray(json?.products)
-      ? (json.products as Product[])
-      : Array.isArray(json?.data)
-      ? (json.data as Product[])
-      : [];
+        ? (json.products as Product[])
+        : Array.isArray(json?.data)
+          ? (json.data as Product[])
+          : [];
 
     const pagination: Pagination | undefined =
       (json?.pagination as Pagination | undefined) ||
@@ -251,9 +253,7 @@ const getAllProducts = async (
 export const useDeleteProduct = () => {
   const queryClient = useQueryClient();
   const {
-    auth: {
-      token
-    }
+    auth: { token },
   } = useAdminContext();
 
   return useMutation({
@@ -263,7 +263,7 @@ export const useDeleteProduct = () => {
         const res = await fetch(`${baseUrl}/products/${id}`, {
           method: "DELETE",
           headers: {
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         const json = await res.json();
@@ -281,25 +281,22 @@ export const useDeleteProduct = () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       notifications.show({
         message: "Producto eliminado con éxito",
-        color: "green"
+        color: "green",
       });
     },
     onError: (error: Error) => {
       notifications.show({
         message: error?.message ?? "Error al eliminar el producto",
-        color: "red"
+        color: "red",
       });
-    }
+    },
   });
 };
-
 
 export const useUpdateProduct = () => {
   const queryClient = useQueryClient();
   const {
-    auth: {
-      token
-    }
+    auth: { token },
   } = useAdminContext();
 
   return useMutation({
@@ -313,7 +310,7 @@ export const useUpdateProduct = () => {
         if (value.tags) {
           formData.append("tags", JSON.stringify(value.tags));
         }
-        if (value.category) {
+        if (value.category !== undefined) {
           formData.append("category_id", value.category);
         }
         if (value.description) {
@@ -323,10 +320,16 @@ export const useUpdateProduct = () => {
           formData.append("product_id", value.productId);
         }
         if (Array.isArray(value.existingImageUrls)) {
-          formData.append("existing_image_urls", JSON.stringify(value.existingImageUrls));
+          formData.append(
+            "existing_image_urls",
+            JSON.stringify(value.existingImageUrls),
+          );
         }
         if (Array.isArray(value.deletedImageUrls)) {
-          formData.append("deleted_image_urls", JSON.stringify(value.deletedImageUrls));
+          formData.append(
+            "deleted_image_urls",
+            JSON.stringify(value.deletedImageUrls),
+          );
         }
         value.images.forEach((image: File) => {
           formData.append("productImages", image);
@@ -340,9 +343,6 @@ export const useUpdateProduct = () => {
         if (typeof value.stock === "number") {
           formData.append("stock", String(value.stock));
         }
-        if (typeof value.stock === "number") {
-          formData.append("stock", String(value.stock));
-        }
         if (value.additionalContext) {
           formData.append("additionalContext", value.additionalContext);
         }
@@ -350,11 +350,11 @@ export const useUpdateProduct = () => {
           formData.append("options", JSON.stringify(value.options));
         }
 
-        console.log("Actualizando producto...")
+        console.log("Actualizando producto...");
         const res = await fetch(baseUrl + "/products/" + value.productId, {
           method: "PUT",
           headers: {
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
         });
@@ -363,7 +363,7 @@ export const useUpdateProduct = () => {
           const errorData = await res.json();
           throw new Error(errorData?.error || "Error actualizando el producto");
         }
-        console.log("Actualizacion exitosa", res)
+        console.log("Actualizacion exitosa", res);
         return res.json();
       } catch (error: unknown) {
         console.log(error);
@@ -375,15 +375,15 @@ export const useUpdateProduct = () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       notifications.show({
         message: "Producto actualizado con éxito",
-        color: "green"
+        color: "green",
       });
     },
     onError: (error: Error) => {
       notifications.show({
         message: error?.message ?? "Error al actualizar el producto",
-        color: "red"
+        color: "red",
       });
-    }
+    },
   });
 };
 
@@ -396,15 +396,20 @@ export const useUpdateProductState = () => {
   return useMutation({
     mutationKey: ["updateProductState"],
     mutationFn: async (payload: { productId: string; state: ProductState }) => {
-      const res = await fetch(`${baseUrl}/products/status/${payload.productId}/${payload.state}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${baseUrl}/products/status/${payload.productId}/${payload.state}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.error || "Error actualizando el estado del producto");
+        throw new Error(
+          json?.error || "Error actualizando el estado del producto",
+        );
       }
       return json;
     },
@@ -432,13 +437,22 @@ export const useUpdateProductStock = () => {
 
   return useMutation({
     mutationKey: ["updateProductStock"],
-    mutationFn: async ({ productId, quantity }: { productId: string; quantity: number }) => {
-      const res = await fetch(`${baseUrl}/products/stock/${productId}/${quantity}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
+    mutationFn: async ({
+      productId,
+      quantity,
+    }: {
+      productId: string;
+      quantity: number;
+    }) => {
+      const res = await fetch(
+        `${baseUrl}/products/stock/${productId}/${quantity}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json?.error || "Error actualizando stock");
@@ -464,7 +478,11 @@ export const useUpdateProductStock = () => {
 // IA: mejora de título y descripción del producto (no actualiza, solo propone)
 export type EnhanceResponse = {
   ok: boolean;
-  proposal?: { title: string; description: string; options?: { name: string; values: string[] }[] };
+  proposal?: {
+    title: string;
+    description: string;
+    options?: { name: string; values: string[] }[];
+  };
   error?: string;
 };
 
@@ -474,7 +492,15 @@ export const useEnhanceProductContent = () => {
   } = useAdminContext();
   return useMutation({
     mutationKey: ["enhanceProductContent"],
-    mutationFn: async ({ productId, additionalContext, imageUrls }: { productId: string; additionalContext?: string; imageUrls?: string[] }): Promise<EnhanceResponse> => {
+    mutationFn: async ({
+      productId,
+      additionalContext,
+      imageUrls,
+    }: {
+      productId: string;
+      additionalContext?: string;
+      imageUrls?: string[];
+    }): Promise<EnhanceResponse> => {
       const res = await fetch(`${baseUrl}/products/ai/enhance/${productId}`, {
         method: "POST",
         headers: {

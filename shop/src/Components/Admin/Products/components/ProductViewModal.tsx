@@ -2,7 +2,7 @@ import { Stack, Group, Image, Text, Box, Badge } from '@mantine/core';
 import type { Product } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
 import ProductDescription from '@/Components/Admin/Common/ProductDescription';
-const dummyImage = "/logo.png";
+const dummyImage = "/image_fallback.webp";
 
 interface ProductViewModalProps {
   product: Product;

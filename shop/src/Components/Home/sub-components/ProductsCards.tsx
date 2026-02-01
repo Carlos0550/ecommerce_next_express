@@ -22,7 +22,6 @@ function ProductsCards({ product, priority = false }: Props) {
         },
     } = useAppContext()
     const [imageLoading, setImageLoading] = useState(true)
-    const [navigating, setNavigating] = useState(false)
  
     const slug = createProductSlug(product.title, product.id);
 
@@ -36,7 +35,7 @@ function ProductsCards({ product, priority = false }: Props) {
                         </Flex>
                     )}
                     <Image
-                        src={product.images[0]}
+                        src={product.images?.[0] || "/image_fallback.webp"}
                         fill
                         className={classes.image}
                         onLoad={() => setImageLoading(false)}
@@ -62,7 +61,9 @@ function ProductsCards({ product, priority = false }: Props) {
                    <Link href={`/producto/${slug}`} className={classes.titleLink}>
                         <Text fw={700} fz="md" lineClamp={1}>{product.title}</Text>
                     </Link>
-                    <Badge variant="dot" color="gray" size="sm">{product.category.title}</Badge>
+                    {product.category && (
+                        <Badge variant="dot" color="gray" size="sm">{product.category.title}</Badge>
+                    )}
                 </Group>
                
                 <Text fw={800} fz="xl" c="dark.4">${product.price.toLocaleString('es-AR')}</Text>

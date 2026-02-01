@@ -1,65 +1,74 @@
-/**
- * Sistema de logging con niveles
- * Reemplaza console.log/error/warn con un sistema más robusto
- */
+import winston from "winston";
+import "winston-daily-rotate-file";
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+const { combine, timestamp, printf, colorize, align, errors } = winston.format;
 
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
+const logLevels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  debug: 4,
 };
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-const minLogLevel = (process.env.LOG_LEVEL as LogLevel) || (isDevelopment ? 'debug' : 'info');
-
-function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[minLogLevel];
-}
-
-function formatMessage(level: LogLevel, message: string, ...args: any[]): string {
-  const timestamp = new Date().toISOString();
-  const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-  
-  if (args.length === 0) {
-    return `${prefix} ${message}`;
-  }
-  
-  try {
-    const formattedArgs = args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-    ).join(' ');
-    return `${prefix} ${message} ${formattedArgs}`;
-  } catch {
-    return `${prefix} ${message} [Error serializando argumentos]`;
-  }
-}
-
-export const logger = {
-  debug: (message: string, ...args: any[]) => {
-    if (shouldLog('debug')) {
-      console.debug(formatMessage('debug', message, ...args));
-    }
-  },
-  
-  info: (message: string, ...args: any[]) => {
-    if (shouldLog('info')) {
-      console.log(formatMessage('info', message, ...args));
-    }
-  },
-  
-  warn: (message: string, ...args: any[]) => {
-    if (shouldLog('warn')) {
-      console.warn(formatMessage('warn', message, ...args));
-    }
-  },
-  
-  error: (message: string, ...args: any[]) => {
-    if (shouldLog('error')) {
-      console.error(formatMessage('error', message, ...args));
-    }
-  },
+const colors = {
+  error: "red",
+  warn: "yellow",
+  info: "green",
+  http: "magenta",
+  debug: "white",
 };
 
+winston.addColors(colors);
+
+const logFormat = combine(
+  timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+  errors({ stack: true }), // para capturar stack trace en errores
+  align(),
+  printf((info) => {
+    const { timestamp, level, message, stack, ...args } = info;
+    const argsStr = Object.keys(args).length
+      ? JSON.stringify(args, null, 2)
+      : "";
+    return `[${timestamp}] ${level}: ${message} ${stack || ""} ${argsStr}`;
+  }),
+);
+
+export const logger = winston.createLogger({
+  levels: logLevels,
+  level: process.env.LOG_LEVEL || "info",
+  format: logFormat,
+  transports: [
+    // Escribir todos los logs con nivel `error` e inferiores a `logs/error-%DATE%.log`
+    new winston.transports.DailyRotateFile({
+      filename: "logs/error-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      level: "error",
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
+    // Escribir todos los logs con nivel `info` e inferiores a `logs/combined-%DATE%.log`
+    new winston.transports.DailyRotateFile({
+      filename: "logs/combined-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
+  ],
+});
+
+// Si no estamos en producción, loguear a la consola con un formato simple
+if (process.env.NODE_ENV !== "production") {
+  logger.add(
+    new winston.transports.Console({
+      format: combine(
+        colorize({ all: true }),
+        timestamp({ format: "HH:mm:ss" }),
+        printf(
+          (info) =>
+            `[${info.timestamp}] ${info.level}: ${info.message} ${info.stack || ""}`,
+        ),
+      ),
+    }),
+  );
+}

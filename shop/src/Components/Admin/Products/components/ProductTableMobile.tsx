@@ -2,7 +2,7 @@ import { Stack, Paper, Group, Image, Box, Text, ActionIcon, Button } from '@mant
 import { FiEdit, FiEye, FiTrash } from 'react-icons/fi';
 import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
-const dummyImage = "/logo.png";
+const dummyImage = "/image_fallback.webp";
 
 interface ProductTableMobileProps {
   products: Product[];

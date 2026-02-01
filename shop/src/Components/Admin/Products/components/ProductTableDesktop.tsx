@@ -2,7 +2,7 @@ import { Paper, ScrollArea, Table, Group, ActionIcon, Button, Stack, Image, Text
 import { FiEdit, FiEye, FiTrash } from 'react-icons/fi';
 import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
-const dummyImage = "/logo.png";
+const dummyImage = "/image_fallback.webp";
 
 interface ProductTableDesktopProps {
   products: Product[];

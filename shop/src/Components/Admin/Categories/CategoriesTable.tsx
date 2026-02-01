@@ -7,7 +7,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { FiEdit, FiPlus, FiSearch } from "react-icons/fi";
 import { useChangeCategoryStatus, useGetAllCategories } from "@/Api/admin/CategoriesApi";
 
-const NoImage = "/logo.png";
+const NoImage = "/image_fallback.webp";
 
 type CategoryStatus = 1 | 2 | 3;
 export type Category = {

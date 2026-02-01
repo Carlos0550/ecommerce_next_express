@@ -14,8 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const businessName = business?.name || "Tienda Online";
   const description = business?.description || `Tienda online de ${businessName}`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
-  const businessImage = business?.business_image || "/logo.png";
-  const favicon = business?.favicon || "/logo.png";
+  const businessImage = business?.business_image || "/image_fallback.webp";
+  const favicon = business?.favicon || "/image_fallback.webp";
   
   return {
     title: {
@@ -54,7 +54,7 @@ export default async function RootLayout({
   const business = await getBusinessInfo();
   const businessName = business?.name || "Tienda Online";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
-  const businessImage = business?.business_image || "/logo.png";
+  const businessImage = business?.business_image || "/image_fallback.webp";
   
   return (
     <html lang="es" className={inter.variable}>
@@ -69,7 +69,7 @@ export default async function RootLayout({
               "@type": "Organization",
               name: businessName,
               url: siteUrl,
-              logo: "/logo.png",
+              logo: business?.favicon || "/image_fallback.webp",
               image: businessImage
             })
           }}

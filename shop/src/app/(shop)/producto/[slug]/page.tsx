@@ -72,7 +72,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             "@type": "Product",
             name: product.title,
             description: product.description,
-            image: Array.isArray(product.images) && product.images.length > 0 ? product.images : [`${siteUrl}/logo.png`],
+            image: Array.isArray(product.images) && product.images.length > 0 ? product.images : [`${siteUrl}/image_fallback.webp`],
             category: product.category?.title || undefined,
             offers: typeof product.price === "number" ? {
               "@type": "Offer",
@@ -190,13 +190,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         description,
         url: canonical,
         type: "website",
-        images: [{ url: (Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/logo.png` }]
+        images: [{ url: (Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/image_fallback.webp` }]
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: [(Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/logo.png`]
+        images: [(Array.isArray(product.images) && product.images[0]) ? product.images[0] : `${urlBase}/image_fallback.webp`]
       },
       robots: { index: true, follow: true }
     }

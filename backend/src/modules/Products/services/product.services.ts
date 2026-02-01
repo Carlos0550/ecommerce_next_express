@@ -38,12 +38,10 @@ class ProductServices {
       const imageUrls: string[] =
         providedUrls.length > 0 ? providedUrls : existingUrls;
       if (!imageUrls.length) {
-        return res
-          .status(400)
-          .json({
-            ok: false,
-            error: "El producto no tiene imágenes para analizar",
-          });
+        return res.status(400).json({
+          ok: false,
+          error: "El producto no tiene imágenes para analizar",
+        });
       }
       const context = [
         additionalContext || "",
@@ -169,7 +167,7 @@ class ProductServices {
         description: finalDescription,
         price: finalPrice,
         tags: finalTags,
-        category: { connect: { id: category_id } },
+        ...(category_id ? { category: { connect: { id: category_id } } } : {}),
         images: imageUrls,
         state: productState,
         stock: finalStock,
@@ -555,7 +553,9 @@ class ProductServices {
             : typeof tags === "string"
               ? JSON.parse(tags)
               : [],
-          category: { connect: { id: category_id } },
+          ...(category_id
+            ? { category: { connect: { id: category_id } } }
+            : { category: { disconnect: true } }),
           images: updatedImages,
           state: state || ProductState.active,
           ...(finalStock !== undefined ? { stock: finalStock } : {}),
@@ -637,14 +637,12 @@ class ProductServices {
         data: { stock: q, state: nextState },
       });
 
-      return res
-        .status(200)
-        .json({
-          ok: true,
-          message: "Stock actualizado",
-          stock: q,
-          state: nextState,
-        });
+      return res.status(200).json({
+        ok: true,
+        message: "Stock actualizado",
+        stock: q,
+        state: nextState,
+      });
     } catch (error) {
       console.error("Error al actualizar stock:", error);
       return res
@@ -840,22 +838,20 @@ class ProductServices {
         }),
       ]);
       const totalPages = Math.ceil(totalProducts / limit) || 1;
-      return res
-        .status(200)
-        .json({
-          ok: true,
-          data: {
-            products: dbProducts,
-            pagination: {
-              total: totalProducts,
-              page,
-              limit,
-              totalPages,
-              hasNextPage: page < totalPages,
-              hasPrevPage: page > 1,
-            },
+      return res.status(200).json({
+        ok: true,
+        data: {
+          products: dbProducts,
+          pagination: {
+            total: totalProducts,
+            page,
+            limit,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
           },
-        });
+        },
+      });
     } catch (error) {
       console.error("Error al obtener productos públicos:", error);
       return res.status(500).json({

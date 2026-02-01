@@ -43,28 +43,204 @@ import QRCode from "qrcode";
 
 function normalizePhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\s+/g, "").replace(/-/g, "");
-  
-  if (cleaned.startsWith("+")) {
-    return cleaned;
-  }
-  
-  if (cleaned.startsWith("549")) {
-    return "+" + cleaned;
-  }
-  
-  if (cleaned.startsWith("54")) {
-    return "+" + cleaned;
-  }
-  
-  if (cleaned.length === 10 && /^\d+$/.test(cleaned)) {
-    return "+549" + cleaned;
-  }
-  
+
+  if (cleaned.startsWith("+")) return cleaned;
+  if (cleaned.startsWith("549")) return "+" + cleaned;
+  if (cleaned.startsWith("54")) return "+" + cleaned;
+  if (cleaned.length === 10 && /^\d+$/.test(cleaned)) return "+549" + cleaned;
   if (cleaned.length === 13 && /^\d+$/.test(cleaned) && cleaned.startsWith("549")) {
     return "+" + cleaned;
   }
-  
+
   return cleaned.startsWith("+") ? cleaned : "+" + cleaned;
+}
+
+type WhatsAppRemitentsProps = {
+  allowedRemitents: string[];
+  onAdd: (phone: string) => Promise<void>;
+  onRemove: (phone: string) => Promise<void>;
+  isLoading: boolean;
+};
+
+function WhatsAppRemitents({ allowedRemitents, onAdd, onRemove, isLoading }: WhatsAppRemitentsProps) {
+  const [newRemitent, setNewRemitent] = useState("");
+
+  const handleAdd = async () => {
+    if (!newRemitent.trim()) return;
+    const normalized = normalizePhoneNumber(newRemitent);
+    if (!allowedRemitents.includes(normalized)) {
+      await onAdd(normalized);
+    }
+    setNewRemitent("");
+  };
+
+  return (
+    <Box>
+      <Divider my="md" />
+      <Group gap="xs" mb="xs">
+        <FaUserShield size={14} />
+        <Text size="sm" fw={500}>
+          Remitentes Permitidos
+        </Text>
+      </Group>
+      <Text size="xs" c="dimmed" mb="sm">
+        Solo estos números podrán interactuar con Cleria. Si la lista está vacía, cualquier número
+        puede usarlo (no recomendado en producción).
+      </Text>
+      <Group mb="sm">
+        <TextInput
+          placeholder="+5491123456789"
+          value={newRemitent}
+          onChange={(e) => setNewRemitent(e.currentTarget.value)}
+          leftSection={<FaPhone size={14} />}
+          style={{ flex: 1 }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleAdd();
+          }}
+        />
+        <Button
+          leftSection={<FaPlus size={14} />}
+          onClick={handleAdd}
+          loading={isLoading}
+          disabled={!newRemitent.trim()}
+        >
+          Agregar
+        </Button>
+      </Group>
+      {allowedRemitents.length > 0 ? (
+        <Stack gap="xs">
+          {allowedRemitents.map((remitent) => (
+            <Group key={remitent} justify="space-between">
+              <Badge size="lg" variant="light">
+                {remitent}
+              </Badge>
+              <Button
+                size="xs"
+                variant="subtle"
+                color="red"
+                leftSection={<FaTrash size={12} />}
+                onClick={() => onRemove(remitent)}
+                loading={isLoading}
+              >
+                Eliminar
+              </Button>
+            </Group>
+          ))}
+        </Stack>
+      ) : (
+        <Alert color="yellow" icon={<FaExclamationTriangle />}>
+          No hay remitentes configurados. Cualquier número puede usar el bot.
+        </Alert>
+      )}
+    </Box>
+  );
+}
+
+type QRModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  qrCodeImage: string | null;
+  isLoadingQR: boolean;
+};
+
+function QRModal({ opened, onClose, qrCodeImage, isLoadingQR }: QRModalProps) {
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={
+        <Group gap="xs">
+          <FaWhatsapp size={20} color="#25D366" />
+          <Text fw={500}>Conectar WhatsApp</Text>
+        </Group>
+      }
+      centered
+    >
+      <Stack align="center" gap="md">
+        {isLoadingQR ? (
+          <>
+            <Loader size="lg" />
+            <Text>Generando código QR...</Text>
+          </>
+        ) : qrCodeImage ? (
+          <>
+            <img
+              src={qrCodeImage}
+              alt="WhatsApp QR Code"
+              style={{ maxWidth: 256, borderRadius: 8 }}
+            />
+            <Text ta="center" size="sm">
+              Abre WhatsApp en tu teléfono y escanea este código para conectar.
+            </Text>
+            <Group gap="xs">
+              <Loader size="xs" />
+              <Text size="sm" c="dimmed">
+                Esperando conexión...
+              </Text>
+            </Group>
+          </>
+        ) : (
+          <Alert color="red">No se pudo generar el código QR. Intenta de nuevo.</Alert>
+        )}
+        <Button variant="light" onClick={onClose}>
+          Cancelar
+        </Button>
+      </Stack>
+    </Modal>
+  );
+}
+
+type TestMessageModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  onSend: (to: string, message: string) => Promise<void>;
+  isSending: boolean;
+};
+
+function TestMessageModal({ opened, onClose, onSend, isSending }: TestMessageModalProps) {
+  const [testNumber, setTestNumber] = useState("");
+  const [testMessage, setTestMessage] = useState(
+    "¡Hola! Este es un mensaje de prueba desde Tu tienda Online."
+  );
+
+  const handleSend = async () => {
+    if (!testNumber.trim() || !testMessage.trim()) return;
+    await onSend(testNumber, testMessage);
+    onClose();
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Enviar mensaje de prueba" centered>
+      <Stack gap="md">
+        <TextInput
+          label="Número de destino"
+          placeholder="+5491123456789"
+          value={testNumber}
+          onChange={(e) => setTestNumber(e.currentTarget.value)}
+          leftSection={<FaPhone size={14} />}
+        />
+        <TextInput
+          label="Mensaje"
+          placeholder="Tu mensaje..."
+          value={testMessage}
+          onChange={(e) => setTestMessage(e.currentTarget.value)}
+        />
+        <Group justify="flex-end">
+          <Button variant="light" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            leftSection={<FaPaperPlane size={14} />}
+            onClick={handleSend}
+            loading={isSending}
+            disabled={!testNumber.trim() || !testMessage.trim()}
+          >
+            Enviar
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
 }
 
 export default function WhatsAppConfig() {
@@ -77,36 +253,33 @@ export default function WhatsAppConfig() {
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sessionName, setSessionName] = useState("Tu tienda Online");
-  const [testNumber, setTestNumber] = useState("");
-  const [testMessage, setTestMessage] = useState("¡Hola! Este es un mensaje de prueba desde Tu tienda Online.");
-  const [newRemitent, setNewRemitent] = useState("");
   const [localRemitents, setLocalRemitents] = useState<string[] | null>(null);
 
   const [qrModalOpened, { open: openQrModal, close: closeQrModal }] = useDisclosure(false);
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // QR and status polling
   const { data: qrData, isLoading: isLoadingQR } = useGetQRCode(qrModalOpened && isConnecting);
   const { data: statusData } = useGetSessionStatus(qrModalOpened && isConnecting);
 
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
 
-  // Derive allowed remitents from config or local state
-  const allowedRemitents = localRemitents !== null 
-    ? localRemitents 
-    : config?.whatsapp_allowed_remitents
-      ? config.whatsapp_allowed_remitents.split(",").map((r) => r.trim()).filter(Boolean)
+  const allowedRemitents =
+    localRemitents !== null
+      ? localRemitents
+      : config?.whatsapp_allowed_remitents
+      ? config.whatsapp_allowed_remitents
+          .split(",")
+          .map((r) => r.trim())
+          .filter(Boolean)
       : [];
 
-  // Track previous connection status to detect changes
   const prevStatusRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Generate QR code image when data changes
   useEffect(() => {
     if (qrData?.qr_code) {
       QRCode.toDataURL(qrData.qr_code, { width: 256, margin: 2 })
@@ -115,19 +288,17 @@ export default function WhatsAppConfig() {
     }
   }, [qrData?.qr_code]);
 
-  // Close modal when connection status changes to connected
   useEffect(() => {
     const currentStatus = statusData?.status;
     const wasConnecting = prevStatusRef.current !== "connected";
-    
+
     if (currentStatus === "connected" && wasConnecting && isConnecting) {
-      // Schedule state updates for next tick to avoid cascading renders
       queueMicrotask(() => {
         setIsConnecting(false);
         closeQrModal();
       });
     }
-    
+
     prevStatusRef.current = currentStatus;
   }, [statusData?.status, closeQrModal, isConnecting]);
 
@@ -155,27 +326,15 @@ export default function WhatsAppConfig() {
     await disconnectSession.mutateAsync();
   };
 
-  const handleSendTest = async () => {
-    if (!testNumber.trim() || !testMessage.trim()) return;
-    await sendTest.mutateAsync({ to: testNumber, message: testMessage });
-    closeTestModal();
-  };
-
   const handleCloseQrModal = () => {
     setIsConnecting(false);
     closeQrModal();
   };
 
-  const handleAddRemitent = async () => {
-    if (!newRemitent.trim()) return;
-    const normalized = normalizePhoneNumber(newRemitent);
-    if (allowedRemitents.includes(normalized)) {
-      setNewRemitent("");
-      return;
-    }
-    const newList = [...allowedRemitents, normalized];
+  const handleAddRemitent = async (phone: string) => {
+    if (allowedRemitents.includes(phone)) return;
+    const newList = [...allowedRemitents, phone];
     setLocalRemitents(newList);
-    setNewRemitent("");
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
 
@@ -183,6 +342,10 @@ export default function WhatsAppConfig() {
     const newList = allowedRemitents.filter((r) => r !== remitent);
     setLocalRemitents(newList);
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
+  };
+
+  const handleSendTest = async (to: string, message: string) => {
+    await sendTest.mutateAsync({ to, message });
   };
 
   if (!mounted || isLoading) {
@@ -213,29 +376,20 @@ export default function WhatsAppConfig() {
           </Group>
 
           <Text size="sm" c="dimmed">
-            Permite crear productos enviando imágenes por WhatsApp. La IA procesará 
-            las imágenes y generará título y descripción automáticamente.
+            Permite crear productos enviando imágenes por WhatsApp. La IA procesará las imágenes y
+            generará título y descripción automáticamente.
           </Text>
 
           <Divider />
 
-          {/* Estado de conexión */}
           <Group gap="md">
             <Text fw={500}>Estado:</Text>
             {config?.whatsapp_connected ? (
-              <Badge
-                color="green"
-                size="lg"
-                leftSection={<FaCheckCircle size={12} />}
-              >
+              <Badge color="green" size="lg" leftSection={<FaCheckCircle size={12} />}>
                 Conectado
               </Badge>
             ) : (
-              <Badge
-                color="gray"
-                size="lg"
-                leftSection={<FaTimesCircle size={12} />}
-              >
+              <Badge color="gray" size="lg" leftSection={<FaTimesCircle size={12} />}>
                 Desconectado
               </Badge>
             )}
@@ -245,7 +399,6 @@ export default function WhatsAppConfig() {
               </Text>
             )}
           </Group>
-
 
           {config?.has_access_token && !config?.whatsapp_connected && (
             <Box>
@@ -282,11 +435,7 @@ export default function WhatsAppConfig() {
 
           {config?.whatsapp_connected && (
             <Group>
-              <Button
-                variant="light"
-                leftSection={<FaPaperPlane size={14} />}
-                onClick={openTestModal}
-              >
+              <Button variant="light" leftSection={<FaPaperPlane size={14} />} onClick={openTestModal}>
                 Enviar mensaje de prueba
               </Button>
               <Button
@@ -302,161 +451,36 @@ export default function WhatsAppConfig() {
           )}
 
           {config?.whatsapp_connected && (
-            <Box>
-              <Divider my="md" />
-              <Group gap="xs" mb="xs">
-                <FaUserShield size={14} />
-                <Text size="sm" fw={500}>
-                  Remitentes Permitidos
-                </Text>
-              </Group>
-              <Text size="xs" c="dimmed" mb="sm">
-                Solo estos números podrán interactuar con Cleria. Si la lista está vacía, 
-                cualquier número puede usarlo (no recomendado en producción).
-              </Text>
-              <Group mb="sm">
-                <TextInput
-                  placeholder="+5491123456789"
-                  value={newRemitent}
-                  onChange={(e) => setNewRemitent(e.currentTarget.value)}
-                  leftSection={<FaPhone size={14} />}
-                  style={{ flex: 1 }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddRemitent();
-                  }}
-                />
-                <Button
-                  leftSection={<FaPlus size={14} />}
-                  onClick={handleAddRemitent}
-                  loading={updateConfig.isPending}
-                  disabled={!newRemitent.trim()}
-                >
-                  Agregar
-                </Button>
-              </Group>
-              {allowedRemitents.length > 0 ? (
-                <Stack gap="xs">
-                  {allowedRemitents.map((remitent) => (
-                    <Group key={remitent} justify="space-between">
-                      <Badge size="lg" variant="light">
-                        {remitent}
-                      </Badge>
-                      <Button
-                        size="xs"
-                        variant="subtle"
-                        color="red"
-                        leftSection={<FaTrash size={12} />}
-                        onClick={() => handleRemoveRemitent(remitent)}
-                        loading={updateConfig.isPending}
-                      >
-                        Eliminar
-                      </Button>
-                    </Group>
-                  ))}
-                </Stack>
-              ) : (
-                <Alert color="yellow" icon={<FaExclamationTriangle />}>
-                  No hay remitentes configurados. Cualquier número puede usar el bot.
-                </Alert>
-              )}
-            </Box>
+            <WhatsAppRemitents
+              allowedRemitents={allowedRemitents}
+              onAdd={handleAddRemitent}
+              onRemove={handleRemoveRemitent}
+              isLoading={updateConfig.isPending}
+            />
           )}
 
           {!config?.has_access_token && (
-            <Alert
-              color="yellow"
-              icon={<FaExclamationTriangle />}
-              title="Token no configurado"
-            >
-              Para usar la integración de WhatsApp, debes configurar la variable de entorno 
+            <Alert color="yellow" icon={<FaExclamationTriangle />} title="Token no configurado">
+              Para usar la integración de WhatsApp, debes configurar la variable de entorno
               WASENDER_API_KEY en el servidor con tu Personal Access Token de WasenderAPI.
             </Alert>
           )}
         </Stack>
       </Paper>
 
-      <Modal
+      <QRModal
         opened={qrModalOpened}
         onClose={handleCloseQrModal}
-        title={
-          <Group gap="xs">
-            <FaWhatsapp size={20} color="#25D366" />
-            <Text fw={500}>Conectar WhatsApp</Text>
-          </Group>
-        }
-        centered
-      >
-        <Stack align="center" gap="md">
-          {isLoadingQR ? (
-            <>
-              <Loader size="lg" />
-              <Text>Generando código QR...</Text>
-            </>
-          ) : qrCodeImage ? (
-            <>
-              <img
-                src={qrCodeImage}
-                alt="WhatsApp QR Code"
-                style={{ maxWidth: 256, borderRadius: 8 }}
-              />
-              <Text ta="center" size="sm">
-                Abre WhatsApp en tu teléfono y escanea este código para conectar.
-              </Text>
-              <Group gap="xs">
-                <Loader size="xs" />
-                <Text size="sm" c="dimmed">
-                  Esperando conexión...
-                </Text>
-              </Group>
-            </>
-          ) : (
-            <Alert color="red">
-              No se pudo generar el código QR. Intenta de nuevo.
-            </Alert>
-          )}
+        qrCodeImage={qrCodeImage}
+        isLoadingQR={isLoadingQR}
+      />
 
-          <Button variant="light" onClick={handleCloseQrModal}>
-            Cancelar
-          </Button>
-        </Stack>
-      </Modal>
-
-      {/* Modal Test Message */}
-      <Modal
+      <TestMessageModal
         opened={testModalOpened}
         onClose={closeTestModal}
-        title="Enviar mensaje de prueba"
-        centered
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Número de destino"
-            placeholder="+5491123456789"
-            value={testNumber}
-            onChange={(e) => setTestNumber(e.currentTarget.value)}
-            leftSection={<FaPhone size={14} />}
-          />
-          <TextInput
-            label="Mensaje"
-            placeholder="Tu mensaje..."
-            value={testMessage}
-            onChange={(e) => setTestMessage(e.currentTarget.value)}
-          />
-          <Group justify="flex-end">
-            <Button variant="light" onClick={closeTestModal}>
-              Cancelar
-            </Button>
-            <Button
-              leftSection={<FaPaperPlane size={14} />}
-              onClick={handleSendTest}
-              loading={sendTest.isPending}
-              disabled={!testNumber.trim() || !testMessage.trim()}
-            >
-              Enviar
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        onSend={handleSendTest}
+        isSending={sendTest.isPending}
+      />
     </>
   );
 }

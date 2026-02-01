@@ -265,6 +265,7 @@ model BusinessData {
   description    String?
   business_image String?
   favicon        String?
+  hero_image     String?
   bankData       BusinessBankData[]
 
   // WhatsApp Integration

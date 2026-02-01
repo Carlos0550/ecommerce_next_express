@@ -55,7 +55,7 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
               width: 80,
               height: 80,
               borderRadius: 16,
-              backgroundImage: `url(${siteUrl}/logo.png)`,
+              backgroundImage: `url(${siteUrl}/image_fallback.webp)`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}

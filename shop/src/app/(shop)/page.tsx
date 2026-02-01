@@ -11,7 +11,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   const business = await getBusinessInfo();
   const businessName = business?.name || "Tienda Online";
-  const businessImage = business?.business_image || `${siteUrl}/logo.png`;
+  const businessImage = business?.business_image || `${siteUrl}/image_fallback.webp`;
   
   // Prepare Query Params for Products
   const qp = new URLSearchParams()

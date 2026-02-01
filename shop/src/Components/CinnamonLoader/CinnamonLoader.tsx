@@ -28,7 +28,7 @@ export default function CinnamonLoader() {
   return (
     <Box pos="relative" w={450} h={450}>
       <Image
-        src="/logo.png"
+        src="/image_fallback.webp"
         alt="Logo"
         width={450}
         height={450}

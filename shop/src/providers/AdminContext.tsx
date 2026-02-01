@@ -1,7 +1,8 @@
 "use client";
 import { createContext, useContext, useMemo, useCallback } from "react";
 import { useAdminAuth } from "./useAdminAuth";
-import { useMediaQuery } from "@mantine/hooks";
+import { useWindowSize } from "@/utils/hooks/useWindowSize";
+import { capitalizeTexts, BASE_URL } from "@/utils/constants";
 
 type AdminContextValue = {
   auth: ReturnType<typeof useAdminAuth>;
@@ -14,38 +15,37 @@ type AdminContextValue = {
 
 const AdminContext = createContext<AdminContextValue | null>(null);
 
-export function AdminContextProvider({ children }: { children: React.ReactNode }) {
+export function AdminContextProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const auth = useAdminAuth();
-  const isMobile = useMediaQuery("(max-width: 768px)") ?? false;
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
-
-  const capitalizeTexts = useCallback((text: string) => {
-    if (!text) return "";
-    return text
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  }, []);
+  const { isMobile } = useWindowSize();
 
   const value = useMemo<AdminContextValue>(
     () => ({
       auth,
       utils: {
-        baseUrl,
+        baseUrl: BASE_URL,
         isMobile,
         capitalizeTexts,
       },
     }),
-    [auth, baseUrl, isMobile, capitalizeTexts]
+    [auth, isMobile]
   );
 
-  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
+  return (
+    <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
+  );
 }
 
 export function useAdminContext() {
   const context = useContext(AdminContext);
   if (!context) {
-    throw new Error("useAdminContext must be used within an AdminContextProvider");
+    throw new Error(
+      "useAdminContext must be used within an AdminContextProvider"
+    );
   }
   return context;
 }
