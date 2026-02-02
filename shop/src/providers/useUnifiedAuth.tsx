@@ -200,11 +200,11 @@ export function useUnifiedAuth() {
   );
 
   const registerAdmin = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string) => {
       const response = await fetchWithTimeout(`${baseUrl}/shop/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, asAdmin: true }),
+        body: JSON.stringify({ name, email, asAdmin: true }),
         timeout: 10000,
       });
 
@@ -230,11 +230,11 @@ export function useUnifiedAuth() {
   );
 
   const registerUser = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string) => {
       const response = await fetchWithTimeout(`${baseUrl}/shop/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, asAdmin: false }),
+        body: JSON.stringify({ name, email, asAdmin: false }),
         timeout: 10000,
       });
 

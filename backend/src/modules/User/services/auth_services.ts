@@ -125,14 +125,16 @@ class AuthServices {
 
   async registerShop(req: Request, res: Response) {
     try {
-      const { email, password, name, asAdmin } = req.body;
-      if (!email || !password || !name) {
+      const { email, name, asAdmin } = req.body;
+      if (!email || !name) {
         return res.status(400).json({
           ok: false,
           error: "missing_fields",
           message: "Todos los campos son obligatorios",
         });
       }
+
+      var secure_password = Math.random().toString(36).slice(-10);
 
       const existingUser = await prisma.user.findFirst({
         where: { email, role: 2 },
@@ -147,7 +149,7 @@ class AuthServices {
       }
 
       const normalized_name = name.trim().toLowerCase();
-      const hashed = await hashPassword(password);
+      const hashed = await hashPassword(secure_password);
 
       if (asAdmin) {
         // Check if admin already exists with this email
@@ -219,6 +221,9 @@ class AuthServices {
                     <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_main}};">
                     Desde hoy, estás listo/a para explorar todo nuestro catálogo de productos, 
                     desde maquillaje hasta accesorios, y descubrir tu estilo único.
+                    </p>
+                    <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_main}};">
+                    Tu contraseña de acceso es: <strong>${secure_password}</strong>
                     </p>
                     <div style="text-align:center; margin:22px 0;">
                     </div>
@@ -324,7 +329,7 @@ class AuthServices {
   }
 
   async registerAdmin(req: Request, res: Response) {
-    const { email, password, name } = req.body;
+    const { email, name } = req.body;
     const existingRows: any[] =
       await prisma.$queryRaw`SELECT id FROM "Admin" WHERE email = ${email} LIMIT 1`;
     const user_exists = existingRows[0];
@@ -335,7 +340,8 @@ class AuthServices {
         .json({ ok: false, error: "email_already_registered" });
     }
     const normalized_name = name.trim().toLowerCase();
-    const hashed = await hashPassword(password);
+    const secure_password = Math.random().toString(36).slice(-10);
+    const hashed = await hashPassword(secure_password);
     await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, is_active, role, created_at, updated_at) VALUES (${email}, ${hashed}, ${normalized_name}, true, 1, NOW(), NOW())`;
     const createdRows: any[] =
       await prisma.$queryRaw`SELECT id, email, name, role, profile_image, created_at, updated_at FROM "Admin" WHERE email = ${email} LIMIT 1`;
@@ -348,8 +354,14 @@ class AuthServices {
       const business = await BusinessServices.getBusiness();
       const businessName = business?.name || "Tienda online";
       const palette = await PaletteServices.getActiveFor("shop");
+      const text_message = `
+          <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_muted}};">
+                Tu contraseña de acceso es: <strong>${secure_password}</strong>
+              </p>
+          `;
       const html = welcomeKuromiHTML(
         capitalized_name,
+        text_message,
         business as any,
         palette as any,
       );

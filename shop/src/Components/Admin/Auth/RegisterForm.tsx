@@ -1,27 +1,21 @@
 import { useState } from "react";
-import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text, Checkbox } from "@mantine/core";
+import { Paper, Stack, TextInput, Button, Group, Title, Text, Checkbox } from "@mantine/core";
 
 export type RegisterFormValues = {
   name: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   asAdmin: boolean;
 };
 
 export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values: RegisterFormValues) => void, loading?: boolean }) {
-  const [values, setValues] = useState<RegisterFormValues>({ name: "", email: "", password: "", confirmPassword: "", asAdmin: false });
+  const [values, setValues] = useState<RegisterFormValues>({ name: "", email: "", asAdmin: false });
   const [error, setError] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!values.name || !values.email || !values.password || !values.confirmPassword) {
+    if (!values.name || !values.email) {
       setError("Completa todos los campos");
-      return;
-    }
-    if (values.password !== values.confirmPassword) {
-      setError("Las contraseñas no coinciden");
       return;
     }
     onSubmit?.(values);
@@ -48,26 +42,6 @@ export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values
           onChange={(e) => {
             const val = e.currentTarget.value;
             setValues((v) => ({ ...v, email: val }));
-          }}
-          required
-        />
-        <PasswordInput
-          label="Contraseña"
-          placeholder="••••••••"
-          value={values.password}
-          onChange={(e) => {
-            const val = e.currentTarget.value;
-            setValues((v) => ({ ...v, password: val }));
-          }}
-          required
-        />
-        <PasswordInput
-          label="Confirmar contraseña"
-          placeholder="••••••••"
-          value={values.confirmPassword}
-          onChange={(e) => {
-            const val = e.currentTarget.value;
-            setValues((v) => ({ ...v, confirmPassword: val }));
           }}
           required
         />

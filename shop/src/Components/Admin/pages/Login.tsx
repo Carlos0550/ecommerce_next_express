@@ -25,10 +25,10 @@ export default function Login() {
     }
   }, [auth.session, auth.isAdmin, router]);
 
-  const handleRegister = async (values: { name: string; email: string; password: string; asAdmin: boolean }) => {
+  const handleRegister = async (values: { name: string; email: string; asAdmin: boolean }) => {
     setRegisterLoading(true);
     try {
-      const result = await auth.registerAdmin(values.name, values.email, values.password);
+      const result = await auth.registerAdmin(values.name, values.email);
       
       if (result.pending) {
         showNotification({ 

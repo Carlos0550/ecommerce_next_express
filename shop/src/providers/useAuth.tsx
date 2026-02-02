@@ -17,9 +17,9 @@ export function useAuth() {
     };
   }, [unifiedAuth]);
 
-  const signUp = useCallback(async (name: string, email: string, password: string, asAdmin: boolean = false) => {
+  const signUp = useCallback(async (name: string, email: string, _password: string, asAdmin: boolean = false) => {
     if (asAdmin) {
-      const result = await unifiedAuth.registerAdmin(name, email, password);
+      const result = await unifiedAuth.registerAdmin(name, email);
       if (result.pending) {
         return { pending: true, message: result.message };
       }
@@ -33,7 +33,7 @@ export function useAuth() {
       };
     }
     
-    const data = await unifiedAuth.registerUser(name, email, password);
+    const data = await unifiedAuth.registerUser(name, email);
     return { 
       token: unifiedAuth.token, 
       user: {

@@ -28,11 +28,10 @@ export default function LoginForm({ onClose }: Props) {
   });
 
   const registerForm = useForm({
-    initialValues: { name: "", email: "", password: "", asAdmin: false },
+    initialValues: { name: "", email: "", asAdmin: false },
     validate: {
       name: (value) => (value.length > 2 ? null : "Nombre muy corto"),
       email: (value) => (/^\S+@\S+$/.test(value) ? null : "Email inválido"),
-      password: (value) => (value.length >= 6 ? null : "Min 6 caracteres"),
     },
   });
 
@@ -58,11 +57,11 @@ export default function LoginForm({ onClose }: Props) {
     }
   };
 
-  const onRegisterSubmit = async (values: { name: string; email: string; password: string; asAdmin: boolean }) => {
+  const onRegisterSubmit = async (values: { name: string; email: string; asAdmin: boolean }) => {
     setError(null);
     setLoading(true);
     try {
-      const result = await auth.signUp(values.name, values.email, values.password, values.asAdmin);
+      const result = await auth.signUp(values.name, values.email, "", values.asAdmin);
       
       if (result?.pending) {
           showNotification({
@@ -78,9 +77,9 @@ export default function LoginForm({ onClose }: Props) {
       if (result?.user) {
         showNotification({
           title: `Bienvenido a ${business?.name || "Tienda online"}, ${utils.capitalizeTexts(result?.user?.name)}`,
-          message: "Tu cuenta ha sido creada exitosamente.",
+          message: "Tu cuenta ha sido creada exitosamente. Revisa tu correo para obtener tu contraseña.",
           color: "green",
-          autoClose: 3000,
+          autoClose: 5000,
         })
         onClose();
       }
@@ -170,11 +169,6 @@ export default function LoginForm({ onClose }: Props) {
                 label="Correo"
                 placeholder="tu@correo.com"
                 {...registerForm.getInputProps("email")}
-              />
-              <PasswordInput
-                label="Contraseña"
-                placeholder="••••••••"
-                {...registerForm.getInputProps("password")}
               />
               <Checkbox
                 mt="xs"
