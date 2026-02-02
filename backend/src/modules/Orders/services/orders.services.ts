@@ -63,6 +63,17 @@ export default class OrdersServices {
         ? "EFECTIVO"
         : (String(paymentMethod).toUpperCase() as PaymentMethod);
 
+    // Validar si el usuario existe realmente antes de intentar conectarlo
+    if (userId && Number.isInteger(userId)) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (!userExists) {
+        userId = undefined;
+      }
+    }
+
     // Construir data base
     const orderData: any = {
       total,

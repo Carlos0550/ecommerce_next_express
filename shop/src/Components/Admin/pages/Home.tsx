@@ -18,6 +18,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { LineChart, BarChart, PieChart } from "@mui/x-charts";
 import dayjs from "dayjs";
+import 'dayjs/locale/es';
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useGetSalesAnalytics } from "@/Api/admin/SalesApi";
 import {
@@ -298,7 +299,7 @@ export default function Home() {
   return (
     <Box>
       <Group justify="space-between" align="flex-start" mb="md" wrap="wrap">
-        <Title>Analíticas de ventas</Title>
+        <Title style={{ fontSize: 32 }}>Resumen de {dayjs().locale('es').format('MMMM')}</Title>
         
         <Stack gap="xs" align="flex-end">
           <Group gap="xs">

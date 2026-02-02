@@ -8,6 +8,7 @@ import { prisma } from "@/config/prisma";
 import UserRouter from "@/modules/User/routes";
 import AdminAuthRouter from "@/modules/AuthAdmin/routes";
 import ShopAuthRouter from "@/modules/AuthShop/routes";
+import AuthRouter from "@/modules/Auth/routes";
 import ProductRouter from "@/modules/Products/routes";
 import SalesRouter from "@/modules/Sales/routes";
 import CartRouter from "@/modules/Cart/routes";
@@ -103,6 +104,7 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/api/admin", AdminAuthRouter);
 app.use("/api/shop", ShopAuthRouter);
+app.use("/api/auth", AuthRouter);
 app.use("/api", UserRouter);
 app.use("/api", ProfileRouter);
 app.use("/api/faqs", FaqRouter);

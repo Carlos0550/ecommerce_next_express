@@ -1,7 +1,9 @@
-import { Paper, ScrollArea, Table, Group, ActionIcon, Button, Stack, Image, Text } from '@mantine/core';
-import { FiEdit, FiEye, FiTrash } from 'react-icons/fi';
+import { Paper, ScrollArea, Table, Group, ActionIcon, Button, Image, Text, Tooltip } from '@mantine/core';
+import { FiEdit, FiEye, FiTrash, FiTrendingUp, FiBox } from 'react-icons/fi';
 import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
+import { theme } from '@/theme';
+
 const dummyImage = "/image_fallback.webp";
 
 interface ProductTableDesktopProps {
@@ -32,23 +34,25 @@ export const ProductTableDesktop = ({
   onEnhance,
 }: ProductTableDesktopProps) => {
   return (
-    <Paper withBorder p="md" radius="md">
+    <Paper withBorder radius="md" shadow="sm">
       {state === "draft" && (
-        <Text mb="md" c="dimmed">
-          Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón &quot; <FiEdit /> editar &quot; en la fila del producto.
-        </Text>
+        <Paper p="xs" bg="rose.0" m="md" style={{ border: `1px solid ${theme.colors?.rose?.[2] || '#eee'}` }}>
+          <Text size="sm" c="rose.9" fw={500}>
+            Recuerde editar precio y activar el producto para que esté a la venta.
+          </Text>
+        </Paper>
       )}
       <ScrollArea>
-        <Table highlightOnHover withTableBorder withColumnBorders>
-          <Table.Thead>
+        <Table verticalSpacing="sm" horizontalSpacing="md" highlightOnHover>
+          <Table.Thead bg="gray.0">
             <Table.Tr>
-              <Table.Th style={{ width: 120 }}>Imagen</Table.Th>
-              <Table.Th>Título</Table.Th>
+              <Table.Th style={{ width: 80 }}>Imagen</Table.Th>
+              <Table.Th>Producto</Table.Th>
               <Table.Th>Precio</Table.Th>
               <Table.Th>Estado</Table.Th>
               <Table.Th>Stock</Table.Th>
               <Table.Th>Creado</Table.Th>
-              <Table.Th style={{ width: 440 }}>Acciones</Table.Th>
+              <Table.Th style={{ textAlign: 'right' }}>Acciones</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -58,82 +62,103 @@ export const ProductTableDesktop = ({
                   <Image
                     src={p.images?.[0] || dummyImage}
                     alt={p.title}
-                    w={48}
-                    h={48}
-                    radius="sm"
+                    w={50}
+                    h={50}
+                    radius="md"
                     fit="cover"
+                    fallbackSrc={dummyImage}
+                    style={{ border: '1px solid #eee' }}
                   />
                 </Table.Td>
                 <Table.Td>
-                  <Text fw={600} style={{ textTransform: 'capitalize' }}>
+                  <Text fw={600} size="sm" style={{ textTransform: 'capitalize' }}>
                     {p.title}
+                  </Text>
+                  <Text size="xs" c="dimmed" lineClamp={1}>
+                    ID: {p.id.slice(0, 8)}...
                   </Text>
                 </Table.Td>
                 <Table.Td>
-                  {typeof p.price === 'number' ? `$${p.price}` : '—'}
+                  <Text fw={700} c="dark.4">
+                    {typeof p.price === 'number' ? `$${p.price.toLocaleString()}` : '—'}
+                  </Text>
                 </Table.Td>
                 <Table.Td>
                   <ProductBadge state={p.state} />
                 </Table.Td>
                 <Table.Td>
-                  {p.stock !== undefined ? p.stock : '—'}
+                  <Group gap={4}>
+                    <FiBox size={14} color="gray" />
+                    <Text fw={500} size="sm">
+                      {p.stock !== undefined ? p.stock : '—'}
+                    </Text>
+                  </Group>
                 </Table.Td>
                 <Table.Td>
                   {p.created_at ? (
-                    <Text c="dimmed">
-                      {new Date(p.created_at).toLocaleString()}
+                    <Text size="xs" c="dimmed">
+                      {new Date(p.created_at).toLocaleDateString()}<br />
+                      {new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   ) : (
-                    <Text c="dimmed">—</Text>
+                    <Text c="dimmed" size="xs">—</Text>
                   )}
                 </Table.Td>
                 <Table.Td>
-                  <Stack gap="xs">
-                    <Group gap="xs">
+                  <Group gap="xs" justify="flex-end">
+                    <Tooltip label="Ver detalles" withArrow>
                       <ActionIcon
-                        variant="light"
-                        aria-label="Ver"
+                        variant="subtle"
+                        color="gray"
                         onClick={() => onView(p)}
                       >
-                        <FiEye />
+                        <FiEye size={18} />
                       </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="Editar producto" withArrow>
                       <ActionIcon
-                        color="red"
-                        variant="light"
-                        aria-label="Eliminar"
-                        onClick={() => onDelete(p.id)}
-                        loading={isDeleting && deletingId === p.id}
-                        disabled={isDeleting && deletingId === p.id}
-                      >
-                        <FiTrash />
-                      </ActionIcon>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<FiEdit />}
-                        aria-label="Editar"
+                        variant="subtle"
+                        color="blue"
                         onClick={() => onEdit(p)}
                       >
-                        Editar
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        aria-label="Mejorar"
+                        <FiEdit size={18} />
+                      </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="Mejorar con IA" withArrow>
+                      <ActionIcon
+                        variant="subtle"
+                        color="grape"
                         onClick={() => onEnhance(p)}
                         loading={isEnhancing}
                       >
-                        ✨ Mejorar
-                      </Button>
-                      <Button
-                        onClick={() => onUpdateStock(p)}
-                        loading={isUpdatingStock}
-                        disabled={isUpdatingStock}
+                        <FiTrendingUp size={18} />
+                      </ActionIcon>
+                    </Tooltip>
+
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      color="rose"
+                      onClick={() => onUpdateStock(p)}
+                      loading={isUpdatingStock}
+                      leftSection={<FiBox size={14} />}
+                    >
+                      Stock
+                    </Button>
+
+                    <Tooltip label="Eliminar" withArrow>
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        onClick={() => onDelete(p.id)}
+                        loading={isDeleting && deletingId === p.id}
                       >
-                        Actualizar stock
-                      </Button>
-                    </Group>
-                  </Stack>
+                        <FiTrash size={18} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}

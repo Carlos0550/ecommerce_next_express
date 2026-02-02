@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text, Checkbox } from "@mantine/core";
 
 export type RegisterFormValues = {
@@ -12,11 +12,6 @@ export type RegisterFormValues = {
 export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values: RegisterFormValues) => void, loading?: boolean }) {
   const [values, setValues] = useState<RegisterFormValues>({ name: "", email: "", password: "", confirmPassword: "", asAdmin: false });
   const [error, setError] = useState<string>("");
-  
-  
-  useEffect(()=> {
-    console.log("Values", values);
-  },[values])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

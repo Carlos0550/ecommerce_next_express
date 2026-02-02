@@ -18,7 +18,7 @@ export const ProductBadge = ({ state }: ProductBadgeProps) => {
   if (!config) return null;
 
   return (
-    <Badge variant="light" color={config.color}>
+    <Badge variant="light" color={config.color} radius="xl">
       {config.label}
     </Badge>
   );

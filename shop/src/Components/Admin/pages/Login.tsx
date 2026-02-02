@@ -3,19 +3,55 @@ import { Box, Flex, Paper, Tabs, Title } from "@mantine/core";
 import LoginForm from "@/Components/Admin/Auth/LoginForm";
 import RegisterForm from "@/Components/Admin/Auth/RegisterForm";
 import { useEffect, useState } from "react";
-import { useRegister } from "@/Api/admin/AuthApi";
 import { showNotification } from "@mantine/notifications";
 import { getPublicBusiness, type BusinessData } from "@/Api/admin/BusinessApi";
-
+import { useAdminContext } from "@/providers/AdminContext";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
   const [formType, setFormType] = useState<"register" | "login">("login");
-  const registerHook = useRegister();
+  const [registerLoading, setRegisterLoading] = useState(false);
   const [business, setBusiness] = useState<BusinessData | null>(null);
+  const { auth } = useAdminContext();
+  const router = useRouter();
 
   useEffect(() => {
     getPublicBusiness().then(setBusiness);
   }, []);
+
+  useEffect(() => {
+    if (auth.session && auth.isAdmin) {
+      router.push("/admin");
+    }
+  }, [auth.session, auth.isAdmin, router]);
+
+  const handleRegister = async (values: { name: string; email: string; password: string; asAdmin: boolean }) => {
+    setRegisterLoading(true);
+    try {
+      const result = await auth.registerAdmin(values.name, values.email, values.password);
+      
+      if (result.pending) {
+        showNotification({ 
+          title: "Solicitud enviada", 
+          message: result.message || "Tu solicitud está pendiente de aprobación.", 
+          color: "blue" 
+        });
+        setFormType("login");
+      } else {
+        showNotification({ 
+          title: "Cuenta creada", 
+          message: "Ahora puedes iniciar sesión", 
+          color: "green" 
+        });
+        router.push("/admin");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al registrarse';
+      showNotification({ title: "Error de registro", message: msg, color: "red" });
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
   
   return (
     <Flex
@@ -37,19 +73,8 @@ export default function Login() {
             </Tabs.Panel>
             <Tabs.Panel value="register" pt="md">
               <RegisterForm
-                loading={registerHook.isPending}
-                onSubmit={(values: { name: string; email: string; password: string; asAdmin: boolean }) => {
-                  registerHook.mutate({ name: values.name, email: values.email, password: values.password, asAdmin: values.asAdmin }, {
-                    onSuccess: () => {
-                      showNotification({ title: "Cuenta creada", message: "Ahora puedes iniciar sesión", color: "green" });
-                      setFormType("login");
-                    },
-                    onError: (err: Error) => {
-                      const msg = err instanceof Error ? err.message : 'Error al registrarse';
-                      showNotification({ title: "Error de registro", message: msg, color: "red" });
-                    }
-                  });
-                }}
+                loading={registerLoading}
+                onSubmit={handleRegister}
               />
             </Tabs.Panel>
           </Tabs>

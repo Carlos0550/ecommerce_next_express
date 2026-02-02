@@ -1,7 +1,8 @@
 import { Stack, Paper, Group, Image, Box, Text, ActionIcon, Button } from '@mantine/core';
-import { FiEdit, FiEye, FiTrash } from 'react-icons/fi';
+import { FiEdit, FiEye, FiTrash, FiBox, FiTrendingUp } from 'react-icons/fi';
 import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
+import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
 
 interface ProductTableMobileProps {
@@ -32,85 +33,102 @@ export const ProductTableMobile = ({
   onEnhance,
 }: ProductTableMobileProps) => {
   return (
-    <Stack>
+    <Stack gap="md">
       {state === "draft" && (
-        <Text mb="md" c="dimmed">
-          Recuerde editar precio y activar el producto para que esté a la venta, haga esto usando el botón &quot; <FiEdit /> editar &quot; en la fila del producto.
-        </Text>
+        <Paper p="xs" bg="rose.0" style={{ border: `1px solid ${theme.colors?.rose?.[2] || '#eee'}` }}>
+          <Text size="sm" c="rose.9" fw={500}>
+            Recuerde editar precio y activar el producto para que esté a la venta.
+          </Text>
+        </Paper>
       )}
       {products.map((p) => (
-        <Paper key={p.id} withBorder p="sm" radius="md">
-          <Group justify="space-between" align="flex-start">
-            <Group gap="sm" wrap="nowrap">
-              <Image
-                src={p.images?.[0] || dummyImage}
-                alt={p.title}
-                w={64}
-                h={64}
-                radius="sm"
-                fit="cover"
-              />
-              <Box>
-                <Group gap="xs">
-                  <ProductBadge state={p.state} />
-                </Group>
-                <Text c="dimmed">
-                  {typeof p.price === 'number' ? `Precio: $${p.price}` : "Precio: —"}
-                </Text>
-                <Text c="dimmed">
-                  {p.stock !== undefined ? `Stock: ${p.stock}` : "Stock: —"}
-                </Text>
-              </Box>
+        <Paper key={p.id} withBorder p="md" radius="md" shadow="xs">
+          <Stack gap="md">
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <Group gap="md" wrap="nowrap">
+                <Image
+                  src={p.images?.[0] || dummyImage}
+                  alt={p.title}
+                  w={70}
+                  h={70}
+                  radius="md"
+                  fit="cover"
+                  style={{ border: '1px solid #eee' }}
+                />
+                <Box>
+                  <Text fw={700} size="sm" style={{ textTransform: 'capitalize' }} lineClamp={2}>
+                    {p.title}
+                  </Text>
+                  <Group gap={4} mt={4}>
+                    <ProductBadge state={p.state} />
+                  </Group>
+                  <Text fw={700} size="md" c="rose.7" mt={4}>
+                    {typeof p.price === 'number' ? `$${p.price.toLocaleString()}` : '—'}
+                  </Text>
+                </Box>
+              </Group>
+              
+              <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                Stock: {p.stock ?? 0}
+              </Text>
             </Group>
-            <Stack gap="xs">
+
+            <Group gap="xs" grow>
+              <Button
+                size="xs"
+                variant="light"
+                color="blue"
+                leftSection={<FiEdit size={14} />}
+                onClick={() => onEdit(p)}
+              >
+                Editar
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="rose"
+                leftSection={<FiBox size={14} />}
+                onClick={() => onUpdateStock(p)}
+                loading={isUpdatingStock}
+              >
+                Stock
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="grape"
+                leftSection={<FiTrendingUp size={14} />}
+                onClick={() => onEnhance(p)}
+                loading={isEnhancing}
+              >
+                IA
+              </Button>
+            </Group>
+
+            <Group justify="space-between" align="center">
               <Group gap="xs">
-                <ActionIcon
-                  variant="light"
-                  aria-label="Ver"
+                 <ActionIcon
+                  variant="subtle"
+                  color="gray"
                   onClick={() => onView(p)}
                 >
-                  <FiEye />
+                  <FiEye size={18} />
                 </ActionIcon>
                 <ActionIcon
                   color="red"
-                  variant="light"
-                  aria-label="Eliminar"
+                  variant="subtle"
                   onClick={() => onDelete(p.id)}
                   loading={isDeleting && deletingId === p.id}
-                  disabled={isDeleting && deletingId === p.id}
                 >
-                  <FiTrash />
+                  <FiTrash size={18} />
                 </ActionIcon>
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<FiEdit />}
-                  aria-label="Editar"
-                  onClick={() => onEdit(p)}
-                >
-                  Editar
-                </Button>
               </Group>
-              <Group gap="xs">
-                <Button
-                  onClick={() => onUpdateStock(p)}
-                  loading={isUpdatingStock}
-                  disabled={isUpdatingStock}
-                >
-                  Actualizar stock
-                </Button>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  aria-label="Mejorar"
-                  onClick={() => onEnhance(p)}
-                  loading={isEnhancing}
-                >
-                  ✨ Mejorar
-                </Button>
-              </Group>
-            </Stack>
-          </Group>
+              
+              <Text size="xs" c="dimmed">
+                {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
+              </Text>
+            </Group>
+          </Stack>
         </Paper>
       ))}
     </Stack>

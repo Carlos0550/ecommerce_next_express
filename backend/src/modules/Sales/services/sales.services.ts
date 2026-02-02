@@ -86,19 +86,25 @@ class SalesServices {
       const taxAmount = subtotal * (taxPercent / 100);
       const finalTotal = subtotal + taxAmount;
 
+      const now = nowTz();
       const saleDateStr = (request as any)?.sale_date as string | undefined;
-      const parsedSaleDate =
-        saleDateStr && dayjs.tz(saleDateStr, "YYYY-MM-DD", DEFAULT_TZ);
+      const createdAtOverride = saleDateStr
+        ? dayjs
+            .tz(saleDateStr, "YYYY-MM-DD", DEFAULT_TZ)
+            .hour(now.hour())
+            .minute(now.minute())
+            .second(now.second())
+            .millisecond(now.millisecond())
+            .toDate()
+        : now.toDate();
 
-      let createdAtOverride: Date | undefined = undefined;
-      if (parsedSaleDate && parsedSaleDate.isValid()) {
-        const now = nowTz();
-        // Si es el mismo día que 'ahora', usamos la hora exacta actual
-        if (parsedSaleDate.isSame(now, "day")) {
-          createdAtOverride = now.toDate();
-        } else {
-          // Si es un día distinto (retroactivo), usamos el inicio del día
-          createdAtOverride = parsedSaleDate.startOf("day").toDate();
+      let userToConnect = undefined;
+      if (parsedUserId && Number.isInteger(parsedUserId)) {
+        const userExists = await prisma.user.findUnique({
+          where: { id: parsedUserId },
+        });
+        if (userExists) {
+          userToConnect = { connect: { id: parsedUserId } };
         }
       }
 
@@ -106,11 +112,8 @@ class SalesServices {
         data: {
           payment_method: primaryPaymentMethod,
           source,
-          user: user_id ? { connect: { id: parsedUserId } } : undefined,
+          user: userToConnect,
           total: Number(finalTotal),
-          ...(parsedUserId && Number.isInteger(parsedUserId)
-            ? { user: { connect: { id: parsedUserId } } }
-            : {}),
           tax: taxPercent,
           ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
           products: !isManual
@@ -281,20 +284,17 @@ class SalesServices {
         ? request.payment_methods
         : [];
 
+      const now = nowTz();
       const saleDateStr = (request as any)?.sale_date as string | undefined;
-      let createdAtOverride: Date | undefined = undefined;
-
-      if (saleDateStr) {
-        const parsedSaleDate = dayjs.tz(saleDateStr, "YYYY-MM-DD", DEFAULT_TZ);
-        if (parsedSaleDate.isValid()) {
-          const existingDate = dayjs.tz(existing.created_at);
-          // Solo actualizamos la fecha si el día seleccionado es diferente al que ya tenía
-          // Esto evita que al editar se pierda la hora original si no se cambió el día
-          if (!parsedSaleDate.isSame(existingDate, "day")) {
-            createdAtOverride = parsedSaleDate.startOf("day").toDate();
-          }
-        }
-      }
+      const createdAtOverride = saleDateStr
+        ? dayjs
+            .tz(saleDateStr, "YYYY-MM-DD", DEFAULT_TZ)
+            .hour(now.hour())
+            .minute(now.minute())
+            .second(now.second())
+            .millisecond(now.millisecond())
+            .toDate()
+        : now.toDate();
 
       const updated = await prisma.sales.update({
         where: { id },

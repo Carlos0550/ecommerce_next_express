@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text } from "@mantine/core";
-import { useLogin } from "@/Api/admin/AuthApi";
 import { useRouter } from "next/navigation";
 import { showNotification } from "@mantine/notifications";
 import { useAdminContext } from "@/providers/AdminContext";
+import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
 
 export type LoginFormValues = {
   email: string;
@@ -22,38 +23,38 @@ export default function LoginForm(){
       isMobile,
       baseUrl
     },
-    auth:{
-      setToken
-    }
-  } = useAdminContext()
-  const loginHook = useLogin()
-  const router = useRouter()
+    auth
+  } = useAdminContext();
+  const router = useRouter();
 
-  useEffect(() => {
-    if (loginHook.isSuccess && loginHook.data) {
-      setToken(loginHook.data.token)
+  const loginMutation = useMutation({
+    mutationKey: ["adminLogin"],
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      return auth.loginAdmin(email, password);
+    },
+    onSuccess: (data) => {
       router.push("/admin");
       showNotification({
         title: "Inicio de sesión exitoso",
-        message: `Bienvenido ${capitalizeTexts(loginHook.data?.user?.name || "usuario")}`,
+        message: `Bienvenido ${capitalizeTexts(data?.user?.name || "usuario")}`,
         color: "green",
       });
-    }
-  }, [loginHook.isSuccess, loginHook.data, setToken, router, capitalizeTexts]);
-
-  useEffect(() => {
-    if (loginHook.isError && loginHook.error) {
-      const errorMessage = loginHook.error instanceof Error 
-        ? loginHook.error.message 
-        : "Error al iniciar sesión";
-      
+    },
+    onError: (err: Error) => {
+      const errorMessage = err.message || "Error al iniciar sesión";
       showNotification({
         title: "Error de inicio de sesión",
         message: errorMessage,
         color: "red",
       });
     }
-  }, [loginHook.isError, loginHook.error]);
+  });
+
+  useEffect(() => {
+    if (auth.session && auth.isAdmin) {
+      router.push("/admin");
+    }
+  }, [auth.session, auth.isAdmin, router]);
 
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +64,7 @@ export default function LoginForm(){
       return;
     }
 
-    loginHook.mutate(values);
+    loginMutation.mutate(values);
   };
 
   const handleRecover = async () => {
@@ -96,7 +97,10 @@ export default function LoginForm(){
               {error && <Text c="red" size="sm">{error}</Text>}
               <Group justify="space-between">
                 <Button variant="subtle" onClick={() => setRecoverMode(true)}>Recuperar contraseña</Button>
-                <Button type="submit" loading={loginHook.isPending} disabled={loginHook.isPending}>Entrar</Button>
+                <Button type="submit" loading={loginMutation.isPending} disabled={loginMutation.isPending}>Entrar</Button>
+                <Link href="/">
+                  <Button variant="subtle">Volver a la tienda</Button>
+                </Link>
               </Group>
             </Stack>
           </form>

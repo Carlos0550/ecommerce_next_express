@@ -1,4 +1,4 @@
-import { Flex, TextInput, Button, Select } from '@mantine/core';
+import { Flex, TextInput, Button, Select, Paper } from '@mantine/core';
 import { FiPlus, FiSearch } from 'react-icons/fi';
 import type { ProductState } from '@/Api/admin/ProductsApi';
 
@@ -30,65 +30,85 @@ export const ProductTableFilters = ({
   onAddProduct,
 }: ProductTableFiltersProps) => {
   return (
-    <Flex gap="md" align="center" mb="md" wrap="wrap">
-      <TextInput
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder="Buscar producto por nombre"
-        leftSection={<FiSearch />}
-        style={{ flex: "1 1 280px", minWidth: 260, maxWidth: 520 }}
-      />
-      <Button leftSection={<FiPlus />} onClick={onAddProduct}>
-        Añadir producto
-      </Button>
+    <Paper withBorder p="md" radius="md" mb="xl" bg="gray.0">
+      <Flex direction="column" gap="md">
+        <Flex justify="space-between" align="center" wrap="wrap" gap="md">
+          <TextInput
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Buscar producto por nombre..."
+            leftSection={<FiSearch size={16} />}
+            size="md"
+            style={{ flex: 1, minWidth: 260, maxWidth: 400 }}
+          />
+          <Button 
+            leftSection={<FiPlus size={18} />} 
+            onClick={onAddProduct}
+            size="md"
+            variant="filled"
+          >
+            Añadir nuevo producto
+          </Button>
+        </Flex>
 
-      <Select
-        value={String(limit)}
-        onChange={(value) => onLimitChange(Number(value || 10))}
-        label="Mostrar por página"
-        data={[
-          { value: '5', label: '5 por página' },
-          { value: '10', label: '10 por página' },
-          { value: "20", label: '20 por página' },
-          { value: "50", label: '50 por página' },
-        ]}
-      />
+        <Flex gap="md" align="flex-end" wrap="wrap">
+          <Select
+            value={String(limit)}
+            onChange={(value) => onLimitChange(Number(value || 10))}
+            label="Mostrar"
+            size="sm"
+            data={[
+              { value: '5', label: '5 por página' },
+              { value: '10', label: '10 por página' },
+              { value: "20", label: '20 por página' },
+              { value: "50", label: '50 por página' },
+            ]}
+            style={{ width: 140 }}
+          />
 
-      <Select
-        value={String(state)}
-        label="Filtrar por estado"
-        onChange={(value) => onStateChange(value as ProductState)}
-        data={[
-          { value: 'active', label: 'Activo' },
-          { value: 'inactive', label: 'Inactivo' },
-          { value: 'draft', label: 'Borrador' },
-          { value: 'out_stock', label: 'Agotado' },
-          { value: 'deleted', label: 'Eliminado' },
-        ]}
-      />
+          <Select
+            value={String(state)}
+            label="Filtrar estado"
+            size="sm"
+            onChange={(value) => onStateChange(value as ProductState)}
+            data={[
+              { value: 'active', label: 'Activo' },
+              { value: 'inactive', label: 'Inactivo' },
+              { value: 'draft', label: 'Borrador' },
+              { value: 'out_stock', label: 'Agotado' },
+              { value: 'deleted', label: 'Eliminado' },
+            ]}
+            style={{ width: 140 }}
+          />
 
-      <Select
-        value={sortBy ?? ''}
-        label="Tipo de orden"
-        onChange={(value) => onSortByChange(value || undefined)}
-        data={[
-          { value: '', label: 'Ninguno' },
-          { value: 'title', label: 'Nombre' },
-          { value: 'price', label: 'Precio' },
-          { value: 'created_at', label: 'Fecha de creación' },
-        ]}
-      />
+          <Select
+            value={sortBy ?? ''}
+            label="Ordenar por"
+            size="sm"
+            onChange={(value) => onSortByChange(value || undefined)}
+            data={[
+              { value: '', label: 'Ninguno' },
+              { value: 'title', label: 'Nombre' },
+              { value: 'price', label: 'Precio' },
+              { value: 'created_at', label: 'Fecha de creación' },
+            ]}
+            style={{ width: 160 }}
+          />
 
-      <Select
-        value={sortOrder}
-        label="Orden"
-        onChange={(value) => onSortOrderChange(value as 'asc' | 'desc')}
-        data={[
-          { value: 'asc', label: 'Ascendente' },
-          { value: 'desc', label: 'Descendente' },
-        ]}
-      />
-    </Flex>
+          <Select
+            value={sortOrder}
+            label="Dirección"
+            size="sm"
+            onChange={(value) => onSortOrderChange(value as 'asc' | 'desc')}
+            data={[
+              { value: 'asc', label: 'Ascendente' },
+              { value: 'desc', label: 'Descendente' },
+            ]}
+            style={{ width: 130 }}
+          />
+        </Flex>
+      </Flex>
+    </Paper>
   );
 };
 

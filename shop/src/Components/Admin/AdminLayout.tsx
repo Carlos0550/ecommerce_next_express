@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Button variant="light" size="xs" onClick={() => setChangeOpened(true)}>
                 Cambiar contraseña
               </Button>
-              <Button variant="light" size="xs" onClick={() => auth.logout(false)}>
+              <Button variant="light" size="xs" onClick={() => auth.logout()}>
                 Cerrar sesión
               </Button>
             </Group>
@@ -123,7 +123,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Button variant="light" size="xs" onClick={() => setChangeOpened(true)}>
                     Contraseña
                   </Button>
-                  <Button variant="light" size="xs" onClick={() => auth.logout(false)}>
+                  <Button variant="light" size="xs" onClick={() => auth.logout()}>
                     Salir
                   </Button>
                 </Group>
