@@ -12,9 +12,8 @@ type Props = {
     product: PublicProduct
     priority?: boolean
 }
-import { useWindowSize } from "@/utils/hooks/useWindowSize";
+
 function ProductsCards({ product, priority = false }: Props) {
-    const { isMobile } = useWindowSize();
     const [imageLoading, setImageLoading] = useState(true)
     const slug = createProductSlug(product.title, product.id);
     return (
@@ -72,11 +71,9 @@ function ProductsCards({ product, priority = false }: Props) {
                         ${product.price.toLocaleString('es-AR')}
                     </Text>
                 </Stack>
-                {!isMobile && (
-                    <Text size="sm" c="dimmed" lineClamp={2} className={classes.description}>
+                    <Text size="sm" c="dimmed" lineClamp={2} className={classes.description} visibleFrom="sm">
                         {product.description}
                     </Text>
-                )}
                 <Box mt="xs" className={classes.footer}>
                     <AddToCartButton productId={product.id} fullWidth />
                 </Box>

@@ -27,6 +27,16 @@ router.post(
     res.json(rs);
   },
 );
+// Route for /api/orders matching /me logic
+router.get("/", requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const userId = Number(user.sub || user.id);
+  const page = Number((req.query.page as string) || "1");
+  const limit = Number((req.query.limit as string) || "10");
+  const rs = await service.listUserOrders(userId, page, limit);
+  res.json(rs);
+});
+
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);

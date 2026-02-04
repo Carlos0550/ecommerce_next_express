@@ -79,6 +79,7 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
         try {
           const data = await authService.loginUser(email, password);
+          console.log("raw token", data);
           set({ token: data.token });
           await get().validateSession();
           showNotification({
@@ -136,6 +137,12 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: (options = {}) => {
         const { isAdmin } = get();
+
+        if (isAdmin) {
+          window.location.href = "/admin/auth";
+        } else {
+          window.location.href = "/";
+        }
         set({
           token: null,
           session: null,
@@ -144,10 +151,7 @@ export const useAuthStore = create<AuthState>()(
           isUser: false,
           loading: false,
         });
-        if (typeof window !== "undefined") {
-          document.cookie =
-            "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-        }
+
         queryClient.removeQueries();
         if (options.expired) {
           showNotification({
@@ -161,15 +165,6 @@ export const useAuthStore = create<AuthState>()(
             message: "Has cerrado sesión correctamente",
             color: "blue",
           });
-        }
-        if (typeof window !== "undefined") {
-          if (options.redirect) {
-            window.location.href = options.redirect;
-          } else if (isAdmin) {
-            window.location.href = "/admin/auth";
-          } else {
-            window.location.href = "/";
-          }
         }
       },
       fetchProfile: async () => {

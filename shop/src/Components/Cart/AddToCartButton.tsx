@@ -4,11 +4,10 @@ import { Button, Loader, Select, Stack, Group, Text } from "@mantine/core"
 import { FaCartPlus } from "react-icons/fa"
 import { configService } from "@/services/config.service";
 import { showNotification } from "@mantine/notifications";
-import { useWindowSize } from "@/utils/hooks/useWindowSize";
+
 import { useCartStore } from "@/stores/useCartStore";
 import { SelectedOption } from "@/services/cart.service";
 export default function AddToCartButton({ productId, options = [], fullWidth = false }: { productId: string; options?: { name: string; values: string[] }[]; fullWidth?: boolean }) {
-  const { isMobile } = useWindowSize();
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([])
@@ -76,29 +75,28 @@ export default function AddToCartButton({ productId, options = [], fullWidth = f
           })}
         </Stack>
       )}
-      {isMobile ? (
-        <Button 
-          variant="filled" 
-          fullWidth={fullWidth} 
-          onClick={handleClick} 
-          disabled={busy} 
-          radius="xl"
-          rightSection={busy ? <Loader size="xs" color="white" /> : <FaCartPlus size={14} />}
-        >
-          Añadir
-        </Button>
-      ) : (
-        <Button 
-          variant="filled" 
-          fullWidth={fullWidth} 
-          onClick={handleClick} 
-          disabled={busy} 
-          radius="xl"
-          rightSection={busy ? <Loader size="xs" color="white" /> : null}
-        >
-          Agregar al carrito
-        </Button>
-      )}
+      <Button 
+        hiddenFrom="sm"
+        variant="filled" 
+        fullWidth={fullWidth} 
+        onClick={handleClick} 
+        disabled={busy} 
+        radius="xl"
+        rightSection={busy ? <Loader size="xs" color="white" /> : <FaCartPlus size={14} />}
+      >
+        Añadir
+      </Button>
+      <Button 
+        visibleFrom="sm"
+        variant="filled" 
+        fullWidth={fullWidth} 
+        onClick={handleClick} 
+        disabled={busy} 
+        radius="xl"
+        rightSection={busy ? <Loader size="xs" color="white" /> : null}
+      >
+        Agregar al carrito
+      </Button>
     </Stack>
   )
 }

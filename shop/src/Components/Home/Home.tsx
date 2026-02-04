@@ -26,7 +26,6 @@ import CartWrapper from "../Cart/CartWrapper";
 import Onboarding from "./sub-components/Onboarding";
 import { FiSearch, FiPackage } from "react-icons/fi";
 import { capitalizeTexts } from "@/utils/constants";
-import { useWindowSize } from "@/utils/hooks/useWindowSize";
 import { PublicProduct, PublicCategory, PublicBusinessInfo, PublicProductsResponse } from "@/stores/useConfigStore"
 type Props = {
   initialProducts?: PublicProductsResponse;
@@ -64,7 +63,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
         : [],
     [data],
   );
-  const { isMobile } = useWindowSize(); 
+
   const h1Title = useMemo(() => {
     if (business?.name) return business.name;
     return "Tienda Online";
@@ -158,10 +157,10 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     Calidad artesanal y materiales de primera.
                   </Text>
                 </Stack>
-                <Flex gap={10} wrap={"wrap"} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}>
+                <Flex gap={10} wrap={"wrap"} flex={{ base: "1 1 100%", sm: "0 0 auto" }}>
                   <Input
                     placeholder="Buscar..."
-                    w={isMobile ? "100%" : 280}
+                    w={{ base: "100%", sm: 280 }}
                     size="md"
                     radius="xl"
                     leftSection={<FiSearch size={16} />}
@@ -173,7 +172,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     <NativeSelect
                       size="md"
                       radius="xl"
-                      w={isMobile ? "100%" : 180}
+                      w={{ base: "100%", sm: 180 }}
                       value={urlCategoryId}
                       onChange={(e) => handleCategoryChange(e.currentTarget.value)}
                       data={[

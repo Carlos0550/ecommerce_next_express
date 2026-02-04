@@ -10,7 +10,7 @@ import { usePathname } from "next/navigation";
 import { useConfigStore } from "@/stores/useConfigStore";
 import { SidebarContent } from "../Common/SidebarContent";
 import { capitalizeTexts } from "@/utils/constants";
-import { useWindowSize } from "@/utils/hooks/useWindowSize";
+
 type Props = {
   children: React.ReactNode;
 };
@@ -20,7 +20,6 @@ export default function SiteLayout({ children }: Props) {
   const { session: user, logout } = useAuthStore();
   const fullName = capitalizeTexts(user?.name || "");
   const email = user?.email || "";
-  const { isMobile } = useWindowSize();
   const pathname = usePathname()
   const business = useConfigStore((state) => state.businessInfo);
   const fetchConfig = useConfigStore((state) => state.fetchConfig);
@@ -44,7 +43,7 @@ export default function SiteLayout({ children }: Props) {
         <Group justify="space-between" px="md" h="100%">
           <Group>
             <Burger opened={opened} onClick={toggle} aria-label="Toggle navigation" hiddenFrom="lg" />
-            {!isMobile ? (
+            <Box visibleFrom="sm">
               <Flex align={"center"} justify={"flex-start"} gap={10}>
                 <Stack p="md">
                   {isAuthenticated ? (
@@ -60,8 +59,9 @@ export default function SiteLayout({ children }: Props) {
                   )}
                 </Stack>
               </Flex>
-            ) : (
-              isAuthenticated ? (
+            </Box>
+            <Box hiddenFrom="sm">
+              {isAuthenticated ? (
                 <Group align="center" gap="sm">
                   <Avatar src={user?.profileImage} alt={fullName} radius="xl" />
                   <Text size="sm" c="dimmed">{fullName || email || "Usuario"}</Text>
@@ -71,8 +71,8 @@ export default function SiteLayout({ children }: Props) {
                 <Group align="center" gap="sm">
                   <Button size="xs" onClick={openAuth}>Iniciar sesión</Button>
                 </Group>
-              )
-            )}
+              )}
+            </Box>
           </Group>
         </Group>
       </AppShell.Header>
@@ -98,7 +98,8 @@ export default function SiteLayout({ children }: Props) {
           bottomExtra={
             <Box>
               <Divider my="md" />
-              <Button
+              {(user?.role === 1 || !user) && (
+                <Button
                 component={Link}
                 href="/admin"
                 variant="subtle"
@@ -108,6 +109,7 @@ export default function SiteLayout({ children }: Props) {
               >
                 Panel de Administración
               </Button>
+              )}
               <Paper p="md" radius="md" withBorder>
                 <Stack gap="xs">
                   <Text fw={700}>¿Necesitas ayuda?</Text>
