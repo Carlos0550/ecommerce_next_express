@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { applyTheme, BusinessData, PaletteData } from './theme';
-
 type SaleEmailParams = {
   source: string;
   payment_method: string;
@@ -16,14 +15,12 @@ type SaleEmailParams = {
   business?: BusinessData | null;
   palette?: PaletteData | null;
 };
-
 export function sale_email_html(params: SaleEmailParams) {
   const tplPath = path.join(__dirname, './files/sale_email.hbs');
   let html = fs.readFileSync(tplPath, 'utf-8');
   const safeBuyerName = params.buyerName && params.buyerName.trim() ? params.buyerName : 'N/A';
   const safeBuyerEmail = params.buyerEmail && params.buyerEmail.trim() ? params.buyerEmail : 'N/A';
   const saleDateStr = params.saleDate ? new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(params.saleDate) : new Date().toLocaleString('es-AR');
-
   const currency = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
   const taxAmount = (Number(params.subtotal) || 0) * ((Number(params.taxPercent) || 0) / 100);
   const productsRows = (Array.isArray(params.products) ? params.products : [])
@@ -34,7 +31,6 @@ export function sale_email_html(params: SaleEmailParams) {
       </tr>
     `)
     .join('');
-
   html = html.replace(/\{\{sale_id\}\}/g, String(params.saleId ?? 'N/A'));
   html = html.replace(/\{\{sale_date\}\}/g, saleDateStr);
   html = html.replace(/\{\{buyer_name\}\}/g, safeBuyerName);
@@ -46,6 +42,5 @@ export function sale_email_html(params: SaleEmailParams) {
   html = html.replace(/\{\{tax_percent\}\}/g, String(Number(params.taxPercent) || 0));
   html = html.replace(/\{\{tax\}\}/g, currency.format(taxAmount));
   html = html.replace(/\{\{final_total\}\}/g, currency.format(Number(params.finalTotal) || 0));
-  
   return applyTheme(html, params.business, params.palette);
 }

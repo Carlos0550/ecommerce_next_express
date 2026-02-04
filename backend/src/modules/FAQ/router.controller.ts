@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { FaqCreateSchema, FaqUpdateSchema, FaqListQuery } from './services/faq.zod';
-
 export function ensureFaqCreate(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = FaqCreateSchema.parse(req.body);
@@ -10,7 +9,6 @@ export function ensureFaqCreate(req: Request, res: Response, next: NextFunction)
     res.status(400).json({ ok: false, error: 'invalid_payload', message: err?.message || 'validation_error' });
   }
 }
-
 export function ensureFaqUpdate(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = FaqUpdateSchema.parse(req.body);
@@ -20,7 +18,6 @@ export function ensureFaqUpdate(req: Request, res: Response, next: NextFunction)
     res.status(400).json({ ok: false, error: 'invalid_payload', message: err?.message || 'validation_error' });
   }
 }
-
 export function parseFaqListQuery(req: Request, _res: Response, next: NextFunction) {
   try {
     const parsed = FaqListQuery.parse({
@@ -34,4 +31,3 @@ export function parseFaqListQuery(req: Request, _res: Response, next: NextFuncti
     next();
   }
 }
-

@@ -1,5 +1,4 @@
 import { Modal } from "@mantine/core"
-
 type Props ={
     opened: boolean;
     onClose: () => void;
@@ -19,5 +18,4 @@ function AuthModal({
     </Modal>
   )
 }
-
 export default AuthModal

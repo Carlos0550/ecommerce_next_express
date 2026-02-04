@@ -1,35 +1,30 @@
 import { Container, SimpleGrid, Title, Text, Group, Badge, Stack, Box, Flex } from "@mantine/core"
 import { notFound } from "next/navigation"
-import type { Products } from "@/Api/useProducts"
+import type { Metadata } from "next"
 import ImageGallery from "@/Components/ProductDetails/ImageGallery"
 import ProductsCards from "@/Components/Home/sub-components/ProductsCards"
 import BackButton from "@/Components/Common/BackButton"
 import AddToCartButton from "@/Components/Cart/AddToCartButton"
-import type { Metadata } from "next"
 import CartWrapper from "@/Components/Cart/CartWrapper"
-import { getBusinessInfo } from "@/Api/useBusiness"
+import { configService } from "@/services/config.service"
 import { extractIdFromSlug } from "@/utils/slugs"
 import ProductDescription from "@/Components/Common/ProductDescription"
-
+type Products = any;
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const id = extractIdFromSlug(slug)
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
-  
   const res = await fetch(`${baseUrl}/products/public/${id}`, { next: { revalidate: 60 } })
   if (!res.ok) {
     return notFound()
   }
   const json = await res.json().catch(() => null)
   const product: Products | null = (json?.data?.product || json?.data || json || null) as Products | null
-
   if (!product) {
     return notFound()
   }
-
   const priceValidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  
   const shippingDetails = {
     "@type": "OfferShippingDetails",
     shippingDestination: { "@type": "DefinedRegion", addressCountry: "AR" },
@@ -48,7 +43,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     returnFees: "https://schema.org/FreeReturn",
     returnMethod: ["https://schema.org/ReturnInStore", "https://schema.org/ReturnByMail"]
   }
-
   let similar: Products[] = []
   try {
     const categoryId = product?.category?.id
@@ -59,9 +53,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       similar = list.filter((p: Products) => p.id !== product.id)
     }
   } catch { }
-
   const fullSlug = slug;
-
   return (
     <Container size="lg" py="md">
       <script
@@ -128,9 +120,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           </Stack>
         </Box>
       </SimpleGrid>
-
-
-
       {similar.length > 0 && (
         <Box mt="xl">
           <Title order={3} mb="sm">Descubre productos similares</Title>
@@ -146,21 +135,17 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     </Container>
   )
 }
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const id = extractIdFromSlug(slug)
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
-  
   try {
     const [res, business] = await Promise.all([
       fetch(`${baseUrl}/products/public/${id}`, { next: { revalidate: 300 } }),
-      getBusinessInfo()
+      configService.getPublicBusinessInfo()
     ]);
-
     const businessName = business?.name || "Tienda Online";
-
     if (!res.ok) {
       return { title: "Producto", description: "Detalle de producto" }
     }
@@ -169,18 +154,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     if (!product) {
       return { title: "Producto", description: "Detalle de producto" }
     }
-    
     const title = `${product.title} ${product.category?.title ? `| ${product.category.title}` : ''} | ${businessName}`
-    
     let description = product.description || `Compra ${product.title} en ${businessName}. Envíos a todo el país.`;
     if (description.length > 160) {
         description = description.substring(0, 157) + '...';
     } else if (description.length < 50) {
         description = `${description} Aprovecha las mejores ofertas en ${product.category?.title || 'nuestra tienda'}. Calidad garantizada.`;
     }
-
     const canonical = `${urlBase}/producto/${slug}`
-    
     return {
       title,
       description,

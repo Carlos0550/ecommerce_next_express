@@ -1,13 +1,11 @@
 import { Box, Group, Image, Text, ActionIcon, Stack, Badge } from "@mantine/core";
 import { FaMinus, FaPlus } from "react-icons/fa";
-import type { CartItem, SelectedOption } from "@/providers/useCart";
+import type { CartItem, SelectedOption } from "@/services/cart.service";
 import { formatCurrency } from "@/utils/constants";
-
 type CartItemCardProps = {
   item: CartItem;
   onUpdateQuantity: (productId: string, quantity: number, options?: SelectedOption[]) => void;
 };
-
 export function CartItemCard({ item, onUpdateQuantity }: CartItemCardProps) {
   return (
     <Box

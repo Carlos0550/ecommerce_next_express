@@ -1,22 +1,17 @@
 import "./globals.css";
 import AppProvider from "../providers/AppProvider";
-
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getBusinessInfo } from "@/Api/useBusiness";
-
+import { configService } from "@/services/config.service";
 const inter = Inter({ subsets: ["latin"], variable: "--font-stack" });
-
 export const revalidate = 60;
-
 export async function generateMetadata(): Promise<Metadata> {
-  const business = await getBusinessInfo();
+  const business = await configService.getPublicBusinessInfo();
   const businessName = business?.name || "Tienda Online";
   const description = business?.description || `Tienda online de ${businessName}`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const businessImage = business?.business_image || "/image_fallback.webp";
   const favicon = business?.favicon || "/image_fallback.webp";
-  
   return {
     title: {
       template: `%s | ${businessName}`,
@@ -45,17 +40,15 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: true, follow: true },
   };
 }
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const business = await getBusinessInfo();
+  const business = await configService.getPublicBusinessInfo();
   const businessName = business?.name || "Tienda Online";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const businessImage = business?.business_image || "/image_fallback.webp";
-  
   return (
     <html lang="es" className={inter.variable}>
       <head>

@@ -9,26 +9,25 @@ import {
   Button,
   PasswordInput,
   Text,
-  Loader,
   Modal,
+  LoadingOverlay,
 } from "@mantine/core";
 import Link from "next/link";
 import { FiHome, FiUser, FiBox, FiHelpCircle, FiExternalLink } from "react-icons/fi";
-import { useAdminContext } from "@/providers/AdminContext";
-import { useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useAdminStore } from "@/stores/useAdminStore";
+import { useMemo, useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { SidebarContent } from "../Common/SidebarContent";
-
-type BusinessData = {
-  name?: string;
-  favicon?: string;
-};
-
+import { useWindowSize } from "@/utils/hooks/useWindowSize";
+import { showNotification } from "@mantine/notifications";
+import { authService } from "@/services/auth.service";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure(false);
-  const { auth, utils } = useAdminContext();
+  const router = useRouter();
+  const { token, logout, isAuthenticated, isAdmin, validateSession, loading } = useAuthStore();
+  const { business, fetchBusiness } = useAdminStore();
+  const { isMobile } = useWindowSize();
   const [changeOpened, setChangeOpened] = useState(false);
   const [oldPass, setOldPass] = useState("");
   const [newPass, setNewPass] = useState("");
@@ -36,21 +35,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
-
-  const { data: businessData, isPending } = useQuery({
-    queryKey: ["adminBusiness"],
-    queryFn: async () => {
-      const res = await fetchWithTimeout(`${utils.baseUrl}/business`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-        timeout: 5000,
-      });
-      if (!res.ok) return null;
-      return res.json() as Promise<BusinessData>;
-    },
-    enabled: !!auth.token,
-  });
-
-
+  useEffect(() => {
+    if (token && !isAuthenticated) {
+      validateSession();
+    }
+  }, [token, isAuthenticated, validateSession]);
+  useEffect(() => {
+    if (!token) {
+      document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      router.replace("/admin/auth");
+    }
+  }, [token, router]);
+  useEffect(() => {
+    if (token && !business) { 
+        fetchBusiness();
+    }
+  }, [token, business, fetchBusiness]);
   const menuItems = useMemo(
     () => [
       { to: "/admin", label: "Inicio", icon: FiHome },
@@ -64,9 +64,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ],
     []
   );
-
   const sidebarMenuItems = useMemo(() => menuItems.map(item => ({ href: item.to, label: item.label, icon: item.icon })), [menuItems]);
-
+  if (!token || (token && !isAuthenticated && loading)) {
+    return <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />;
+  }
   return (
     <AppShell
       header={{ height: 60 }}
@@ -77,30 +78,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Group justify="space-between" px="md" h="100%">
           <Group>
             <Burger opened={opened} onClick={toggle} aria-label="Toggle navigation" hiddenFrom="lg" />
-            {isPending ? (
-              <Loader type="bars" />
-            ) : (
-              <Anchor component={Link} href="/admin" fw={700}>
-                {businessData?.name || "Gestión de mi tienda"}
-              </Anchor>
-            )}
+            <Anchor component={Link} href="/admin" fw={700}>
+                {business?.name || "Gestión de mi tienda"}
+            </Anchor>
           </Group>
-          {!utils.isMobile && (
+          {!isMobile && (
             <Group>
               <Button variant="light" size="xs" onClick={() => setChangeOpened(true)}>
                 Cambiar contraseña
               </Button>
-              <Button variant="light" size="xs" onClick={() => auth.logout()}>
+              <Button variant="light" size="xs" onClick={() => logout()}>
                 Cerrar sesión
               </Button>
             </Group>
           )}
         </Group>
       </AppShell.Header>
-
       <AppShell.Navbar p="md" style={{ background: "var(--mantine-color-body)" }}>
         <SidebarContent
-          business={businessData || null}
+          business={business || null}
           menuItems={sidebarMenuItems}
           pathname={pathname}
           onLinkClick={close}
@@ -113,17 +109,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 fullWidth
                 variant="default"
                 leftSection={<FiExternalLink />}
-                
               >
                 Ir a mi tienda
               </Button>
               </Link>
-              {utils.isMobile && (
+              {isMobile && (
                 <Group grow>
                   <Button variant="light" size="xs" onClick={() => setChangeOpened(true)}>
                     Contraseña
                   </Button>
-                  <Button variant="light" size="xs" onClick={() => auth.logout()}>
+                  <Button variant="light" size="xs" onClick={() => logout()}>
                     Salir
                   </Button>
                 </Group>
@@ -132,9 +127,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }
         />
       </AppShell.Navbar>
-
       <AppShell.Main style={{ background: "var(--mantine-color-body)" }}>{children}</AppShell.Main>
-
       <Modal opened={changeOpened} onClose={() => setChangeOpened(false)} title="Cambiar contraseña" size="sm">
         <Stack>
           <PasswordInput
@@ -170,22 +163,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }
                 setChanging(true);
                 try {
-                  const res = await fetch(`${utils.baseUrl}/admin/password/change`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.token}` },
-                    body: JSON.stringify({ old_password: oldPass, new_password: newPass }),
-                  });
-                  if (!res.ok) {
-                    const err = await res.json().catch(() => ({} as Record<string, string>));
-                    throw new Error(err?.error || "change_failed");
-                  }
+                  await authService.changeAdminPassword({ old_password: oldPass, new_password: newPass });
                   setOldPass("");
                   setNewPass("");
                   setConfirmNew("");
                   setChangeOpened(false);
-                } catch (e) {
-                  const er = e as Error;
-                  setError(er.message || "Error al cambiar contraseña");
+                  showNotification({ title: 'Éxito', message: 'Contraseña actualizada', color: 'green' });
+                } catch (e: any) {
+                  const msg = e.response?.data?.error || e.message || "Error al cambiar contraseña";
+                  setError(msg);
                 } finally {
                   setChanging(false);
                 }

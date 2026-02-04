@@ -1,17 +1,11 @@
 "use client";
-import { Categories } from "@/Api/useCategories";
-import { useAppContext } from "@/providers/AppContext";
 import { Card, CardSection, Image, Text, Group, SimpleGrid, Overlay, Box, Center } from "@mantine/core";
 import { useRouter } from "next/navigation";
 import classes from "./CategoriesCards.module.css";
 import { FiChevronRight } from "react-icons/fi";
-
-export default function CategoriesCards({ categories }: { categories: Categories[] }) {
-  const {
-    utils: { capitalizeTexts },
-  } = useAppContext();
+import { capitalizeTexts } from "@/utils/constants";
+export default function CategoriesCards({ categories }: { categories: any[] }) {
   const router = useRouter();
-
   const goToCategory = (id: string) => {
     router.push(`/?categoryId=${id}#productos`, { scroll: false });
     setTimeout(() => {
@@ -19,7 +13,6 @@ export default function CategoriesCards({ categories }: { categories: Categories
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   };
-
   return (
     <SimpleGrid
       cols={{ base: 1, sm: 2, md: 3, lg: 4 }}
@@ -53,7 +46,6 @@ export default function CategoriesCards({ categories }: { categories: Categories
               opacity={1}
               zIndex={1}
             />
-            
             <Box className={classes.content}>
               <Text c="white" fw={800} fz="xl" className={classes.title}>
                 {capitalizeTexts(category.title)}

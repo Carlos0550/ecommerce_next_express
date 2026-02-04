@@ -4,7 +4,6 @@ import { SaleRequest, SalesSummaryRequest } from "./services/schemas/sales.schem
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import { prisma } from "@/config/prisma";
 import { createSignedUrl } from "@/config/minio";
-
 export const saveSale = async (req: Request, res: Response) => {
     try {
         const request = req.body as SaleRequest;
@@ -39,7 +38,6 @@ export const saveSale = async (req: Request, res: Response) => {
         })
     }
 }
-
 export const getSales = async (req: Request, res: Response) => {
     try {
         const page = Number(req.query.page) || 1;
@@ -49,7 +47,6 @@ export const getSales = async (req: Request, res: Response) => {
         const pending = String(req.query.pending || '').trim().toLowerCase() === 'true';
         (global as any).__pendingFilter = pending;
         const response = await SalesServices.getSales({ page, per_page, start_date, end_date });
-
         if (Array.isArray(response?.sales)) {
             res.set('Cache-Control', 'no-store');
             res.status(200).json({
@@ -74,13 +71,11 @@ export const getSales = async (req: Request, res: Response) => {
         })
     }
 }
-
 export const getSalesAnalytics = async (req: Request, res: Response) => {
     try {
         const start_date = (req.query.start_date as string | undefined) || undefined;
         const end_date = (req.query.end_date as string | undefined) || undefined;
         const response = await SalesServices.getSalesAnalytics({ start_date, end_date });
-
         if ((response as any)?.success === false) {
             return res.status(400).json({
                 success: false,
@@ -88,7 +83,6 @@ export const getSalesAnalytics = async (req: Request, res: Response) => {
                 message: "Error al obtener las analíticas de ventas, por favor intente nuevamente."
             })
         }
-
         res.status(200).json({
             success: true,
             analytics: response
@@ -102,7 +96,6 @@ export const getSalesAnalytics = async (req: Request, res: Response) => {
         })
     }
 }
-
 export const processSale = [requireAuth, requireRole([1]), async (req: Request, res: Response) => {
     try {
         const id = String((req.params as any)?.id || '');
@@ -115,7 +108,6 @@ export const processSale = [requireAuth, requireRole([1]), async (req: Request, 
         res.status(500).json({ success: false, err: error.message, message: 'internal_error' });
     }
 }]
-
 export const declineSale = [requireAuth, requireRole([1]), async (req: Request, res: Response) => {
     try {
         const id = String((req.params as any)?.id || '');
@@ -130,7 +122,6 @@ export const declineSale = [requireAuth, requireRole([1]), async (req: Request, 
         res.status(500).json({ success: false, err: error.message, message: 'internal_error' });
     }
 }]
-
 export const getSaleReceipt = [requireAuth, requireRole([1]), async (req: Request, res: Response) => {
     try {
         const id = String((req.params as any)?.id || '');
@@ -145,7 +136,6 @@ export const getSaleReceipt = [requireAuth, requireRole([1]), async (req: Reques
         res.status(500).json({ success: false, err: error.message, message: 'internal_error' });
     }
 }]
-
 export const updateSale = [requireAuth, requireRole([1]), async (req: Request, res: Response) => {
     try {
         const id = String((req.params as any)?.id || '');
@@ -167,7 +157,6 @@ export const updateSale = [requireAuth, requireRole([1]), async (req: Request, r
         res.status(500).json({ success: false, err: error.message, message: 'internal_error' });
     }
 }]
-
 export const deleteSale = [requireAuth, requireRole([1]), async (req: Request, res: Response) => {
     try {
         const id = String((req.params as any)?.id || '');
@@ -180,5 +169,3 @@ export const deleteSale = [requireAuth, requireRole([1]), async (req: Request, r
         res.status(500).json({ success: false, err: error.message, message: 'internal_error' });
     }
 }]
-
-

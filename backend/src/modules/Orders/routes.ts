@@ -9,10 +9,8 @@ import {
 } from "@/middlewares/image.middleware";
 import OrdersServices from "./services/orders.services";
 import { ensureCreatePayload } from "./router.controller";
-
 const router = Router();
 const service = new OrdersServices();
-
 router.post(
   "/create",
   attachAuthIfPresent,
@@ -29,7 +27,6 @@ router.post(
     res.json(rs);
   },
 );
-
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);
@@ -38,7 +35,6 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
   const rs = await service.listUserOrders(userId, page, limit);
   res.json(rs);
 });
-
 router.post(
   "/:id/receipt",
   uploadSingleImage("file"),
@@ -67,7 +63,6 @@ router.post(
     }
   },
 );
-
 export default router;
 router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
   try {

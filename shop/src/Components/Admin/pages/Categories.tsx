@@ -4,8 +4,6 @@ import { CategoriesTable } from "@/Components/Admin/Categories/CategoriesTable";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { Box, Title } from "@mantine/core";
 import { useState } from "react";
-
-
 export default function Categories() {
   const [addOpened, setAddOpened] = useState<boolean>(false);
   return (

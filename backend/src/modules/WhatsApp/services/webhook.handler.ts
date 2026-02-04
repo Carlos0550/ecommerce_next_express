@@ -6,28 +6,20 @@ import {
 } from "../utils/business.utils";
 import { sessionService } from "./session.service";
 import { albumService } from "./album.service";
-
 import {
   WebhookEvent,
   WebhookMessageUpsert,
   WebhookSessionStatus,
   WebhookMessageReceived,
 } from "../schemas/whatsapp.schemas";
-
 class WebhookHandler {
-  /**
-   * Punto de entrada principal para procesar webhooks
-   */
   async handleWebhook(event: WebhookEvent, _signature?: string): Promise<void> {
     const business = await getBusiness();
-
     if (!business) {
       console.warn("Webhook recibido pero no hay negocio configurado");
       return;
     }
-
     const eventType = event.event;
-
     switch (eventType) {
       case "session.status":
         await this.handleSessionStatusEvent(event as WebhookSessionStatus);
@@ -42,10 +34,6 @@ class WebhookHandler {
         console.log("Evento no manejado:", eventType);
     }
   }
-
-  /**
-   * Maneja eventos de cambio de estado de sesión
-   */
   private async handleSessionStatusEvent(
     event: WebhookSessionStatus,
   ): Promise<void> {
@@ -55,7 +43,6 @@ class WebhookHandler {
       event.data.phone_number,
     );
   }
-
   private async handleMessageUpsertEvent(
     event: WebhookMessageUpsert,
   ): Promise<void> {
@@ -64,18 +51,14 @@ class WebhookHandler {
       console.error("Estructura de mensaje inválida:", event);
       return;
     }
-
     const key = messages.key;
-
     if (key?.fromMe || messages.broadcast) {
       return;
     }
-
     const fromPhone =
       key?.cleanedSenderPn ||
       key?.senderPn?.split("@")[0] ||
       messages.remoteJid?.split("@")[0];
-
     if (!fromPhone) {
       console.error(
         "No se pudo obtener el número de teléfono del mensaje:",
@@ -83,9 +66,7 @@ class WebhookHandler {
       );
       return;
     }
-
     const messageId = key?.id || messages.id;
-
     if (messageId) {
       const alreadyProcessed = await prisma.processedMessage.findUnique({
         where: { id: messageId },
@@ -100,13 +81,10 @@ class WebhookHandler {
         .create({
           data: { id: messageId },
         })
-        .catch(() => {}); // Ignorar errores de duplicados si ocurren por race conditions
+        .catch(() => {}); 
     }
-
     console.log(`📱 Mensaje recibido de: ${fromPhone}`);
-
     const msgContent = messages.message;
-
     if (
       msgContent?.albumMessage &&
       !msgContent?.imageMessage &&
@@ -117,17 +95,14 @@ class WebhookHandler {
       );
       return;
     }
-
     const msgContextInfo = msgContent?.messageContextInfo;
     const isPartOfAlbum =
       msgContextInfo?.messageAssociation?.associationType === "MEDIA_ALBUM";
     const albumParentId =
       msgContextInfo?.messageAssociation?.parentMessageKey?.id;
-
     const business = await getBusiness();
     const apiKey = business?.whatsapp_api_key;
     const wasenderToken = hasWasenderApiKey() ? getWasenderApiKey() : undefined;
-
     if (isPartOfAlbum && albumParentId && msgContent?.imageMessage) {
       console.log(`📸 Imagen parte de álbum (parent: ${albumParentId})`);
       const alternativeCaption =
@@ -144,7 +119,6 @@ class WebhookHandler {
       );
       return;
     }
-
     const messageData = await this.parseMessageContent(
       messages,
       msgContent,
@@ -153,16 +127,13 @@ class WebhookHandler {
       apiKey,
       wasenderToken,
     );
-
     console.log(
       `📝 Mensaje procesado: tipo=${messageData.type}, body="${messageData.body?.substring(0, 50)}..."`,
     );
-
     const { conversationProcessor } =
       await import("./conversation/conversation.processor");
     await conversationProcessor.processMessage(0, fromPhone, messageData);
   }
-
   private async parseMessageContent(
     messages: any,
     msgContent: any,
@@ -175,7 +146,6 @@ class WebhookHandler {
     let messageBody = "";
     let mediaUrl: string | undefined;
     let caption: string | undefined;
-
     if (msgContent?.imageMessage) {
       messageType = "image";
       caption = msgContent.imageMessage.caption;
@@ -207,7 +177,6 @@ class WebhookHandler {
         msgContent?.extendedTextMessage?.text ||
         "";
     }
-
     return {
       id: messages.id || messageId || "",
       from: fromPhone,
@@ -222,7 +191,6 @@ class WebhookHandler {
       groupId: undefined,
     };
   }
-
   private async decryptMediaIfNeeded(
     apiKey: string | null | undefined,
     accessToken: string | null | undefined,
@@ -233,7 +201,6 @@ class WebhookHandler {
     },
   ): Promise<string | undefined> {
     if (!apiKey) return undefined;
-
     try {
       const WasenderClient = (await import("./wasender.client")).default;
       const client = new WasenderClient(accessToken || "");
@@ -249,6 +216,5 @@ class WebhookHandler {
     }
   }
 }
-
 export const webhookHandler = new WebhookHandler();
 export default webhookHandler;

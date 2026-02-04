@@ -9,23 +9,19 @@ function validateEnvVar(
   if (value && value.trim() === "") {
     throw new Error(`❌ Variable de entorno ${name} está vacía`);
   }
-
   console.log(
     `✅ Variable de entorno ${name} validada correctamente: ${value}`,
   );
   return value!;
 }
-
 export function validateEnvironmentVariables() {
   const DATABASE_URL = validateEnvVar("DATABASE_URL", process.env.DATABASE_URL);
-
   if (
     !DATABASE_URL.startsWith("postgresql://") &&
     !DATABASE_URL.startsWith("postgres://")
   ) {
     throw new Error("❌ DATABASE_URL debe ser una URL de PostgreSQL válida");
   }
-
   const WEBHOOK_BASE_URL = validateEnvVar(
     "WEBHOOK_BASE_URL",
     process.env.WEBHOOK_BASE_URL,
@@ -43,7 +39,6 @@ export function validateEnvironmentVariables() {
     "ADMINISTRATIVE_PANEL_URL",
     process.env.ADMINISTRATIVE_PANEL_URL,
   );
-
   const JWT_SECRET = validateEnvVar("JWT_SECRET", process.env.JWT_SECRET);
   const JWT_EXPIRES_IN = validateEnvVar(
     "JWT_EXPIRES_IN",
@@ -76,7 +71,6 @@ export function validateEnvironmentVariables() {
   const NODE_ENV = validateEnvVar("NODE_ENV", process.env.NODE_ENV);
   return {
     DATABASE_URL,
-
     WEBHOOK_BASE_URL,
     WHATSAPP_DEV_MODE,
     WHATSAPP_COOLDOWN_SECONDS,

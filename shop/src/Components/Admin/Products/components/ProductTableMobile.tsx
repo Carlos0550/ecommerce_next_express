@@ -1,24 +1,21 @@
 import { Stack, Paper, Group, Image, Box, Text, ActionIcon, Button } from '@mantine/core';
 import { FiEdit, FiEye, FiTrash, FiBox, FiTrendingUp } from 'react-icons/fi';
-import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
 import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
-
 interface ProductTableMobileProps {
-  products: Product[];
-  state: ProductState;
+  products: any[];
+  state: any;
   deletingId: string | null;
   isDeleting: boolean;
   isUpdatingStock: boolean;
   isEnhancing: boolean;
-  onView: (product: Product) => void;
-  onEdit: (product: Product) => void;
+  onView: (product: any) => void;
+  onEdit: (product: any) => void;
   onDelete: (productId: string) => void;
-  onUpdateStock: (product: Product) => void;
-  onEnhance: (product: Product) => void;
+  onUpdateStock: (product: any) => void;
+  onEnhance: (product: any) => void;
 }
-
 export const ProductTableMobile = ({
   products,
   state,
@@ -67,12 +64,10 @@ export const ProductTableMobile = ({
                   </Text>
                 </Box>
               </Group>
-              
               <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
                 Stock: {p.stock ?? 0}
               </Text>
             </Group>
-
             <Group gap="xs" grow>
               <Button
                 size="xs"
@@ -104,7 +99,6 @@ export const ProductTableMobile = ({
                 IA
               </Button>
             </Group>
-
             <Group justify="space-between" align="center">
               <Group gap="xs">
                  <ActionIcon
@@ -123,7 +117,6 @@ export const ProductTableMobile = ({
                   <FiTrash size={18} />
                 </ActionIcon>
               </Group>
-              
               <Text size="xs" c="dimmed">
                 {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
               </Text>
@@ -134,4 +127,3 @@ export const ProductTableMobile = ({
     </Stack>
   );
 };
-

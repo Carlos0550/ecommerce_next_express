@@ -1,36 +1,29 @@
 import { Badge, Box, Button, Group, Image, Stack, TextInput } from "@mantine/core";
 import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
-import { useCreateCategory, useUpdateCategory } from "@/Api/admin/CategoriesApi";
+import { useCreateCategory, useUpdateCategory } from "@/hooks/useAdminCategories";
 import { useState, useEffect } from "react";
 import type { Category } from "./CategoriesTable";
-
 type FormValues = {
     title: string,
     images: File | null
 }
-
 type CategoryFormProps = {
     closeForm: () => void;
     initialValues?: Category       
 };
-
 const getInitialFormValues = (initialValues?: Category): FormValues => ({
     title: initialValues?.title || "",
     images: null
 });
-
 function CategoriesForm({
     closeForm,
     initialValues
 }: CategoryFormProps) {
     const isEditMode = !!initialValues?.id;
-    
     const { mutate: createCategory, isPending: isCreating } = useCreateCategory()
     const { mutate: updateCategory, isPending: isUpdating } = useUpdateCategory()
-    
     const [formValues, setFormValues] = useState<FormValues>(() => getInitialFormValues(initialValues))
-
     const handleSubmit = () => {
         if (!formValues.title.trim()) {
             notifications.show({
@@ -39,41 +32,37 @@ function CategoriesForm({
             })
             return
         }
-
+        const formData = new FormData();
+        formData.append("title", formValues.title.trim());
+        if (formValues.images) {
+            formData.append("image", formValues.images);
+        }
         if (isEditMode && initialValues?.id) {
             updateCategory({ 
-                categoryId: initialValues.id,
-                title: formValues.title.trim(),
-                images: formValues.images ?? undefined, 
-                closeForm 
+                id: initialValues.id,
+                formData
+            }, {
+                onSuccess: closeForm
             })
         } else {
-            createCategory({ 
-                title: formValues.title.trim(),
-                images: formValues.images ?? undefined, 
-                closeForm 
+            createCategory(formData, {
+                onSuccess: closeForm
             })
         }
     }
-    
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormValues({ ...formValues, [e.currentTarget.name]: e.currentTarget.value })
     }
-
     const handleImageDrop = (files: File[]) => {
         setFormValues({ ...formValues, images: files[0] ?? null })
     }
-
     const handleRemoveImage = () => {
         setFormValues({ ...formValues, images: null })
     }
-    
     const isPending = isCreating || isUpdating;
-
     useEffect(()=>{
         console.log(formValues)
     },[formValues])
-    
     return (
         <Stack>
             <Group grow>
@@ -96,7 +85,6 @@ function CategoriesForm({
                     </Group>
                 </Dropzone>
             </Group>
-
             {isEditMode && initialValues?.image && !formValues.images && (
                 <Stack>
                     <Badge variant="light" size="sm">Imagen actual:</Badge>
@@ -114,7 +102,6 @@ function CategoriesForm({
                     </Group>
                 </Stack>
             )}
-
             {formValues.images && (
                 <Stack>
                     <Badge variant="light" size="sm">
@@ -143,7 +130,6 @@ function CategoriesForm({
                     </Group>
                 </Stack>
             )}
-
             <Group justify="flex-end" mt="md">
                 <Button 
                     variant="outline" 
@@ -163,6 +149,4 @@ function CategoriesForm({
         </Stack>
     )
 }
-
 export default CategoriesForm
-

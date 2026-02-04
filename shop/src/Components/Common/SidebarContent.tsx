@@ -3,18 +3,16 @@ import { Stack, Paper, Group, Avatar, Text, Button, Box, Flex } from "@mantine/c
 import Link from "next/link";
 import { ColorSchemeToggle } from "./ColorSchemeToggle";
 import React from "react";
-
 export type MenuItem = {
   href: string;
   label: string;
   icon: React.ElementType;
 };
-
 type SidebarContentProps = {
   business: {
-    name?: string;
-    favicon?: string;
-    phone?: string;
+    name?: string | null;
+    favicon?: string | null;
+    phone?: string | null;
   } | null;
   menuItems: MenuItem[];
   pathname: string;
@@ -22,7 +20,6 @@ type SidebarContentProps = {
   topExtra?: React.ReactNode;
   bottomExtra?: React.ReactNode;
 };
-
 export function SidebarContent({
   business,
   menuItems,
@@ -31,12 +28,10 @@ export function SidebarContent({
   topExtra,
   bottomExtra,
 }: SidebarContentProps) {
-  
   const isActive = (href: string) => {
     if (href === "/" || href === "/admin") return pathname === href;
     return pathname?.startsWith(href);
   };
-
   return (
     <Flex direction="column" h="100%" justify="space-between">
       <Stack gap="md">
@@ -46,7 +41,7 @@ export function SidebarContent({
               <Avatar 
                 src={business?.favicon || `https://ui-avatars.com/api/?name=${encodeURIComponent(business?.name || "Tu tienda Online")}&background=random&color=fff`} 
                 radius="xl" 
-                alt={business?.name}
+                alt={business?.name || undefined}
               />
               <Stack gap={2}>
                 <Text fw={600} style={{ maxWidth: 120 }} truncate="end">
@@ -58,11 +53,9 @@ export function SidebarContent({
           </Group>
           {topExtra}
         </Paper>
-
         <Text size="xs" fw={700} c="dimmed">
           MENÚ
         </Text>
-        
         <Stack gap="xs">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -94,7 +87,6 @@ export function SidebarContent({
           })}
         </Stack>
       </Stack>
-
       <Box>
         {bottomExtra}
       </Box>

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
+    "dev:turbo": "next dev --turbo -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -27,13 +28,15 @@
     "@tiptap/pm": "^3.13.0",
     "@tiptap/react": "^3.13.0",
     "@tiptap/starter-kit": "^3.13.0",
+    "axios": "^1.13.4",
     "dayjs": "^1.11.19",
     "gsap": "^3.14.2",
     "next": "16.0.10",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/node": "^25",

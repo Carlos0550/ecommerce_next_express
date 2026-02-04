@@ -1,16 +1,13 @@
 import { prisma } from "@/config/prisma";
-
 export type PalettePayload = {
   name: string;
   colors: string[];
   is_active?: boolean;
 };
-
 export class PaletteServices {
   private generateId(): string {
     return `pal_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
   }
-
   async list() {
     try {
       const data = await prisma.colorPalette.findMany({
@@ -21,7 +18,6 @@ export class PaletteServices {
       return [];
     }
   }
-
   async get(id: string) {
     try {
       return await prisma.colorPalette.findUnique({ where: { id } });
@@ -29,14 +25,19 @@ export class PaletteServices {
       return null;
     }
   }
-
   async create(payload: PalettePayload) {
     try {
+      const shouldActivate = payload.is_active ?? true;
+      if (shouldActivate) {
+        await prisma.colorPalette.updateMany({
+          data: { is_active: false },
+        });
+      }
       const created = await prisma.colorPalette.create({
         data: {
           name: payload.name,
           colors: payload.colors,
-          is_active: payload.is_active ?? true,
+          is_active: shouldActivate,
         },
       });
       return created;
@@ -45,7 +46,6 @@ export class PaletteServices {
       throw e;
     }
   }
-
   async update(id: string, payload: PalettePayload) {
     try {
       const updated = await prisma.colorPalette.update({
@@ -64,7 +64,6 @@ export class PaletteServices {
       throw e;
     }
   }
-
   async remove(id: string) {
     try {
       await prisma.colorPalette.delete({ where: { id } });
@@ -73,20 +72,32 @@ export class PaletteServices {
       throw e;
     }
   }
-
   async activate(id: string, active: boolean) {
     try {
-      const updated = await prisma.colorPalette.update({
-        where: { id },
-        data: { is_active: active },
-      });
-      return updated;
+      if (active) {
+        await prisma.$transaction([
+          prisma.colorPalette.updateMany({
+            where: { id: { not: id } },
+            data: { is_active: false },
+          }),
+          prisma.colorPalette.update({
+            where: { id },
+            data: { is_active: true },
+          }),
+        ]);
+        return await prisma.colorPalette.findUnique({ where: { id } });
+      } else {
+        const updated = await prisma.colorPalette.update({
+          where: { id },
+          data: { is_active: false },
+        });
+        return updated;
+      }
     } catch (e) {
       console.error("Error al activar paleta:", e);
       throw e;
     }
   }
-
   async setUsage(paletteId: string, target: "admin" | "shop") {
     try {
       if (target === "admin") {
@@ -109,20 +120,14 @@ export class PaletteServices {
       throw e;
     }
   }
-
   async getActiveFor(target: "admin" | "shop") {
     try {
       const palette = await prisma.colorPalette.findFirst({
-        where:
-          target === "admin"
-            ? { use_for_admin: true, is_active: true }
-            : { use_for_shop: true, is_active: true },
+        where: { is_active: true },
       });
-
       if (palette) {
         return palette;
       }
-
       return {
         id: "default-bw",
         name: "mono",
@@ -139,8 +144,8 @@ export class PaletteServices {
           "#1a1a1a",
         ],
         is_active: true,
-        use_for_admin: target === "admin",
-        use_for_shop: target === "shop",
+        use_for_admin: true,
+        use_for_shop: true,
         created_at: new Date(),
         updated_at: new Date(),
       } as any;
@@ -150,5 +155,4 @@ export class PaletteServices {
     }
   }
 }
-
 export default new PaletteServices();

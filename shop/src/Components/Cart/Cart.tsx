@@ -12,17 +12,14 @@ import {
   Select,
   Group,
 } from "@mantine/core";
-
 import useCart from "./useCart";
 import { CartItemCard, CartBankInfo } from "./components";
 import { formatCurrency } from "@/utils/constants";
-import type { CheckoutFormValues } from "@/providers/useCart";
-
+import type { CheckoutFormValues } from "@/stores/useCartStore";
 type CartProps = {
   opened?: boolean;
   onClose: () => void;
 };
-
 function Cart({ opened = true, onClose }: CartProps) {
   const {
     cart,
@@ -44,16 +41,12 @@ function Cart({ opened = true, onClose }: CartProps) {
     isLoadingBankInfo,
     bankInfoError,
   } = useCart(onClose);
-
-
-
   const updateFormField = <K extends keyof CheckoutFormValues>(
     field: K,
     value: CheckoutFormValues[K]
   ) => {
     setFormValues({ ...formValues, [field]: value });
   };
-
   return (
     <Modal opened={opened} onClose={onClose} title="Mi carrito" size="lg">
       <Box>
@@ -72,13 +65,8 @@ function Cart({ opened = true, onClose }: CartProps) {
             )}
           </Stack>
         </Box>
-
         <Divider my="md" />
-
-
-
         <Stack gap="xs">
-
           <Group justify="space-between" align="center">
             <Text fw={700} size="lg">
               Total: {formatCurrency(cart.total)}
@@ -96,7 +84,6 @@ function Cart({ opened = true, onClose }: CartProps) {
           </Group>
         </Stack>
       </Box>
-
       {formValues.checkoutOpen && (
         <Box mt="md">
           <Stepper
@@ -178,7 +165,6 @@ function Cart({ opened = true, onClose }: CartProps) {
                 </Group>
               </Stack>
             </Stepper.Step>
-
             <Stepper.Step label="Pago">
               <Stack mt="md">
                 <Select
@@ -196,7 +182,6 @@ function Cart({ opened = true, onClose }: CartProps) {
                     )
                   }
                 />
-
                 {formValues.orderMethod === "TRANSFERENCIA" && (
                   <CartBankInfo
                     isLoading={isLoadingBankInfo}
@@ -205,7 +190,6 @@ function Cart({ opened = true, onClose }: CartProps) {
                     onFileChange={setReceiptFile}
                   />
                 )}
-
                 <Group justify="space-between" mt="md">
                   <Button variant="outline" onClick={() => updateFormField("activeStep", 0)}>
                     Volver
@@ -230,5 +214,4 @@ function Cart({ opened = true, onClose }: CartProps) {
     </Modal>
   );
 }
-
 export default Cart;

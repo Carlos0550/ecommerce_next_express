@@ -2,10 +2,21 @@ import { useState } from "react";
 import { Box, Button, Group, Stack, TextInput, Textarea, Badge, Image, TagsInput, Select, Switch, Text, Modal } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
-import { useGetAllCategories } from "@/Api/admin/CategoriesApi";
-
-import { useSaveProduct, useUpdateProduct, useEnhanceProductContent, type Product, type ProductState } from "@/Api/admin/ProductsApi";
-
+import { useGetAllCategories } from "@/hooks/useAdminCategories";
+import { useCreateProduct, useUpdateProductDetails, useEnhanceProductContent } from "@/hooks/useAdminProducts";
+export type ProductState = 'active' | 'inactive' | 'draft' | 'out_stock' | 'deleted';
+export type Product = {
+  id: string;
+  title: string;
+  price: number;
+  active: boolean;
+  category?: { id: string; title: string };
+  description?: string;
+  images: string[];
+  state: ProductState;
+  options?: { name: string; values: string[] }[];
+  stock?: number;
+}
 export type ProductFormValues = {
   title: string;
   price: string;
@@ -24,12 +35,10 @@ export type ProductFormValues = {
   additionalContext?: string;
   options: { name: string; values: string[] }[];
 };
-
 type ProductFormProps = {
   onCancel?: () => void;
   onSuccess?: () => void;
 };
-
 const PRODUCT_STATE_META: Record<ProductState, { label: string; color: string }> = {
   active: { label: "Activo", color: "green" },
   inactive: { label: "Inactivo", color: "gray" },
@@ -37,11 +46,9 @@ const PRODUCT_STATE_META: Record<ProductState, { label: string; color: string }>
   out_stock: { label: "Agotado", color: "red" },
   deleted: { label: "Eliminado", color: "red" },
 };
-
 const PRODUCT_STATE_OPTIONS: { value: ProductState; label: string }[] = (
   Object.keys(PRODUCT_STATE_META) as ProductState[]
 ).map((value) => ({ value, label: PRODUCT_STATE_META[value].label }));
-
 const getInitialFormValues = (product?: Product | null): ProductFormValues => ({
   title: product?.title || "",
   price: product?.price != null ? String(product.price) : "",
@@ -60,17 +67,15 @@ const getInitialFormValues = (product?: Product | null): ProductFormValues => ({
   additionalContext: "",
   options: product?.options || [],
 });
-
 export default function ProductForm({ product, onSuccess, onCancel }: ProductFormProps & { product?: Product | null }) {
-  const {data: categories = []} = useGetAllCategories();
-  const saveProductMutation = useSaveProduct();
-  const updateProductMutation = useUpdateProduct();
+  const {data: categories = [] as any} = useGetAllCategories();
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProductDetails();
   const enhanceMutation = useEnhanceProductContent();
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [enhanceTitle, setEnhanceTitle] = useState("");
   const [enhanceDescription, setEnhanceDescription] = useState("");
   const [formValues, setFormValues] = useState<ProductFormValues>(() => getInitialFormValues(product));
-
   const handleChangeValues = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
@@ -79,46 +84,56 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       [name]: type === "checkbox" ? checked : value,
     });
   };
-
   const removeImage = (index: number) => {
     setFormValues(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
   };
-
   const handleSubmit = () => {
     const isAI = !!formValues.fillWithAI;
-    const mutation = product ? updateProductMutation : saveProductMutation;
     const { stock, ...rest } = formValues;
     const submitData = {
       ...rest,
       state: isAI ? 'draft' : formValues.state,
       ...(product ? {} : { stock: stock ? Number(stock) : undefined }),
     };
-
-    if (isAI) {
-      mutation.mutate(submitData);
-      notifications.show({
-        title: "Generación en segundo plano",
-        message: "Estamos creando el producto con IA. Te avisaremos al finalizar.",
-        color: "blue",
-      });
-      onCancel?.();
+    if (product) {
+        updateProductMutation.mutate({ productId: product.id, ...submitData }, {
+            onSuccess: () => {
+                onSuccess?.();
+                onCancel?.();
+            }
+        });
     } else {
-      mutation.mutate(submitData, {
-        onSuccess: () => {
-          onSuccess?.();
-          onCancel?.();
-        }
-      });
+        const formData = new FormData();
+        Object.entries(submitData).forEach(([key, value]) => {
+            if (key === 'images') {
+                (value as File[]).forEach(file => formData.append('images', file));
+            } else if (key === 'options' || key === 'tags' || key === 'deletedImageUrls' || key === 'existingImageUrls') {
+                formData.append(key, JSON.stringify(value));
+            } else {
+                formData.append(key, String(value));
+            }
+        });
+        createProductMutation.mutate(formData, {
+            onSuccess: () => {
+                if (isAI) {
+                    notifications.show({
+                        title: "Generación en segundo plano",
+                        message: "Estamos creando el producto con IA. Te avisaremos al finalizar.",
+                        color: "blue",
+                    });
+                }
+                onSuccess?.();
+                onCancel?.();
+            }
+        });
     }
   };
-
   const capitalizeFirstLetter = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
-
   const removeExistingImage = (index: number) => {
     setFormValues(prev => ({
       ...prev,
@@ -126,15 +141,12 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       deletedImageUrls: [...prev.deletedImageUrls, prev.existingImageUrls[index]]
     }));
   }
-
   const addOption = () => {
     setFormValues(prev => ({ ...prev, options: [...prev.options, { name: "", values: [] }] }));
   };
-
   const removeOption = (index: number) => {
     setFormValues(prev => ({ ...prev, options: prev.options.filter((_, i) => i !== index) }));
   };
-
   const updateOptionName = (index: number, name: string) => {
     setFormValues(prev => {
       const newOptions = [...prev.options];
@@ -142,7 +154,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       return { ...prev, options: newOptions };
     });
   };
-
   const updateOptionValues = (index: number, values: string[]) => {
     setFormValues(prev => {
       const newOptions = [...prev.options];
@@ -150,11 +161,8 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       return { ...prev, options: newOptions };
     });
   };
-
-  // Valores derivados para los switches
   const fillWithAI = formValues.fillWithAI ?? false;
   const publishAutomatically = formValues.publishAutomatically ?? false;
-
   return (
     <Stack>
       {!product && (
@@ -167,7 +175,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           />
         </Group>
       )}
-
       {fillWithAI && (
         <Textarea
           label="Contexto adicional (Opcional)"
@@ -181,7 +188,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           mb="md"
         />
       )}
-
       {!fillWithAI && (
         <Group grow>
           <TextInput label="Título" name="title" placeholder="Ej. Auriculares Kuromi" value={formValues.title} onChange={handleChangeValues} required />
@@ -219,7 +225,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           </Button>
         </Group>
       )}
-
   <Group grow>
     <TextInput label="Precio" name="price" placeholder="Ej. 59.99" value={formValues.price} onChange={handleChangeValues} required />
     {!product && (
@@ -239,11 +244,9 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
         clearable
       />
   </Group>
-
       {!fillWithAI && (
         <>
           <Textarea name="description" label="Descripción" placeholder="Describe el producto" autosize minRows={3} value={formValues.description} onChange={handleChangeValues} />
-          
           <Group>
             <TagsInput
               name="tags"
@@ -253,7 +256,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
               onChange={(value) => setFormValues(prev => ({ ...prev, tags: value || [] }))}
             />
           </Group>
-
           <Stack gap="xs" mt="md">
             <Text fw={500}>Opciones de compra</Text>
             {formValues.options.map((opt, idx) => (
@@ -283,64 +285,11 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           </Stack>
         </>
       )}
-
       <Stack>
-        {/* Input nativo oculto */}
+        {}
         <input
           type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          id="file-input"
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            if (files.length > 0) {
-              setFormValues(prev => ({ ...prev, images: [...prev.images, ...files] }));
-            }
-          }}
-        />
-        
-        {fillWithAI && (
-          <Switch
-            label="Publicar automáticamente"
-            checked={publishAutomatically}
-            onChange={(event) => setFormValues(prev => ({ ...prev, publishAutomatically: event.currentTarget.checked }))}
-          />
-        )}
-        <Dropzone
-          name="images"
-          onDrop={(files) => setFormValues(prev => ({ ...prev, images: [...prev.images, ...files] }))}
-          accept={IMAGE_MIME_TYPE}
-          maxSize={10 * 1024 * 1024}
-          activateOnClick={true}
-          styles={{
-            root: {
-              cursor: 'pointer',
-              minHeight: '120px',
-              border: '2px dashed #ced4da',
-              borderRadius: '8px',
-              '&:hover': {
-                backgroundColor: '#f8f9fa',
-                borderColor: '#868e96'
-              }
-            }
-          }}
-          onReject={(files) => {
-            console.log('Archivos rechazados:', files);
-          }}
-        >
-          <Stack align="center" gap="sm">
-            <Text size="lg">📷</Text>
-            <Text size="sm" ta="center">
-              Arrastra y suelta imágenes aquí o haz clic para seleccionar
-            </Text>
-            <Badge variant="light" size="sm">
-              Máximo 10MB por imagen
-            </Badge>
-          </Stack>
-        </Dropzone>
-        
-        {/* Botón alternativo para móviles */}
+          accept="image}
         <Button
           variant="filled"
           size="lg"
@@ -357,7 +306,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           Seleccionar imágenes desde galería
         </Button>
       </Stack>
-
       {formValues.images.length > 0 && (
         <Stack>
           <Group>
@@ -391,10 +339,10 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       <Group justify="flex-end" mt="md">
         <Button 
           onClick={handleSubmit} 
-          loading={!fillWithAI && (product ? updateProductMutation.isPending : saveProductMutation.isPending)}
+          loading={!fillWithAI && (product ? updateProductMutation.isPending : createProductMutation.isPending)}
           disabled={fillWithAI && (!formValues.category || formValues.images.length === 0)}
         >
-          {(product ? updateProductMutation.isPending : saveProductMutation.isPending) 
+          {(product ? updateProductMutation.isPending : createProductMutation.isPending) 
             ? "Guardando..." 
             : fillWithAI 
               ? "Generar con IA" 
@@ -422,7 +370,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
             >
               Re-generar
             </Button>
-            
           </Group>
       </Modal>
     </Stack>

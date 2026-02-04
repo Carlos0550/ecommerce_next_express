@@ -5,10 +5,27 @@ import {
   useUpdateBusiness,
   useGenerateDescription,
   useUploadBusinessImage,
-  type BusinessData,
-} from "@/Api/admin/BusinessApi";
+} from "@/hooks/useAdminBusiness";
+export type BusinessData = {
+  id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  type?: string;
+  description?: string;
+  business_image?: string;
+  favicon?: string;
+  hero_image?: string;
+  bankData: {
+    bank_name: string;
+    account_number: string;
+    account_holder: string;
+  }[];
+};
 import { notifications } from "@mantine/notifications";
-
 export interface FormErrors {
   name?: string;
   email?: string;
@@ -23,7 +40,6 @@ export interface FormErrors {
     account_holder?: string;
   }[];
 }
-
 const INITIAL_STATE: BusinessData = {
   name: "",
   email: "",
@@ -38,21 +54,18 @@ const INITIAL_STATE: BusinessData = {
   hero_image: "",
   bankData: [{ bank_name: "", account_number: "", account_holder: "" }],
 };
-
 export function useBusinessForm() {
   const { data, isPending: isLoadingData } = useGetBusiness();
   const createMutation = useCreateBusiness();
   const updateMutation = useUpdateBusiness();
   const generateDescriptionMutation = useGenerateDescription();
   const uploadImageMutation = useUploadBusinessImage();
-
   const [form, setForm] = useState<BusinessData>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
   const [isUploadingHero, setIsUploadingHero] = useState(false);
-
   useEffect(() => {
     if (data) {
       setForm({
@@ -75,16 +88,13 @@ export function useBusinessForm() {
       });
     }
   }, [data]);
-
   const validate = useCallback((data: BusinessData): boolean => {
     const newErrors: FormErrors = {};
     let isValid = true;
-
     if (!data.name.trim()) {
       newErrors.name = "El nombre es obligatorio";
       isValid = false;
     }
-
     if (!data.email.trim()) {
       newErrors.email = "El email es obligatorio";
       isValid = false;
@@ -92,12 +102,10 @@ export function useBusinessForm() {
       newErrors.email = "Email inválido";
       isValid = false;
     }
-
     if (!data.phone.trim()) {
       newErrors.phone = "El teléfono es obligatorio";
       isValid = false;
     }
-
     const bankErrors = data.bankData.map((bank) => {
       const bankError: {
         bank_name?: string;
@@ -105,10 +113,8 @@ export function useBusinessForm() {
         account_holder?: string;
       } = {};
       let hasBankError = false;
-
       const isPartiallyFilled =
         bank.bank_name || bank.account_number || bank.account_holder;
-
       if (isPartiallyFilled) {
         if (!bank.bank_name) {
           bankError.bank_name = "Nombre del banco requerido";
@@ -123,19 +129,15 @@ export function useBusinessForm() {
           hasBankError = true;
         }
       }
-
       return hasBankError ? bankError : {};
     });
-
     if (bankErrors.some((e) => Object.keys(e).length > 0)) {
       newErrors.bankData = bankErrors;
       isValid = false;
     }
-
     setErrors(newErrors);
     return isValid;
   }, []);
-
   const handleChange = useCallback(
     (key: keyof BusinessData, value: BusinessData[keyof BusinessData]) => {
       setForm((prev) => ({ ...prev, [key]: value }));
@@ -145,7 +147,6 @@ export function useBusinessForm() {
     },
     [errors],
   );
-
   const handleBankChange = useCallback(
     (
       idx: number,
@@ -161,7 +162,6 @@ export function useBusinessForm() {
     },
     [],
   );
-
   const addBankAccount = useCallback(() => {
     setForm((prev) => ({
       ...prev,
@@ -171,14 +171,12 @@ export function useBusinessForm() {
       ],
     }));
   }, []);
-
   const removeBankAccount = useCallback((idx: number) => {
     setForm((prev) => ({
       ...prev,
       bankData: prev.bankData.filter((_, i) => i !== idx),
     }));
   }, []);
-
   const handleGenerateDescription = async () => {
     if (!form.name || !form.city || !form.state) {
       notifications.show({
@@ -197,17 +195,14 @@ export function useBusinessForm() {
     });
     handleChange("description", description);
   };
-
   const handleImageUpload = async (
     file: File | null,
     type: "business_image" | "favicon" | "hero_image",
   ) => {
     if (!file) return;
-
     if (type === "business_image") setIsUploadingImage(true);
     else if (type === "favicon") setIsUploadingFavicon(true);
     else setIsUploadingHero(true);
-
     try {
       const url = await uploadImageMutation.mutateAsync({
         file,
@@ -223,7 +218,6 @@ export function useBusinessForm() {
       else setIsUploadingHero(false);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate(form)) {
@@ -233,7 +227,6 @@ export function useBusinessForm() {
       });
       return;
     }
-
     setIsSubmitting(true);
     try {
       if (form.id) {
@@ -247,7 +240,6 @@ export function useBusinessForm() {
       setIsSubmitting(false);
     }
   };
-
   return {
     form,
     errors,

@@ -1,13 +1,10 @@
 import { Stack, Group, Image, Text, Box, Badge } from '@mantine/core';
-import type { Product } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
 import ProductDescription from '@/Components/Admin/Common/ProductDescription';
 const dummyImage = "/image_fallback.webp";
-
 interface ProductViewModalProps {
-  product: Product;
+  product: any;
 }
-
 export const ProductViewModal = ({ product }: ProductViewModalProps) => {
   return (
     <Stack>
@@ -33,14 +30,12 @@ export const ProductViewModal = ({ product }: ProductViewModalProps) => {
           </Text>
         </Box>
       </Group>
-
       {product.description && (
         <Box>
           <Text fw={600} mb="xs">Descripción</Text>
           <ProductDescription description={product.description} />
         </Box>
       )}
-
       {typeof product.stock === 'number' && (
         <Box>
           <Text fw={600} mb="xs">Stock</Text>
@@ -49,17 +44,16 @@ export const ProductViewModal = ({ product }: ProductViewModalProps) => {
           </Text>
         </Box>
       )}
-
       {Array.isArray(product.options) && product.options.length > 0 && (
         <Box>
           <Text fw={600} mb="xs">Opciones de compra</Text>
           <Stack gap="xs">
-            {product.options.map((option, idx) => (
+            {product.options.map((option: { name: string; values: string[] }, idx: number) => (
               <Box key={idx}>
                 <Text fw={500} size="sm" mb={4}>{option.name}:</Text>
                 <Group gap="xs">
                   {Array.isArray(option.values) && option.values.length > 0 ? (
-                    option.values.map((value, valueIdx) => (
+                    option.values.map((value: string, valueIdx: number) => (
                       <Badge key={valueIdx} variant="light" color="rose">
                         {value}
                       </Badge>
@@ -73,12 +67,11 @@ export const ProductViewModal = ({ product }: ProductViewModalProps) => {
           </Stack>
         </Box>
       )}
-
       {Array.isArray(product.images) && product.images.length > 1 && (
         <Stack>
           <Text fw={600}>Imágenes</Text>
           <Group gap="xs">
-            {product.images.map((url, idx) => (
+            {product.images.map((url: string, idx: number) => (
               <Image
                 key={`${url}-${idx}`}
                 src={url}
@@ -95,4 +88,3 @@ export const ProductViewModal = ({ product }: ProductViewModalProps) => {
     </Stack>
   );
 };
-

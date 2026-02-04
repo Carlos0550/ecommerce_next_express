@@ -1,5 +1,4 @@
 import { prisma } from '@/config/prisma';
-
 export default class FaqServices {
   async listPublic() {
     const items = await prisma.fAQ.findMany({
@@ -8,7 +7,6 @@ export default class FaqServices {
     });
     return { ok: true, items };
   }
-
   async listAdmin(page: number = 1, limit: number = 50) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const [items, total] = await Promise.all([
@@ -21,20 +19,16 @@ export default class FaqServices {
     ]);
     return { ok: true, items, page, total };
   }
-
   async create(data: { question: string; answer: string; position?: number; is_active?: boolean }) {
     const item = await prisma.fAQ.create({ data });
     return { ok: true, item };
   }
-
   async update(id: string, data: Partial<{ question: string; answer: string; position: number; is_active: boolean }>) {
     const item = await prisma.fAQ.update({ where: { id }, data });
     return { ok: true, item };
   }
-
   async softDelete(id: string) {
     await prisma.fAQ.delete({ where: { id } });
     return { ok: true };
   }
 }
-

@@ -1,25 +1,15 @@
 import { Text, Stack, Box, List, ThemeIcon } from '@mantine/core';
 import { FaCheck } from 'react-icons/fa';
 import type { ReactNode } from 'react';
-
 interface ProductDescriptionProps {
   description: string;
 }
-
-/**
- * Componente que renderiza la descripción del producto con formato enriquecido.
- * Parsea subtítulos en formato **texto:** y listas con guiones.
- */
 export default function ProductDescription({ description }: ProductDescriptionProps) {
   if (!description) return null;
-
-  // Dividir por líneas
   const lines = description.split('\n').filter(line => line.trim() !== '');
-  
   const elements: ReactNode[] = [];
   let currentList: string[] = [];
   let listKey = 0;
-
   const flushList = () => {
     if (currentList.length > 0) {
       elements.push(
@@ -43,10 +33,8 @@ export default function ProductDescription({ description }: ProductDescriptionPr
       currentList = [];
     }
   };
-
   lines.forEach((line, index) => {
     const trimmed = line.trim();
-    
     const subtitleMatch = trimmed.match(/^\*\*(.+?):\*\*$/);
     if (subtitleMatch) {
       flushList();
@@ -57,12 +45,10 @@ export default function ProductDescription({ description }: ProductDescriptionPr
       );
       return;
     }
-    
     if (trimmed.startsWith('- ')) {
       currentList.push(trimmed.substring(2));
       return;
     }
-    
     flushList();
     elements.push(
       <Text key={`text-${index}`} size="sm" mb="xs">
@@ -70,9 +56,7 @@ export default function ProductDescription({ description }: ProductDescriptionPr
       </Text>
     );
   });
-  
   flushList();
-
   return (
     <Box>
       <Stack gap={0}>
@@ -81,4 +65,3 @@ export default function ProductDescription({ description }: ProductDescriptionPr
     </Box>
   );
 }
-

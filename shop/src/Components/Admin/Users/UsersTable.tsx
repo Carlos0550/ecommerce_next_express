@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { useGetUsers, useDisableUser, useEnableUser, useDeleteUser } from "@/Api/admin/AuthApi";
+import { useGetUsers, useDisableUser, useEnableUser, useDeleteUser } from "@/hooks/useAdminUsers";
 import { Box, Table, Flex, Text, Group, Button, Badge, Card, Stack, useMantineTheme, SegmentedControl, Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { FaWhatsapp } from "react-icons/fa";
-
 type User = {
     id: string,
     name: string,
@@ -12,7 +11,6 @@ type User = {
     is_active: boolean,
     phone?: string,
 }
-
 type PaginationData = {
     total: number,
     page: number,
@@ -21,9 +19,7 @@ type PaginationData = {
     hasNextPage: boolean,
     hasPrevPage: boolean,
 }
-
 const DEFAULT_LIMIT = 10;
-
 export function UsersTable({
     search
 }: { search: string }) {
@@ -31,13 +27,10 @@ export function UsersTable({
     const [currentPage, setCurrentPage] = useState(1);
     const theme = useMantineTheme();
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-
     const { data } = useGetUsers(currentPage, DEFAULT_LIMIT, search, filterType);
     const { mutate: disableUser } = useDisableUser();
     const { mutate: enableUser } = useEnableUser();
     const { mutate: deleteUser } = useDeleteUser();
-
-    // Derivar users y pagination desde data
     const users: User[] = useMemo(() => data?.users || [], [data?.users]);
     const pagination: PaginationData = useMemo(() => ({
         total: data?.pagination?.total || 0,
@@ -47,11 +40,9 @@ export function UsersTable({
         hasNextPage: data?.pagination?.hasNextPage || false,
         hasPrevPage: data?.pagination?.hasPrevPage || false,
     }), [data?.pagination, currentPage]);
-
     const capitalizeNames = (names: string) => {
         return names.split(' ').map((name) => name.charAt(0).toUpperCase() + name.slice(1)).join(' ');
     }
-
     const renderBadgeByRole = (role: number) => {
         if(role == 1){
             return <Badge color="green">Administrador</Badge>
@@ -170,7 +161,6 @@ export function UsersTable({
                 </Table.Tbody>
             </Table>
         )}
-
         {pagination && pagination.totalPages > 1 && (
             <Flex justify="center" mt="md" gap="md">
                 <Text>
@@ -197,4 +187,3 @@ export function UsersTable({
     </Box>
   )
 }
-

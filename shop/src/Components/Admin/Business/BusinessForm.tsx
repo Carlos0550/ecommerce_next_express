@@ -3,7 +3,6 @@ import Loading from "../Loader/Loading";
 import { useBusinessForm } from "./useBusinessForm";
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCity, FaBuilding, FaUniversity, FaCreditCard, FaTrash, FaPlus, FaSave, FaMagic, FaUpload, FaImage, FaBriefcase, FaDesktop } from "react-icons/fa";
 import { useMounted } from "@/utils/hooks/useMounted";
-
 export default function BusinessForm() {
   const mounted = useMounted();
   const { 
@@ -23,7 +22,6 @@ export default function BusinessForm() {
     isUploadingFavicon,
     isUploadingHero
   } = useBusinessForm();
-
   if (!mounted || isLoading) {
     return (
       <Flex justify="center" align="center" h={200}>
@@ -31,13 +29,11 @@ export default function BusinessForm() {
       </Flex>
     );
   }
-
   return (
     <Paper shadow="xs" p="md" radius="md" withBorder>
       <form onSubmit={handleSubmit}>
         <Stack gap="md">
           <Title order={3}>Información del negocio</Title>
-          
           <Group grow align="flex-start">
             <TextInput 
               label="Nombre" 
@@ -58,7 +54,6 @@ export default function BusinessForm() {
               withAsterisk
             />
           </Group>
-
           <Group grow align="flex-start">
             <TextInput 
               label="Teléfono" 
@@ -78,7 +73,6 @@ export default function BusinessForm() {
               leftSection={<FaMapMarkerAlt size={14} />}
             />
           </Group>
-
           <Group grow align="flex-start">
             <TextInput 
               label="Ciudad" 
@@ -99,7 +93,6 @@ export default function BusinessForm() {
               leftSection={<FaBuilding size={14} />}
             />
           </Group>
-
           <TextInput
             label="Rubro / Tipo de negocio"
             placeholder="Ej.: tienda de ropa, restaurante, servicios IT"
@@ -109,9 +102,7 @@ export default function BusinessForm() {
             error={errors.type}
             leftSection={<FaBriefcase size={14} />}
           />
-
           <Divider my="sm" label="Imágenes y Banner" labelPosition="center" />
-
           <Stack gap="md">
             <Group grow align="flex-start">
               <Stack gap={5}>
@@ -130,7 +121,6 @@ export default function BusinessForm() {
                   </Paper>
                 )}
               </Stack>
-
               <Stack gap={5}>
                 <FileInput
                   label="Favicon (Icono navegador)"
@@ -148,7 +138,6 @@ export default function BusinessForm() {
                 )}
               </Stack>
             </Group>
-
             <Stack gap={5}>
               <FileInput
                 label="Banner Principal (Hero Home)"
@@ -167,7 +156,6 @@ export default function BusinessForm() {
               )}
             </Stack>
           </Stack>
-
           <Stack gap={0}>
              <Group justify="space-between" align="center" mb={5}>
                 <Text size="sm" fw={500}>Descripción del negocio</Text>
@@ -190,9 +178,7 @@ export default function BusinessForm() {
               minRows={3}
              />
           </Stack>
-
           <Divider my="sm" label="Datos Bancarios" labelPosition="center" />
-
           {form.bankData.map((b, idx) => {
             const bankErrors = errors.bankData?.[idx];
             return (
@@ -234,7 +220,6 @@ export default function BusinessForm() {
               </Paper>
             );
           })}
-
           <Group>
             <Button 
                 variant="light" 
@@ -244,7 +229,6 @@ export default function BusinessForm() {
                 Agregar cuenta
             </Button>
           </Group>
-
           <Group justify="flex-end" mt="md">
             <Button 
                 type="submit" 

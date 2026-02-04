@@ -11,26 +11,19 @@ import { StockModal } from './components/StockModal';
 import ModalWrapper from '@/Components/Admin/Common/ModalWrapper';
 import ProductForm from './ProductForm';
 import { useMounted } from '@/utils/hooks/useMounted';
-
-
 interface ProductTableProps {
   setAddOpened: (opened: boolean) => void;
 }
-
 function ProductTable({ setAddOpened }: ProductTableProps) {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
   const mounted = useMounted();
-  
   const {
-    // Estado
     search,
     searchParams,
     products,
     pagination,
     isLoading,
     isError,
-    
-    // Estados de UI
     viewOpened,
     selected,
     editing,
@@ -41,22 +34,16 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     enhanceDescription,
     additionalContext,
     deletingId,
-    
-    // Mutations
     deleteProductMutation,
     updateStockMutation,
     enhanceMutation,
     updateProductDetailsMutation,
-    
-    // Setters
     setSearch,
     setCurrentPage,
     setStockValue,
     setAdditionalContext,
     setEnhanceTitle,
     setEnhanceDescription,
-    
-    // Handlers
     handleViewProduct,
     handleEditProduct,
     handleCloseView,
@@ -73,14 +60,12 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     handleSortByChange,
     handleSortOrderChange,
   } = useProductTable();
-
   const handleUpdateStockWithValue = () => {
     const qty = parseInt(stockValue, 10);
     if (Number.isFinite(qty) && qty >= 0) {
       handleUpdateStock(qty);
     }
   };
-
   if (!mounted) {
     return (
         <Box>
@@ -90,7 +75,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
         </Box>
     );
   }
-
   return (
     <Box>
       <ProductTableFilters
@@ -106,7 +90,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
         onSortOrderChange={handleSortOrderChange}
         onAddProduct={() => setAddOpened(true)}
       />
-
       {isLoading ? (
         <Flex justify="center" align="center" h={200}>
           <Loader />
@@ -144,7 +127,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
           onEnhance={handleOpenEnhance}
         />
       )}
-
       {pagination && (
         <Flex justify="center" mt="md" gap="md" align="center">
           <Text>
@@ -159,7 +141,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
           />
         </Flex>
       )}
-
       <Modal
         opened={stockModalOpen}
         onClose={handleCloseStockModal}
@@ -174,7 +155,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
           onCancel={handleCloseStockModal}
         />
       </Modal>
-
       <ModalWrapper
         opened={viewOpened}
         onClose={handleCloseView}
@@ -189,7 +169,6 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
           />
         )}
       </ModalWrapper>
-
       <Modal
         opened={enhanceOpen}
         onClose={handleCloseEnhance}
@@ -214,5 +193,4 @@ function ProductTable({ setAddOpened }: ProductTableProps) {
     </Box>
   );
 }
-
 export default ProductTable;

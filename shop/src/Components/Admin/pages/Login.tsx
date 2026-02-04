@@ -4,32 +4,27 @@ import LoginForm from "@/Components/Admin/Auth/LoginForm";
 import RegisterForm from "@/Components/Admin/Auth/RegisterForm";
 import { useEffect, useState } from "react";
 import { showNotification } from "@mantine/notifications";
-import { getPublicBusiness, type BusinessData } from "@/Api/admin/BusinessApi";
-import { useAdminContext } from "@/providers/AdminContext";
+import { configService } from "@/services/config.service";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
-
 export default function Login() {
   const [formType, setFormType] = useState<"register" | "login">("login");
   const [registerLoading, setRegisterLoading] = useState(false);
-  const [business, setBusiness] = useState<BusinessData | null>(null);
-  const { auth } = useAdminContext();
+  const [business, setBusiness] = useState<any>(null);
+  const { session, isAdmin, registerAdmin } = useAuthStore();
   const router = useRouter();
-
   useEffect(() => {
-    getPublicBusiness().then(setBusiness);
+    configService.getPublicBusinessInfo().then(setBusiness);
   }, []);
-
   useEffect(() => {
-    if (auth.session && auth.isAdmin) {
+    if (session && isAdmin) {
       router.push("/admin");
     }
-  }, [auth.session, auth.isAdmin, router]);
-
+  }, [session, isAdmin, router]);
   const handleRegister = async (values: { name: string; email: string; asAdmin: boolean }) => {
     setRegisterLoading(true);
     try {
-      const result = await auth.registerAdmin(values.name, values.email);
-      
+      const result: any = await registerAdmin(values.name, values.email);
       if (result.pending) {
         showNotification({ 
           title: "Solicitud enviada", 
@@ -52,7 +47,6 @@ export default function Login() {
       setRegisterLoading(false);
     }
   };
-  
   return (
     <Flex
       justify="center"
@@ -67,7 +61,6 @@ export default function Login() {
               <Tabs.Tab value="login">Iniciar sesión</Tabs.Tab>
               <Tabs.Tab value="register">Registrarme</Tabs.Tab>
             </Tabs.List>
-
             <Tabs.Panel value="login" pt="md">
               <LoginForm/>
             </Tabs.Panel>

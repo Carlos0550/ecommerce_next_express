@@ -1,10 +1,7 @@
 import "dotenv/config";
 import { ProductState, CategoryStatus } from "@prisma/client";
 import { prisma } from "@/config/prisma";
-
-// Datos de ejemplo para generar productos aleatorios
 const productTitles = [
-  // Maquillaje
   "Base de Maquillaje Líquida",
   "Corrector Cremoso",
   "Polvo Compacto Matificante",
@@ -21,8 +18,6 @@ const productTitles = [
   "Fijador de Maquillaje",
   "Contorno en Crema",
   "Tinta para Labios",
-
-  // Cuidado de la piel
   "Limpiador Facial Suave",
   "Tónico Hidratante",
   "Serum Vitamina C",
@@ -35,8 +30,6 @@ const productTitles = [
   "Aceite Desmaquillante",
   "Crema Nocturna Reparadora",
   "Serum Ácido Hialurónico",
-
-  // Accesorios
   "Set de Brochas Profesionales",
   "Esponja de Maquillaje",
   "Espejo Compacto con Luz",
@@ -49,8 +42,6 @@ const productTitles = [
   "Soporte para Brochas",
   "Paleta Mezcladora",
   "Atomizador Facial",
-
-  // Fragancias
   "Perfume Floral Femenino",
   "Eau de Toilette Fresco",
   "Body Splash Frutal",
@@ -59,8 +50,6 @@ const productTitles = [
   "Perfume Oriental",
   "Colonia Suave",
   "Bruma Corporal Aromática",
-
-  // Cuidado corporal
   "Crema Corporal Hidratante",
   "Exfoliante Corporal",
   "Aceite Corporal Nutritivo",
@@ -69,8 +58,6 @@ const productTitles = [
   "Manteca Corporal",
   "Crema para Manos",
   "Bálsamo Labial Hidratante",
-
-  // Uñas
   "Esmalte de Uñas Clásico",
   "Base Fortalecedora",
   "Top Coat Brillante",
@@ -79,8 +66,6 @@ const productTitles = [
   "Aceite para Cutículas",
   "Kit de Manicura",
   "Esmalte Gel UV",
-
-  // Cabello
   "Shampoo Hidratante",
   "Acondicionador Reparador",
   "Mascarilla Capilar",
@@ -90,7 +75,6 @@ const productTitles = [
   "Champú Seco",
   "Tratamiento Capilar Intensivo",
 ];
-
 const descriptions = [
   "Producto de alta calidad con fórmula innovadora que brinda resultados excepcionales.",
   "Ideal para uso diario, proporciona hidratación y protección duradera.",
@@ -108,7 +92,6 @@ const descriptions = [
   "Fórmula resistente al agua y al sudor, perfecta para cualquier ocasión.",
   "Ingredientes activos que nutren y regeneran la piel desde el interior.",
 ];
-
 const tags = [
   ["hidratante", "natural", "vegano"],
   ["larga duración", "resistente al agua", "profesional"],
@@ -121,7 +104,6 @@ const tags = [
   ["orgánico", "eco-friendly", "sostenible"],
   ["multifuncional", "todo-en-uno", "práctico"],
 ];
-
 const defaultCategories = [
   "Maquillaje",
   "Cuidado de la Piel",
@@ -131,19 +113,13 @@ const defaultCategories = [
   "Uñas",
   "Cabello",
 ];
-
-// Función para obtener un elemento aleatorio de un array
 function getRandomElement<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
-
-// Función para obtener múltiples elementos aleatorios únicos
 function getRandomElements<T>(array: T[], count: number): T[] {
   const shuffled = [...array].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 }
-
-// Función para generar precio aleatorio
 function generateRandomPrice(): number {
   const prices = [
     990, 1490, 1990, 2490, 2990, 3490, 3990, 4490, 4990, 5990, 6990, 7990, 8990,
@@ -151,34 +127,27 @@ function generateRandomPrice(): number {
   ];
   return getRandomElement(prices);
 }
-
-// Función para generar stock aleatorio
 function generateRandomStock(): number {
-  return Math.floor(Math.random() * 100) + 1; // Entre 1 y 100
+  return Math.floor(Math.random() * 100) + 1; 
 }
-
-// Función para generar estado aleatorio (mayoría activos)
 function generateRandomState(): ProductState {
   const states = [
     ProductState.active,
     ProductState.active,
     ProductState.active,
-    ProductState.active, // 80% activos
+    ProductState.active, 
     ProductState.active,
     ProductState.active,
     ProductState.active,
     ProductState.active,
     ProductState.draft,
-    ProductState.out_stock, // 20% otros estados
+    ProductState.out_stock, 
   ];
   return getRandomElement(states);
 }
-
 async function seedProducts() {
   try {
     console.log("🔍 Consultando categorías existentes...");
-
-    // Obtener todas las categorías activas
     let categories: { id: string; title: string }[] =
       await prisma.categories.findMany({
         where: {
@@ -190,15 +159,13 @@ async function seedProducts() {
           title: true,
         },
       });
-
     if (categories.length === 0) {
       console.log(
         "⚠️ No se encontraron categorías activas. Creando categorías por defecto...",
       );
-
       for (const catTitle of defaultCategories) {
         await prisma.categories.upsert({
-          where: { id: catTitle.toLowerCase().replace(/\s+/g, "-") }, // Usamos el slug como ID temporal o buscamos por título
+          where: { id: catTitle.toLowerCase().replace(/\s+/g, "-") }, 
           update: {},
           create: {
             id: catTitle.toLowerCase().replace(/\s+/g, "-"),
@@ -208,19 +175,14 @@ async function seedProducts() {
           },
         });
       }
-
       categories = await prisma.categories.findMany({
         where: { is_active: true, status: CategoryStatus.active },
         select: { id: true, title: true },
       });
     }
-
     console.log(`✅ Se encontraron ${categories.length} categorías.`);
-
     console.log("\n🚀 Generando 100 productos aleatorios...");
-
     const products = [];
-
     for (let i = 0; i < 100; i++) {
       const randomTitle = getRandomElement(productTitles);
       const randomDescription = getRandomElement(descriptions);
@@ -231,11 +193,8 @@ async function seedProducts() {
       const randomPrice = generateRandomPrice();
       const randomStock = generateRandomStock();
       const randomState = generateRandomState();
-
-      // 80% de productos tienen categoría, 20% no (para probar la nueva característica)
       const hasCategory = Math.random() > 0.2;
       const randomCategory = hasCategory ? getRandomElement(categories) : null;
-
       const product = {
         title: `${randomTitle} ${i + 1}`,
         description: randomDescription,
@@ -244,44 +203,34 @@ async function seedProducts() {
         state: randomState,
         categoryId: randomCategory ? randomCategory.id : null,
         tags: randomTags,
-        images: [], // Sin imágenes por defecto
+        images: [], 
         is_active:
           randomState === ProductState.active ||
           randomState === ProductState.draft,
       };
-
       products.push(product);
     }
-
-    // Insertar productos en lotes para mejor rendimiento
     console.log("💾 Insertando productos en la base de datos...");
-
     const batchSize = 50;
     let insertedCount = 0;
-
     for (let i = 0; i < products.length; i += batchSize) {
       const batch = products.slice(i, i + batchSize);
-
       for (const p of batch) {
         await prisma.products.create({
           data: p,
         });
       }
-
       insertedCount += batch.length;
       console.log(
         `   ✅ Insertados ${insertedCount}/${products.length} productos`,
       );
     }
-
     console.log("\n🎉 ¡Proceso completado exitosamente!");
     console.log(`📊 Resumen:`);
     console.log(`   - Productos creados: ${insertedCount}`);
     console.log(
       `   - Productos sin categoría: ${products.filter((p) => !p.categoryId).length}`,
     );
-
-    // Mostrar estadísticas por categoría
     console.log("\n📈 Distribución por categoría:");
     for (const category of categories) {
       const count = products.filter((p) => p.categoryId === category.id).length;
@@ -295,10 +244,7 @@ async function seedProducts() {
     await prisma.$disconnect();
   }
 }
-
-// Ejecutar el script
 if (require.main === module) {
   seedProducts();
 }
-
 export { seedProducts };

@@ -3,40 +3,35 @@ import { useState, useEffect } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text } from "@mantine/core";
 import { useRouter } from "next/navigation";
 import { showNotification } from "@mantine/notifications";
-import { useAdminContext } from "@/providers/AdminContext";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-
 export type LoginFormValues = {
   email: string;
   password: string;
 };
-
+import { useAuthStore } from "@/stores/useAuthStore";
+import { authService } from "@/services/auth.service";
+import { capitalizeTexts } from "@/utils/constants";
+import { useWindowSize } from "@/utils/hooks/useWindowSize";
 export default function LoginForm(){
   const [values, setValues] = useState<LoginFormValues>({ email: "", password: "" });
   const [error, setError] = useState<string>("");
   const [recoverMode, setRecoverMode] = useState<boolean>(false);
   const [recoverEmail, setRecoverEmail] = useState<string>("");
-  const {
-    utils:{
-      capitalizeTexts,
-      isMobile,
-      baseUrl
-    },
-    auth
-  } = useAdminContext();
+  const { isMobile } = useWindowSize();
+  const { loginAdmin, session, isAdmin } = useAuthStore();
   const router = useRouter();
-
   const loginMutation = useMutation({
     mutationKey: ["adminLogin"],
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      return auth.loginAdmin(email, password);
+      return loginAdmin(email, password);
     },
-    onSuccess: (data) => {
+    onSuccess: () => { 
+      const user = useAuthStore.getState().session;
       router.push("/admin");
       showNotification({
         title: "Inicio de sesión exitoso",
-        message: `Bienvenido ${capitalizeTexts(data?.user?.name || "usuario")}`,
+        message: `Bienvenido ${capitalizeTexts(user?.name || "usuario")}`,
         color: "green",
       });
     },
@@ -49,13 +44,11 @@ export default function LoginForm(){
       });
     }
   });
-
   useEffect(() => {
-    if (auth.session && auth.isAdmin) {
+    if (session && isAdmin) {
       router.push("/admin");
     }
-  }, [auth.session, auth.isAdmin, router]);
-
+  }, [session, isAdmin, router]);
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -63,28 +56,25 @@ export default function LoginForm(){
       setError("Completa email y contraseña");
       return;
     }
-
     loginMutation.mutate(values);
   };
-
+  const [reseting, isReseting] = useState(false);
   const handleRecover = async () => {
     setError("");
     if (!recoverEmail) { setError("Ingresa tu email"); return; }
     try {
-      const res = await fetch(`${baseUrl}/admin/password/reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: recoverEmail }) });
-      const ok = res.ok;
-      if (!ok) {
-        const err = await res.json().catch(() => ({} as Record<string, string>));
-        throw new Error(err?.error || 'reset_failed');
-      }
+      isReseting(true);
+      await authService.resetAdminPassword(recoverEmail);
       showNotification({ title: 'Correo enviado', message: 'Te enviamos una contraseña temporal de 6 dígitos.', color: 'green' });
       setRecoverMode(false);
       setRecoverEmail("");
-    } catch (e) {
-      const er = e as Error; setError(er.message || 'Error al recuperar contraseña');
+    } catch (e: any) {
+      const msg = e.response?.data?.error || e.message || 'Error al recuperar contraseña';
+      setError(msg);
+    }finally{
+      isReseting(false);
     }
   }
-
   return (
     <Paper withBorder p="md" radius="md" w={isMobile ? "100%" : 420}>
       <Stack>
@@ -111,7 +101,7 @@ export default function LoginForm(){
             {error && <Text c="red" size="sm">{error}</Text>}
             <Group justify="space-between">
               <Button variant="light" onClick={() => setRecoverMode(false)}>Volver</Button>
-              <Button onClick={handleRecover}>Enviar código</Button>
+              <Button onClick={handleRecover} disabled={reseting} loading={reseting}>Enviar código</Button>
             </Group>
           </Stack>
         )}

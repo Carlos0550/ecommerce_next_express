@@ -1,22 +1,21 @@
 "use client";
-import { useGetProfile, useUpdateProfile, useUploadAvatar, useChangePassword } from '@/Api/useProfile';
-import { useAppContext } from '@/providers/AppContext';
+import { useGetProfile, useUpdateProfile, useUploadAvatar, useChangePassword } from '@/hooks/useProfile';
+import { useAuthStore } from "@/stores/useAuthStore";
 import { Avatar, Button, Grid, Group, Stack, Text, TextInput, Title, Tabs, Paper, Divider, FileButton, Loader, Select } from '@mantine/core';
 import { PasswordInput } from '@mantine/core';
 import { useEffect, useState, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { showNotification } from '@mantine/notifications';
-
 export default function AccountPage() {
-  const { auth } = useAppContext();
+  const { session } = useAuthStore();
   const router = useRouter();
   useEffect(() => {
-    if (!auth.isAuthenticated) {
+    if (!session) {
       showNotification({ message: 'Debes iniciar sesión para acceder a esta página', color: 'red', id: 'account-page' });
       router.push('/');
       return
     }
-  }, [auth.isAuthenticated, router]);
+  }, [session, router]);
   const { data } = useGetProfile();
   const update = useUpdateProfile();
   const upload = useUploadAvatar();
@@ -30,23 +29,21 @@ export default function AccountPage() {
   const [localities, setLocalities] = useState<{ id: string; nombre: string }[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [selectedLocalityId, setSelectedLocalityId] = useState<string>('');
-
   useEffect(() => {
-    const u = data?.user;
+    const u = data;
     if (u) {
       setTimeout(() => {
         setForm({
           name: u.name || '',
-          phone: u.phone || '',
-          shipping_street: u.shipping_street || '',
-          shipping_postal_code: u.shipping_postal_code || '',
-          shipping_city: u.shipping_city || '',
-          shipping_province: u.shipping_province || '',
+          phone: (u as any).phone || '',
+          shipping_street: (u as any).shipping_street || '',
+          shipping_postal_code: (u as any).shipping_postal_code || '',
+          shipping_city: (u as any).shipping_city || '',
+          shipping_province: (u as any).shipping_province || '',
         });
       }, 0);
     }
-  }, [data?.user]);
-
+  }, [data]);
   useEffect(() => {
     (async () => {
       try {
@@ -57,7 +54,6 @@ export default function AccountPage() {
       } catch {}
     })();
   }, []);
-
   useEffect(() => {
     if (!selectedProvinceId && form.shipping_province && provinces.length > 0) {
       const p = provinces.find(x => x.nombre.toLowerCase() === form.shipping_province.toLowerCase());
@@ -76,7 +72,6 @@ export default function AccountPage() {
       }
     }
   }, [provinces, selectedProvinceId, form.shipping_province, form.shipping_city]);
-
   const onProvinceChange = async (value: string | null) => {
     const id = value || '';
     setSelectedProvinceId(id);
@@ -93,14 +88,12 @@ export default function AccountPage() {
       } catch {}
     }
   };
-
   const onLocalityChange = (value: string | null) => {
     const id = value || '';
     setSelectedLocalityId(id);
     const name = localities.find(x => x.id === id)?.nombre || '';
     setForm(s => ({ ...s, shipping_city: name }));
   };
-
   const onChange = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => setForm(s => ({ ...s, [k]: e.target.value }));
   const onSave = async () => {
     await update.mutateAsync(form);
@@ -122,8 +115,10 @@ export default function AccountPage() {
     }
     setAvatarLoading(true);
     try {
-      const res = await upload.mutateAsync(file);
-      setAvatarPreview(res?.url || null);
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const res: any = await upload.mutateAsync(formData);
+      setAvatarPreview(res?.profileImage || null);
       showNotification({ message: 'Imagen de perfil actualizada', color: 'green' });
     } catch (e) {
       const er = e as Error;
@@ -148,10 +143,8 @@ export default function AccountPage() {
       const er = e as Error; setChangeError(er.message || 'Error al cambiar contraseña');
     }
   }
-
-  const profileImage = avatarPreview || data?.user?.profile_image || auth.state.user?.profileImage || '';
-  const email = data?.user?.email || auth.state.user?.email || '';
-
+  const profileImage = avatarPreview || (data as any)?.profile_image || session?.profileImage || '';
+  const email = data?.email || session?.email || '';
   return (
     <Stack gap="md">
       <Title order={2}>Mi cuenta</Title>
@@ -173,7 +166,6 @@ export default function AccountPage() {
           </Group>
         </Group>
       </Paper>
-
       <Tabs value={activeTab} onChange={setActiveTab} radius="md" variant="outline">
         <Tabs.List grow>
           <Tabs.Tab value="info">Información de la cuenta</Tabs.Tab>

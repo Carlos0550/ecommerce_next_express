@@ -1,25 +1,14 @@
-/**
- * Gestor de sesiones de conversación en Base de Datos
- * Maneja el CRUD de sesiones de conversación de WhatsApp usando Prisma
- */
-
 import { prisma } from "@/config/prisma";
 import { WhatsAppConversationSession } from "../../schemas/whatsapp.schemas";
-
 class SessionManager {
-  /**
-   * Obtiene una sesión de conversación desde la DB
-   */
   async getSession(phone: string): Promise<WhatsAppConversationSession | null> {
     try {
       const session = await prisma.whatsAppSession.findUnique({
         where: { phone },
       });
-
       if (!session) {
         return null;
       }
-
       return {
         adminId: session.adminId,
         phone: session.phone,
@@ -33,10 +22,6 @@ class SessionManager {
       return null;
     }
   }
-
-  /**
-   * Guarda una sesión de conversación en la DB
-   */
   async saveSession(session: WhatsAppConversationSession): Promise<void> {
     try {
       await prisma.whatsAppSession.upsert({
@@ -61,25 +46,17 @@ class SessionManager {
       console.error("Error al guardar sesión de WhatsApp en la DB:", error);
     }
   }
-
-  /**
-   * Elimina una sesión de conversación y sus datos relacionados
-   */
   async deleteSession(phone: string): Promise<void> {
     try {
       await prisma.whatsAppSession
         .delete({
           where: { phone },
         })
-        .catch(() => {}); // Ignorar si no existe
+        .catch(() => {}); 
     } catch (error) {
       console.error("Error al eliminar sesión de WhatsApp de la DB:", error);
     }
   }
-
-  /**
-   * Crea una nueva sesión de conversación (solo objeto in-memory)
-   */
   createNewSession(
     adminId: number,
     phone: string,
@@ -95,10 +72,6 @@ class SessionManager {
       lastActivity: new Date(),
     };
   }
-
-  /**
-   * Actualiza el timestamp del último mensaje del usuario
-   */
   async updateLastUserMessage(phone: string): Promise<void> {
     try {
       await prisma.whatsAppSession.update({
@@ -110,13 +83,8 @@ class SessionManager {
         },
       });
     } catch (error) {
-      // Ignorar si la sesión no existe
     }
   }
-
-  /**
-   * Obtiene el timestamp del último mensaje del usuario
-   */
   async getLastUserMessageTime(phone: string): Promise<number | null> {
     try {
       const session = await prisma.whatsAppSession.findUnique({
@@ -130,10 +98,6 @@ class SessionManager {
       return null;
     }
   }
-
-  /**
-   * Marca que se envió un recordatorio
-   */
   async markReminderSent(phone: string, _ttl?: number): Promise<void> {
     try {
       await prisma.whatsAppSession.update({
@@ -144,13 +108,8 @@ class SessionManager {
         },
       });
     } catch (error) {
-      // Ignorar
     }
   }
-
-  /**
-   * Verifica si ya se envió un recordatorio
-   */
   async wasReminderSent(phone: string): Promise<boolean> {
     try {
       const session = await prisma.whatsAppSession.findUnique({
@@ -162,10 +121,6 @@ class SessionManager {
       return false;
     }
   }
-
-  /**
-   * Obtiene el timestamp de cuando se envió el recordatorio
-   */
   async getReminderSentTime(phone: string): Promise<number | null> {
     try {
       const session = await prisma.whatsAppSession.findUnique({
@@ -177,10 +132,6 @@ class SessionManager {
       return null;
     }
   }
-
-  /**
-   * Obtiene todos los teléfonos con sesiones activas
-   */
   async getActiveSessionPhones(): Promise<string[]> {
     try {
       const sessions = await prisma.whatsAppSession.findMany({
@@ -191,10 +142,6 @@ class SessionManager {
       return [];
     }
   }
-
-  /**
-   * Asegura que la sesión tenga todos los campos requeridos
-   */
   ensureSessionFields(
     session: WhatsAppConversationSession,
   ): WhatsAppConversationSession {
@@ -210,6 +157,5 @@ class SessionManager {
     return session;
   }
 }
-
 export const sessionManager = new SessionManager();
 export default sessionManager;

@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { ProfileUpdateSchema } from './services/profile.zod';
-
 export function validateUpdatePayload(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = ProfileUpdateSchema.parse(req.body);
@@ -10,4 +9,3 @@ export function validateUpdatePayload(req: Request, res: Response, next: NextFun
     res.status(400).json({ ok: false, error: 'invalid_payload', message: err?.message || 'validation_error' });
   }
 }
-

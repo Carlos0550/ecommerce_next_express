@@ -1,5 +1,4 @@
 import { prisma } from '@/config/prisma';
-
 export default class ProfileServices {
   async getMe(userId: number) {
     const user = await prisma.user.findUnique({
@@ -18,7 +17,6 @@ export default class ProfileServices {
     });
     return { ok: true, user };
   }
-
   async updateMe(userId: number, data: Partial<{
     name: string;
     phone: string;
@@ -44,7 +42,6 @@ export default class ProfileServices {
     });
     return { ok: true, user };
   }
-
   async updateAvatar(userId: number, filePath: string) {
     const user = await prisma.user.update({
       where: { id: userId },
@@ -59,4 +56,3 @@ export default class ProfileServices {
     return { ok: true, user };
   }
 }
-

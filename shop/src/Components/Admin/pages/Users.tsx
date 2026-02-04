@@ -1,22 +1,16 @@
 "use client";
 import { useState } from "react";
 import { Box, Group, Title, TextInput, Button } from "@mantine/core";
-
 import { FiSearch } from "react-icons/fi";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { UsersForm } from "@/Components/Admin/Users/UsersForm";
 import { UsersTable } from "@/Components/Admin/Users/UsersTable";
-
 export default function Users() {
-
-  
   const [search, setSearch] = useState<string>("");
-
   const [opened, setOpened] = useState<boolean>(false)
   return (
     <Box>
       <Title mb="md">Usuarios</Title>
-
       <Group mb="md" gap="md" align="center" wrap="wrap">
         <TextInput
           placeholder="Buscar por nombre o email"
@@ -36,7 +30,6 @@ export default function Users() {
       >
         <UsersForm onCancel={() => setOpened(false)} />
       </ModalWrapper>
-
     </Box>
   );
 }

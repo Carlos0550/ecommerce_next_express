@@ -7,12 +7,10 @@ import { order_declined_email_html } from "@/templates/order_declined_email";
 import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
 import PaletteServices from "@/modules/Palettes/services/palette.services";
-
 class SalesServices {
   async saveSale(request: SaleRequest) {
     const { payment_method, source, product_ids, user_sale, items } = request;
     const { user_id } = user_sale || {};
-
     try {
       const isManual = !!request.loadedManually;
       const manualItems = Array.isArray(request.manualProducts)
@@ -26,7 +24,6 @@ class SalesServices {
         options?: any;
       }[] = [];
       let subtotal = 0;
-
       if (!isManual) {
         const incoming =
           Array.isArray(items) && items.length > 0
@@ -73,9 +70,7 @@ class SalesServices {
           options: (mi as any).options,
         }));
       }
-
       const parsedUserId = user_id !== undefined ? Number(user_id) : undefined;
-
       const primaryPaymentMethod =
         (request.payment_methods && request.payment_methods[0]?.method) ||
         payment_method;
@@ -85,7 +80,6 @@ class SalesServices {
       const taxPercent = Number(request.tax) || 0;
       const taxAmount = subtotal * (taxPercent / 100);
       const finalTotal = subtotal + taxAmount;
-
       const now = nowTz();
       const saleDateStr = (request as any)?.sale_date as string | undefined;
       const createdAtOverride = saleDateStr
@@ -97,7 +91,6 @@ class SalesServices {
             .millisecond(now.millisecond())
             .toDate()
         : now.toDate();
-
       let userToConnect = undefined;
       if (parsedUserId && Number.isInteger(parsedUserId)) {
         const userExists = await prisma.user.findUnique({
@@ -107,7 +100,6 @@ class SalesServices {
           userToConnect = { connect: { id: parsedUserId } };
         }
       }
-
       const sale = await prisma.sales.create({
         data: {
           payment_method: primaryPaymentMethod,
@@ -129,7 +121,6 @@ class SalesServices {
           items: product_data as any,
         },
       });
-
       setImmediate(async () => {
         try {
           const user = parsedUserId
@@ -166,7 +157,6 @@ class SalesServices {
           const admins: any[] = await prisma.admin.findMany({
             where: { is_active: true },
           });
-          //const admins: any[] = ["carlospelinski03@gmail.com"] //testing
           const adminEmails = admins
             .map((u: { email: string }) => u.email)
             .filter((e: string): e is string => !!e);
@@ -227,7 +217,6 @@ class SalesServices {
       };
     }
   }
-
   async updateSale(id: string, request: SaleRequest) {
     try {
       const existing = await prisma.sales.findUnique({
@@ -235,14 +224,12 @@ class SalesServices {
         include: { products: true, user: true },
       });
       if (!existing) return { success: false, message: "sale_not_found" };
-
       const isManual = !!request.loadedManually;
       const manualItems = Array.isArray(request.manualProducts)
         ? request.manualProducts
         : [];
       let subtotal = 0;
       let connectProductIds: string[] = [];
-
       if (!isManual) {
         const incoming =
           Array.isArray(request.items) && request.items.length > 0
@@ -271,11 +258,9 @@ class SalesServices {
           0,
         );
       }
-
       const taxPercent = Number(request.tax) || 0;
       const taxAmount = subtotal * (taxPercent / 100);
       const finalTotal = subtotal + taxAmount;
-
       const primaryPaymentMethod =
         (request.payment_methods && request.payment_methods[0]?.method) ||
         request.payment_method ||
@@ -283,7 +268,6 @@ class SalesServices {
       const paymentBreakdown = Array.isArray(request.payment_methods)
         ? request.payment_methods
         : [];
-
       const now = nowTz();
       const saleDateStr = (request as any)?.sale_date as string | undefined;
       const createdAtOverride = saleDateStr
@@ -295,7 +279,6 @@ class SalesServices {
             .millisecond(now.millisecond())
             .toDate()
         : now.toDate();
-
       const updated = await prisma.sales.update({
         where: { id },
         data: {
@@ -313,7 +296,6 @@ class SalesServices {
         },
         include: { products: true, user: true },
       });
-
       return { success: true, sale: updated };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
@@ -321,7 +303,6 @@ class SalesServices {
       return { success: false, message: error_msg };
     }
   }
-
   async deleteSale(id: string) {
     try {
       const existing = await prisma.sales.findUnique({ where: { id } });
@@ -334,7 +315,6 @@ class SalesServices {
       return { success: false, message: error_msg };
     }
   }
-
   async getSales({
     page = 1,
     per_page = 5,
@@ -352,17 +332,14 @@ class SalesServices {
       const skip = (currentPage - 1) * take;
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.startOf("day");
-
       const parseDateTz = (value?: string, endOfDay: boolean = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
         return endOfDay ? parsed.endOf("day") : parsed.startOf("day");
       };
-
       const start = parseDateTz(start_date) || defaultStart;
       const end = parseDateTz(end_date, true) || defaultEnd.endOf("day");
-
       const where: any = {
         created_at: {
           gte: start.toDate(),
@@ -374,7 +351,6 @@ class SalesServices {
         where.source = "WEB" as any;
         where.processed = false;
       }
-
       const [total, sales, totalSalesByDate] = await Promise.all([
         prisma.sales.count({ where }),
         prisma.sales.findMany({
@@ -420,7 +396,6 @@ class SalesServices {
       };
     }
   }
-
   async getSalesAnalytics({
     start_date,
     end_date,
@@ -431,21 +406,17 @@ class SalesServices {
     try {
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.subtract(30, "day");
-
       const parseDate = (value?: string, endOfDay: boolean = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
         return endOfDay ? parsed.endOf("day") : parsed.startOf("day");
       };
-
       const start = parseDate(start_date) || defaultStart.startOf("day");
       const end = parseDate(end_date, true) || defaultEnd.endOf("day");
-
       const rangeDays = end.diff(start, "day") + 1;
       const prevEnd = start.subtract(1, "day").endOf("day");
       const prevStart = prevEnd.subtract(rangeDays - 1, "day").startOf("day");
-
       const [currentSales, previousSales, allCategories] = await Promise.all([
         prisma.sales.findMany({
           where: {
@@ -496,17 +467,14 @@ class SalesServices {
           select: { id: true, title: true },
         }),
       ]);
-
       const salesCount = currentSales.length;
       const revenueTotal = currentSales.reduce(
         (acc: number, s) => acc + Number(s.total || 0),
         0,
       );
       const avgOrderValue = salesCount > 0 ? revenueTotal / salesCount : 0;
-
       let totalUnitsSold = 0;
       let totalTaxCollected = 0;
-
       const productSalesMap: Record<
         string,
         {
@@ -524,11 +492,9 @@ class SalesServices {
         number,
         { hour: number; count: number; revenue: number }
       > = {};
-
       for (let h = 0; h < 24; h++) {
         hourMap[h] = { hour: h, count: 0, revenue: 0 };
       }
-
       allCategories.forEach((cat) => {
         categoryMap[cat.id] = {
           category_id: cat.id,
@@ -543,7 +509,6 @@ class SalesServices {
         count: 0,
         revenue: 0,
       };
-
       currentSales.forEach((sale) => {
         const taxPercent = Number(sale.tax) || 0;
         const saleTotal = Number(sale.total) || 0;
@@ -551,20 +516,16 @@ class SalesServices {
           const taxAmount = saleTotal - saleTotal / (1 + taxPercent / 100);
           totalTaxCollected += taxAmount;
         }
-
         const hour = dayjs.tz(sale.created_at).hour();
         hourMap[hour].count += 1;
         hourMap[hour].revenue += saleTotal;
-
         const items = (sale.items as any[]) || [];
         items.forEach((item: any) => {
           const qty = Number(item.quantity) || 1;
           totalUnitsSold += qty;
-
           const productId = item.id || "manual";
           const title = item.title || "Producto";
           const itemRevenue = Number(item.price) || 0;
-
           if (!productSalesMap[productId]) {
             productSalesMap[productId] = {
               product_id: productId,
@@ -576,19 +537,16 @@ class SalesServices {
           productSalesMap[productId].quantity_sold += qty;
           productSalesMap[productId].revenue += itemRevenue;
         });
-
         sale.products.forEach((prod) => {
           const catId = prod.categoryId || "sin_categoria";
           if (categoryMap[catId]) {
             categoryMap[catId].count += 1;
           }
         });
-
         if (sale.loadedManually) {
           categoryMap["sin_categoria"].count += items.length;
         }
       });
-
       Object.keys(categoryMap).forEach((catId) => {
         const catSales = currentSales.filter(
           (s) =>
@@ -602,7 +560,6 @@ class SalesServices {
           0,
         );
       });
-
       const prevCount = previousSales.length;
       const prevRevenue = previousSales.reduce(
         (acc: number, s) => acc + Number(s.total || 0),
@@ -615,7 +572,6 @@ class SalesServices {
           prevUnitsSold += Number(item.quantity) || 1;
         });
       });
-
       const growthPercentRevenue =
         prevRevenue > 0
           ? ((revenueTotal - prevRevenue) / prevRevenue) * 100
@@ -634,7 +590,6 @@ class SalesServices {
           : totalUnitsSold > 0
             ? 100
             : 0;
-
       const byDayMap: Record<
         string,
         { date: string; count: number; revenue: number }
@@ -653,11 +608,9 @@ class SalesServices {
         byDayMap[key].revenue += Number(s.total || 0);
       });
       const timeseriesByDay = Object.values(byDayMap);
-
       const daysWithSales = timeseriesByDay.filter((d) => d.count > 0);
       let bestDay = { date: "", revenue: 0, count: 0 };
       let worstDay = { date: "", revenue: Infinity, count: 0 };
-
       if (daysWithSales.length > 0) {
         daysWithSales.forEach((d) => {
           if (d.revenue > bestDay.revenue) {
@@ -670,7 +623,6 @@ class SalesServices {
       } else {
         worstDay = { date: "", revenue: 0, count: 0 };
       }
-
       const methodMap: Record<
         string,
         { method: string; count: number; revenue: number }
@@ -691,17 +643,13 @@ class SalesServices {
         sourceMap[sKey].count += 1;
         sourceMap[sKey].revenue += Number(s.total || 0);
       });
-
       const topProducts = Object.values(productSalesMap)
         .sort((a, b) => b.quantity_sold - a.quantity_sold)
         .slice(0, 5);
-
       const byCategory = Object.values(categoryMap)
         .filter((c) => c.count > 0 || c.revenue > 0)
         .sort((a, b) => b.revenue - a.revenue);
-
       const byHour = Object.values(hourMap);
-
       return {
         range: {
           start_date: start.format("YYYY-MM-DD"),
@@ -747,7 +695,6 @@ class SalesServices {
       };
     }
   }
-
   async markProcessed(id: string) {
     try {
       const sale = await prisma.sales.findUnique({
@@ -785,7 +732,6 @@ class SalesServices {
       return { success: false, message: error_msg };
     }
   }
-
   async decline(id: string, reason: string) {
     try {
       const sale = await prisma.sales.findUnique({

@@ -1,9 +1,7 @@
 import { Router, Request, Response } from "express";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import controller from "./router.controller";
-
 const router = Router();
-
 router.get("/palettes", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.list(req, res));
 router.get("/palettes/:id", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.get(req, res));
 router.post("/palettes", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.create(req, res));
@@ -13,7 +11,5 @@ router.patch("/palettes/:id/activate", requireAuth, requireRole([1]), (req: Requ
 router.patch("/palettes/use", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.setUsage(req, res));
 router.post("/palettes/generate", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.generate(req, res));
 router.post("/palettes/random", requireAuth, requireRole([1]), (req: Request, res: Response) => controller.random(req, res));
-
 router.get("/theme/palette/:target", (req: Request, res: Response) => controller.getActiveFor(req, res));
-
 export default router;

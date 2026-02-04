@@ -20,7 +20,7 @@ import { LineChart, BarChart, PieChart } from "@mui/x-charts";
 import dayjs from "dayjs";
 import 'dayjs/locale/es';
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useGetSalesAnalytics } from "@/Api/admin/SalesApi";
+import { useGetSalesAnalytics } from "@/hooks/useAdminSales";
 import {
   FiShoppingCart,
   FiDollarSign,
@@ -33,17 +33,13 @@ import {
   FiAward,
   FiDownload,
 } from "react-icons/fi";
-
 const emptySubscribe = () => () => {};
 const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
-
 function useIsMounted() {
   return useSyncExternalStore(emptySubscribe, getClientSnapshot, getServerSnapshot);
 }
-
 type RangePreset = "today" | "7d" | "30d" | "month" | "quarter" | "custom";
-
 const RANGE_PRESETS: { label: string; value: RangePreset }[] = [
   { label: "Hoy", value: "today" },
   { label: "7 días", value: "7d" },
@@ -51,7 +47,6 @@ const RANGE_PRESETS: { label: string; value: RangePreset }[] = [
   { label: "Este mes", value: "month" },
   { label: "Trimestre", value: "quarter" },
 ];
-
 function getPresetRange(preset: RangePreset): [Date, Date] {
   const now = dayjs();
   switch (preset) {
@@ -69,17 +64,14 @@ function getPresetRange(preset: RangePreset): [Date, Date] {
       return [now.subtract(29, "day").startOf("day").toDate(), now.endOf("day").toDate()];
   }
 }
-
 interface TrendIndicatorProps {
   value: number;
   suffix?: string;
 }
-
 function TrendIndicator({ value, suffix = "%" }: TrendIndicatorProps) {
   const isPositive = value >= 0;
   const color = isPositive ? "teal" : "red";
   const Icon = isPositive ? FiTrendingUp : FiTrendingDown;
-  
   return (
     <Group gap={4}>
       <Icon size={14} color={isPositive ? "#12b886" : "#fa5252"} />
@@ -89,7 +81,6 @@ function TrendIndicator({ value, suffix = "%" }: TrendIndicatorProps) {
     </Group>
   );
 }
-
 interface KPICardProps {
   icon: React.ReactNode;
   label: string;
@@ -99,7 +90,6 @@ interface KPICardProps {
   trendLabel?: string;
   subtitle?: string;
 }
-
 function KPICard({ icon, label, value, color, trend, trendLabel, subtitle }: KPICardProps) {
   return (
     <Paper p="md" radius="md" withBorder style={{ position: "relative", overflow: "hidden" }}>
@@ -136,7 +126,6 @@ function KPICard({ icon, label, value, color, trend, trendLabel, subtitle }: KPI
     </Paper>
   );
 }
-
 const MUI_COLORS = {
   green: "#40c057",
   blue: "#228be6",
@@ -149,30 +138,24 @@ const MUI_COLORS = {
   indigo: "#4c6ef5",
   gray: "#868e96",
 };
-
 export default function Home() {
   const mounted = useIsMounted();
   const [activePreset, setActivePreset] = useState<RangePreset>("30d");
   const defaultRange = getPresetRange("30d");
   const [range, setRange] = useState<[Date | null, Date | null]>(defaultRange);
-
   const start_date = useMemo(() => (range?.[0] ? dayjs(range[0]).format("YYYY-MM-DD") : undefined), [range]);
   const end_date = useMemo(() => (range?.[1] ? dayjs(range[1]).format("YYYY-MM-DD") : undefined), [range]);
-
   const { data, isLoading, isError, error, refetch } = useGetSalesAnalytics(start_date, end_date);
-
   useEffect(() => {
     if (mounted) {
       refetch();
     }
   }, [start_date, end_date, mounted, refetch]);
-
   const handlePresetClick = (preset: RangePreset) => {
     setActivePreset(preset);
     const newRange = getPresetRange(preset);
     setRange(newRange);
   };
-
   const handleCustomRange = (value: [(Date | string | null), (Date | string | null)]) => {
     setActivePreset("custom");
     const toDate = (v: Date | string | null) => {
@@ -181,15 +164,12 @@ export default function Home() {
     };
     setRange([toDate(value[0]), toDate(value[1])]);
   };
-
   const revenueSeries = useMemo(() => {
-    return (data?.timeseries?.by_day || []).map(d => ({ date: d.date, revenue: Number(d.revenue || 0) }));
+    return (data?.timeseries?.by_day || []).map((d: any) => ({ date: d.date, revenue: Number(d.revenue || 0) }));
   }, [data]);
-
   const countSeries = useMemo(() => {
-    return (data?.timeseries?.by_day || []).map(d => ({ date: d.date, count: Number(d.count || 0) }));
+    return (data?.timeseries?.by_day || []).map((d: any) => ({ date: d.date, count: Number(d.count || 0) }));
   }, [data]);
-
   const paymentPieData = useMemo(() => {
     const mapMethod: Record<string, string> = {
       EFECTIVO: "Efectivo",
@@ -199,58 +179,52 @@ export default function Home() {
       NINGUNO: "Ninguno",
     };
     const colors = [MUI_COLORS.blue, MUI_COLORS.green, MUI_COLORS.violet, MUI_COLORS.orange, MUI_COLORS.gray];
-    return (data?.breakdowns?.payment_methods || []).map((pm, idx) => ({
+    return (data?.breakdowns?.payment_methods || []).map((pm: any, idx: any) => ({
       id: idx,
       label: mapMethod[pm.method] || pm.method,
       value: pm.count,
       color: colors[idx % colors.length],
     }));
   }, [data]);
-
   const sourcePieData = useMemo(() => {
     const mapSource: Record<string, string> = {
       CAJA: "Local/Caja",
       WEB: "Tienda online",
     };
     const colors = [MUI_COLORS.teal, MUI_COLORS.cyan, MUI_COLORS.indigo];
-    return (data?.breakdowns?.sources || []).map((sc, idx) => ({
+    return (data?.breakdowns?.sources || []).map((sc: any, idx: any) => ({
       id: idx,
       label: mapSource[sc.source] || sc.source,
       value: sc.count,
       color: colors[idx % colors.length],
     }));
   }, [data]);
-
   const categoryPieData = useMemo(() => {
     const colors = [MUI_COLORS.pink, MUI_COLORS.grape, MUI_COLORS.violet, MUI_COLORS.indigo, MUI_COLORS.blue, MUI_COLORS.cyan, MUI_COLORS.teal, MUI_COLORS.green];
-    return (data?.breakdowns?.by_category || []).map((cat, idx) => ({
+    return (data?.breakdowns?.by_category || []).map((cat: any, idx: any) => ({
       id: idx,
       label: cat.name,
       value: cat.revenue,
       color: colors[idx % colors.length],
     }));
   }, [data]);
-
   const topProductsData = useMemo(() => {
-    return (data?.top_products || []).map(p => ({
+    return (data?.top_products || []).map((p: any) => ({
       product: p.title.length > 15 ? p.title.substring(0, 15) + "..." : p.title,
       cantidad: p.quantity_sold,
       ingresos: p.revenue,
     }));
   }, [data]);
-
   const hourlyData = useMemo(() => {
-    return (data?.breakdowns?.by_hour || []).map(h => ({
+    return (data?.breakdowns?.by_hour || []).map((h: any) => ({
       hora: `${h.hour.toString().padStart(2, "0")}:00`,
       ventas: h.count,
       ingresos: h.revenue,
     }));
   }, [data]);
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(value);
   };
-
   const formatCurrencyCompact = (value: number) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -259,24 +233,21 @@ export default function Home() {
       maximumFractionDigits: 0,
     }).format(value);
   };
-
   const handleExportCSV = () => {
     if (!data) return;
-
     const rows = [
       ["Métrica", "Valor"],
-      ["Total de ventas", data.totals.sales_count?.toString() || "0"],
-      ["Total vendido", formatCurrency(data.totals.revenue_total || 0)],
-      ["Promedio por venta", formatCurrency(data.totals.avg_order_value || 0)],
-      ["Unidades vendidas", data.totals.total_units_sold?.toString() || "0"],
-      ["Impuestos recaudados", formatCurrency(data.totals.total_tax_collected || 0)],
+      ["Total de ventas", data?.totals?.sales_count?.toString() || "0"],
+      ["Total vendido", formatCurrency(data?.totals?.revenue_total || 0)],
+      ["Promedio por venta", formatCurrency(data?.totals?.avg_order_value || 0)],
+      ["Unidades vendidas", data?.totals?.total_units_sold?.toString() || "0"],
+      ["Impuestos recaudados", formatCurrency(data?.totals?.total_tax_collected || 0)],
       [""],
       ["Ventas diarias"],
       ["Fecha", "Ventas", "Ingresos"],
-      ...(data.timeseries?.by_day || []).map(d => [d.date, d.count.toString(), formatCurrency(d.revenue)]),
+      ...(data.timeseries?.by_day || []).map((d: any) => [d.date, d.count.toString(), formatCurrency(d.revenue)]),
     ];
-
-    const csvContent = rows.map(r => r.join(",")).join("\n");
+    const csvContent = rows.map((r: any) => r.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -285,7 +256,6 @@ export default function Home() {
     link.click();
     URL.revokeObjectURL(url);
   };
-
   if (!mounted) {
     return (
       <Box h={400}>
@@ -295,12 +265,10 @@ export default function Home() {
       </Box>
     );
   }
-
   return (
     <Box>
       <Group justify="space-between" align="flex-start" mb="md" wrap="wrap">
         <Title style={{ fontSize: 32 }}>Resumen de {dayjs().locale('es').format('MMMM')}</Title>
-        
         <Stack gap="xs" align="flex-end">
           <Group gap="xs">
             {RANGE_PRESETS.map((preset) => (
@@ -338,7 +306,6 @@ export default function Home() {
           </Group>
         </Stack>
       </Group>
-
       {isLoading && (
         <Group align="center" justify="center" mt="lg">
           <Loader />
@@ -348,65 +315,59 @@ export default function Home() {
       {isError && (
         <Text c="red">{(error as Error)?.message || "Error al cargar analíticas"}</Text>
       )}
-
       {data && (
         <>
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 5 }} spacing="md" mb="lg">
             <KPICard
               icon={<FiShoppingCart size={20} />}
               label="Total de ventas"
-              value={data.totals.sales_count}
+              value={data?.totals?.sales_count || 0}
               color="blue"
-              trend={data.growth.count_percent}
+              trend={data?.growth?.count_percent || 0}
               trendLabel="vs periodo anterior"
             />
-
             <KPICard
               icon={<FiDollarSign size={20} />}
               label="Total vendido"
-              value={formatCurrency(data.totals.revenue_total || 0)}
+              value={formatCurrency(data?.totals?.revenue_total || 0)}
               color="green"
-              trend={data.growth.revenue_percent}
+              trend={data?.growth?.revenue_percent || 0}
               trendLabel="vs periodo anterior"
             />
-
             <KPICard
               icon={<FiBarChart2 size={20} />}
               label="Promedio por venta"
-              value={formatCurrency(data.totals.avg_order_value || 0)}
+              value={formatCurrency(data?.totals?.avg_order_value || 0)}
               color="violet"
             />
-
             <KPICard
               icon={<FiPackage size={20} />}
               label="Unidades vendidas"
-              value={data.totals.total_units_sold || 0}
+              value={data?.totals?.total_units_sold || 0}
               color="orange"
-              trend={data.growth.units_percent}
+              trend={data?.growth?.units_percent || 0}
               trendLabel="vs periodo anterior"
             />
-
             <KPICard
               icon={<FiAward size={20} />}
               label="Mejor día"
-              value={data.totals.best_day?.date ? dayjs(data.totals.best_day.date).format("DD/MM") : "-"}
+              value={data?.totals?.best_day?.date ? dayjs(data.totals.best_day.date).format("DD/MM") : "-"}
               color="teal"
-              subtitle={data.totals.best_day?.revenue ? formatCurrencyCompact(data.totals.best_day.revenue) : undefined}
+              subtitle={data?.totals?.best_day?.revenue ? formatCurrencyCompact(data.totals.best_day.revenue) : undefined}
             />
           </SimpleGrid>
-
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mb="md">
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
                 <Text fw={600}>Ingresos diarios</Text>
                 <Badge variant="light" color="green">
-                  {formatCurrencyCompact(data.totals.revenue_total || 0)} total
+                  {formatCurrencyCompact(data?.totals?.revenue_total || 0)} total
                 </Badge>
               </Group>
               <Box h={280}>
                 <LineChart
                   xAxis={[{
-                    data: revenueSeries.map((_, i) => i),
+                    data: revenueSeries.map((_: any, i: any) => i),
                     scaleType: "point",
                     valueFormatter: (value: number) => revenueSeries[value]?.date || "",
                   }]}
@@ -415,7 +376,7 @@ export default function Home() {
                   }]}
                   series={[
                     {
-                      data: revenueSeries.map(d => d.revenue),
+                      data: revenueSeries.map((d: any) => d.revenue),
                       area: true,
                       color: MUI_COLORS.green,
                       curve: "catmullRom",
@@ -430,23 +391,22 @@ export default function Home() {
                 />
               </Box>
             </Paper>
-
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
                 <Text fw={600}>Ventas diarias</Text>
                 <Badge variant="light" color="blue">
-                  {data.totals.sales_count} ventas
+                  {data?.totals?.sales_count || 0} ventas
                 </Badge>
               </Group>
               <Box h={280}>
                 <BarChart
                   xAxis={[{
-                    data: countSeries.map(d => d.date),
+                    data: countSeries.map((d: any) => d.date),
                     scaleType: "band",
                   }]}
                   series={[
                     {
-                      data: countSeries.map(d => d.count),
+                      data: countSeries.map((d: any) => d.count),
                       color: MUI_COLORS.blue,
                       label: "Ventas",
                     },
@@ -459,7 +419,6 @@ export default function Home() {
               </Box>
             </Paper>
           </SimpleGrid>
-
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mb="md">
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
@@ -474,7 +433,7 @@ export default function Home() {
                 <Box h={280}>
                   <BarChart
                     yAxis={[{
-                      data: topProductsData.map(d => d.product),
+                      data: topProductsData.map((d: any) => d.product),
                       scaleType: "band",
                     }]}
                     xAxis={[{
@@ -482,7 +441,7 @@ export default function Home() {
                     }]}
                     series={[
                       {
-                        data: topProductsData.map(d => d.cantidad),
+                        data: topProductsData.map((d: any) => d.cantidad),
                         color: MUI_COLORS.violet,
                         label: "Cantidad",
                       },
@@ -500,7 +459,6 @@ export default function Home() {
                 </Center>
               )}
             </Paper>
-
             <Paper p="md" radius="md" withBorder>
               <Group justify="space-between" mb="sm">
                 <Text fw={600} component="div">
@@ -513,12 +471,12 @@ export default function Home() {
               <Box h={280}>
                 <BarChart
                   xAxis={[{
-                    data: hourlyData.map(d => d.hora),
+                    data: hourlyData.map((d: any) => d.hora),
                     scaleType: "band",
                   }]}
                   series={[
                     {
-                      data: hourlyData.map(d => d.ventas),
+                      data: hourlyData.map((d: any) => d.ventas),
                       color: MUI_COLORS.cyan,
                       label: "Ventas",
                     },
@@ -531,7 +489,6 @@ export default function Home() {
               </Box>
             </Paper>
           </SimpleGrid>
-
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md" mt="md">
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Métodos de pago</Text>
@@ -543,7 +500,7 @@ export default function Home() {
                         data: paymentPieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item) => `${((item.value / paymentPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: any) => `${((item.value / paymentPieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
@@ -561,7 +518,6 @@ export default function Home() {
                 </Center>
               )}
             </Paper>
-
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Origen de ventas</Text>
               {sourcePieData.length > 0 ? (
@@ -572,7 +528,7 @@ export default function Home() {
                         data: sourcePieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item) => `${((item.value / sourcePieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: any) => `${((item.value / sourcePieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
@@ -590,7 +546,6 @@ export default function Home() {
                 </Center>
               )}
             </Paper>
-
             <Paper p="md" radius="md" withBorder>
               <Text fw={600} mb="sm">Ingresos por categoría</Text>
               {categoryPieData.length > 0 ? (
@@ -601,13 +556,13 @@ export default function Home() {
                         data: categoryPieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item) => `${((item.value / categoryPieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: any) => `${((item.value / categoryPieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
                         paddingAngle: 2,
                         cornerRadius: 4,
-                        valueFormatter: (item) => formatCurrencyCompact(item.value),
+                        valueFormatter: (item: any) => formatCurrencyCompact(item.value),
                       },
                     ]}
                     height={220}
@@ -621,9 +576,7 @@ export default function Home() {
               )}
             </Paper>
           </SimpleGrid>
-
           <Divider my="lg" />
-
           <Paper p="md" radius="md" withBorder>
             <Text fw={600} mb="md" component="div">
               <Group gap={8}>
@@ -634,25 +587,25 @@ export default function Home() {
             <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
               <Box>
                 <Text size="sm" c="dimmed">Periodo actual</Text>
-                <Text fw={500}>{data.range.start_date} al {data.range.end_date}</Text>
-                <Text size="xs" c="dimmed">{data.range.days} días</Text>
+                <Text fw={500}>{data?.range?.start_date} al {data?.range?.end_date}</Text>
+                <Text size="xs" c="dimmed">{data?.range?.days} días</Text>
               </Box>
               <Box>
                 <Text size="sm" c="dimmed">Impuestos recaudados</Text>
-                <Text fw={500}>{formatCurrency(data.totals.total_tax_collected || 0)}</Text>
+                <Text fw={500}>{formatCurrency(data?.totals?.total_tax_collected || 0)}</Text>
               </Box>
               <Box>
                 <Text size="sm" c="dimmed">Periodo anterior</Text>
-                <Text fw={500}>{data.previous.sales_count} ventas</Text>
-                <Text size="xs" c="dimmed">{formatCurrency(data.previous.revenue_total || 0)}</Text>
+                <Text fw={500}>{data?.previous?.sales_count || 0} ventas</Text>
+                <Text size="xs" c="dimmed">{formatCurrency(data?.previous?.revenue_total || 0)}</Text>
               </Box>
               <Box>
                 <Text size="sm" c="dimmed">Peor día</Text>
                 <Text fw={500}>
-                  {data.totals.worst_day?.date ? dayjs(data.totals.worst_day.date).format("DD/MM/YYYY") : "-"}
+                  {data?.totals?.worst_day?.date ? dayjs(data.totals.worst_day.date).format("DD/MM/YYYY") : "-"}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {data.totals.worst_day?.revenue ? formatCurrency(data.totals.worst_day.revenue) : "-"}
+                  {data?.totals?.worst_day?.revenue ? formatCurrency(data.totals.worst_day.revenue) : "-"}
                 </Text>
               </Box>
             </SimpleGrid>

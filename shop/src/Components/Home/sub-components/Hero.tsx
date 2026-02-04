@@ -2,23 +2,19 @@
 import { Box, Container, Title, Text, Button, Group, Overlay, Stack } from '@mantine/core';
 import { FiArrowRight, FiShoppingBag } from 'react-icons/fi';
 import classes from './Hero.module.css';
-
 interface HeroProps {
   title: string;
   description?: string;
   backgroundImage?: string;
 }
-
 export default function Hero({ title, description, backgroundImage }: HeroProps) {
   const scrollToProducts = () => {
     const el = document.getElementById('productos');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
-
   const bgStyle = backgroundImage 
     ? { backgroundImage: `url('${backgroundImage}')` }
     : undefined;
-
   return (
     <Box className={classes.hero} style={bgStyle}>
       <Overlay
@@ -26,19 +22,16 @@ export default function Hero({ title, description, backgroundImage }: HeroProps)
         opacity={1}
         zIndex={0}
       />
-
       <Container size="xl" className={classes.container}>
         <Stack gap="xl" align="flex-start" justify="center" className={classes.content}>
           <Title className={classes.title}>
             {title}
           </Title>
-
           {description && (
             <Text className={classes.description} size="xl">
               {description}
             </Text>
           )}
-
           <Group gap="md">
             <Button
               size="lg"

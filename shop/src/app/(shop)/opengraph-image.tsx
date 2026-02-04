@@ -1,19 +1,17 @@
 import { ImageResponse } from 'next/og'
-
 export const size = { width: 1200, height: 630 }
-
-
 export default async function OG({ searchParams }: { searchParams?: { title?: string; categoryId?: string } }) {
   const titleQ = searchParams?.title?.trim() || ''
   const catQ = searchParams?.categoryId?.trim() || ''
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
-  
-  // Fetch business data to get the dynamic image
   let bizImage = ''
   let bizDescription = ''
   let bizName = 'Tienda Online'
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/business/public`, { next: { revalidate: 60 } })
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/business/public`, { 
+        next: { revalidate: 60 },
+        signal: AbortSignal.timeout(15000)
+    })
     if (res.ok) {
         const data = await res.json()
         bizImage = data.business_image || ''
@@ -21,7 +19,6 @@ export default async function OG({ searchParams }: { searchParams?: { title?: st
         bizName = data.name || bizName
     }
   } catch {}
-
   return new ImageResponse(
     (
       <div

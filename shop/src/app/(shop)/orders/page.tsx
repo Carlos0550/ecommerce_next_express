@@ -1,32 +1,29 @@
 "use client";
-import useOrders from '@/Api/useOrders';
+import { useGetOrders } from '@/hooks/useUserOrders';
 import { Table, Pagination, Badge, Card, Group, Stack, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import { useAppContext } from '@/providers/AppContext';
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { showNotification } from '@mantine/notifications';
-
 export default function OrdersPage() {
-  const { auth } = useAppContext();
+  const { session } = useAuthStore();
   const router = useRouter();
   useEffect(() => {
-    if (!auth.isAuthenticated) {
+    if (!session) {
       showNotification({ message: 'Debes iniciar sesión para acceder a esta página', color: 'red', id: 'orders-page' });
       router.push('/');
       return
     }
-  }, [auth.isAuthenticated, router]);
+  }, [session, router]);
   const [page, setPage] = useState(1);
   const limit = 10;
-  const { data } = useOrders(page, limit);
-  const items = data?.items || [];
-
-
+  const { data } = useGetOrders(page, limit);
+  const items = (data?.data?.items || data?.items || []) as any[];
   return (
     <Stack>
       <Title order={2}>Mis ordenes</Title>
-      {items.map((o) => (
+      {items.map((o: any) => (
         <Card key={o.id} withBorder>
           <Group justify="space-between">
             <Text fw={600}>#{o.id}</Text>
@@ -55,7 +52,7 @@ export default function OrdersPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {o.items.map((it, idx: number) => (
+                {o.items.map((it: any, idx: number) => (
                   <Table.Tr key={idx}>
                     <Table.Td>{it.title}</Table.Td>
                     <Table.Td>{it.quantity}</Table.Td>
@@ -65,7 +62,6 @@ export default function OrdersPage() {
               </Table.Tbody>
             </Table>
           )}
-          
         </Card>
       ))}
       {items.length === 0 && <Text c="dimmed">No tienes órdenes aún.</Text>}

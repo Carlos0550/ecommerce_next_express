@@ -40,12 +40,10 @@ import {
   useGetSessionStatus,
   useDisconnectWhatsAppSession,
   useSendTestMessage,
-} from "@/Api/admin/WhatsAppApi";
+} from "@/hooks/useAdminWhatsApp";
 import QRCode from "qrcode";
-
 function normalizePhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\s+/g, "").replace(/-/g, "");
-
   if (cleaned.startsWith("+")) return cleaned;
   if (cleaned.startsWith("549")) return "+" + cleaned;
   if (cleaned.startsWith("54")) return "+" + cleaned;
@@ -53,20 +51,16 @@ function normalizePhoneNumber(phone: string): string {
   if (cleaned.length === 13 && /^\d+$/.test(cleaned) && cleaned.startsWith("549")) {
     return "+" + cleaned;
   }
-
   return cleaned.startsWith("+") ? cleaned : "+" + cleaned;
 }
-
 type WhatsAppRemitentsProps = {
   allowedRemitents: string[];
   onAdd: (phone: string) => Promise<void>;
   onRemove: (phone: string) => Promise<void>;
   isLoading: boolean;
 };
-
 function WhatsAppRemitents({ allowedRemitents, onAdd, onRemove, isLoading }: WhatsAppRemitentsProps) {
   const [newRemitent, setNewRemitent] = useState("");
-
   const handleAdd = async () => {
     if (!newRemitent.trim()) return;
     const normalized = normalizePhoneNumber(newRemitent);
@@ -75,7 +69,6 @@ function WhatsAppRemitents({ allowedRemitents, onAdd, onRemove, isLoading }: Wha
     }
     setNewRemitent("");
   };
-
   return (
     <Box>
       <Divider my="md" />
@@ -137,14 +130,12 @@ function WhatsAppRemitents({ allowedRemitents, onAdd, onRemove, isLoading }: Wha
     </Box>
   );
 }
-
 type QRModalProps = {
   opened: boolean;
   onClose: () => void;
   qrCodeImage: string | null;
   isLoadingQR: boolean;
 };
-
 function QRModal({ opened, onClose, qrCodeImage, isLoadingQR }: QRModalProps) {
   return (
     <Modal
@@ -194,26 +185,22 @@ function QRModal({ opened, onClose, qrCodeImage, isLoadingQR }: QRModalProps) {
     </Modal>
   );
 }
-
 type TestMessageModalProps = {
   opened: boolean;
   onClose: () => void;
   onSend: (to: string, message: string) => Promise<void>;
   isSending: boolean;
 };
-
 function TestMessageModal({ opened, onClose, onSend, isSending }: TestMessageModalProps) {
   const [testNumber, setTestNumber] = useState("");
   const [testMessage, setTestMessage] = useState(
     "¡Hola! Este es un mensaje de prueba desde Tu tienda Online."
   );
-
   const handleSend = async () => {
     if (!testNumber.trim() || !testMessage.trim()) return;
     await onSend(testNumber, testMessage);
     onClose();
   };
-
   return (
     <Modal opened={opened} onClose={onClose} title="Enviar mensaje de prueba" centered>
       <Stack gap="md">
@@ -247,7 +234,6 @@ function TestMessageModal({ opened, onClose, onSend, isSending }: TestMessageMod
     </Modal>
   );
 }
-
 export default function WhatsAppConfig() {
   const mounted = useMounted();
   const { data: config, isLoading } = useGetWhatsAppConfig();
@@ -255,34 +241,25 @@ export default function WhatsAppConfig() {
   const createSession = useCreateWhatsAppSession();
   const disconnectSession = useDisconnectWhatsAppSession();
   const sendTest = useSendTestMessage();
-
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sessionName, setSessionName] = useState("Tu tienda Online");
   const [localRemitents, setLocalRemitents] = useState<string[] | null>(null);
-
   const [qrModalOpened, { open: openQrModal, close: closeQrModal }] = useDisclosure(false);
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
   const [isConnecting, setIsConnecting] = useState(false);
-
   const { data: qrData, isLoading: isLoadingQR } = useGetQRCode(qrModalOpened && isConnecting);
   const { data: statusData } = useGetSessionStatus(qrModalOpened && isConnecting);
-
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
-
   const allowedRemitents =
     localRemitents !== null
       ? localRemitents
       : config?.whatsapp_allowed_remitents
       ? config.whatsapp_allowed_remitents
           .split(",")
-          .map((r) => r.trim())
+          .map((r: any) => r.trim())
           .filter(Boolean)
       : [];
-
   const prevStatusRef = useRef<string | undefined>(undefined);
-
-
-
   useEffect(() => {
     if (qrData?.qr_code) {
       QRCode.toDataURL(qrData.qr_code, { width: 256, margin: 2 })
@@ -290,28 +267,22 @@ export default function WhatsAppConfig() {
         .catch(() => setQrCodeImage(null));
     }
   }, [qrData?.qr_code]);
-
   useEffect(() => {
     const currentStatus = statusData?.status;
     const wasConnecting = prevStatusRef.current !== "connected";
-
     if (currentStatus === "connected" && wasConnecting && isConnecting) {
       queueMicrotask(() => {
         setIsConnecting(false);
         closeQrModal();
       });
     }
-
     prevStatusRef.current = currentStatus;
   }, [statusData?.status, closeQrModal, isConnecting]);
-
   const handleToggleEnabled = async (enabled: boolean) => {
     await updateConfig.mutateAsync({ whatsapp_enabled: enabled });
   };
-
   const handleConnect = async () => {
     if (!phoneNumber.trim()) return;
-
     try {
       const normalizedPhone = normalizePhoneNumber(phoneNumber);
       await createSession.mutateAsync({
@@ -324,33 +295,27 @@ export default function WhatsAppConfig() {
       console.error(error);
     }
   };
-
   const handleDisconnect = async () => {
     await disconnectSession.mutateAsync();
   };
-
   const handleCloseQrModal = () => {
     setIsConnecting(false);
     closeQrModal();
   };
-
   const handleAddRemitent = async (phone: string) => {
     if (allowedRemitents.includes(phone)) return;
     const newList = [...allowedRemitents, phone];
     setLocalRemitents(newList);
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
-
   const handleRemoveRemitent = async (remitent: string) => {
-    const newList = allowedRemitents.filter((r) => r !== remitent);
+    const newList = allowedRemitents.filter((r: any) => r !== remitent);
     setLocalRemitents(newList);
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
-
   const handleSendTest = async (to: string, message: string) => {
     await sendTest.mutateAsync({ to, message });
   };
-
   if (!mounted || isLoading) {
     return (
       <Paper shadow="xs" p="md" radius="md" withBorder>
@@ -360,7 +325,6 @@ export default function WhatsAppConfig() {
       </Paper>
     );
   }
-
   return (
     <>
       <Paper shadow="xs" p="md" radius="md" withBorder>
@@ -377,14 +341,11 @@ export default function WhatsAppConfig() {
               color="green"
             />
           </Group>
-
           <Text size="sm" c="dimmed">
             Permite crear productos enviando imágenes por WhatsApp. La IA procesará las imágenes y
             generará título y descripción automáticamente.
           </Text>
-
           <Divider />
-
           <Group gap="md">
             <Text fw={500}>Estado:</Text>
             {config?.whatsapp_connected ? (
@@ -402,7 +363,6 @@ export default function WhatsAppConfig() {
               </Text>
             )}
           </Group>
-
           {config?.has_access_token && !config?.whatsapp_connected && (
             <Box>
               <Text size="sm" fw={500} mb="xs">
@@ -435,7 +395,6 @@ export default function WhatsAppConfig() {
               </Group>
             </Box>
           )}
-
           {config?.whatsapp_connected && (
             <Group>
               <Button variant="light" leftSection={<FaPaperPlane size={14} />} onClick={openTestModal}>
@@ -452,7 +411,6 @@ export default function WhatsAppConfig() {
               </Button>
             </Group>
           )}
-
           {config?.whatsapp_connected && (
             <WhatsAppRemitents
               allowedRemitents={allowedRemitents}
@@ -461,7 +419,6 @@ export default function WhatsAppConfig() {
               isLoading={updateConfig.isPending}
             />
           )}
-
           {!config?.has_access_token && (
             <Alert color="yellow" icon={<FaExclamationTriangle />} title="Token no configurado">
               Para usar la integración de WhatsApp, debes configurar la variable de entorno
@@ -470,14 +427,12 @@ export default function WhatsAppConfig() {
           )}
         </Stack>
       </Paper>
-
       <QRModal
         opened={qrModalOpened}
         onClose={handleCloseQrModal}
         qrCodeImage={qrCodeImage}
         isLoadingQR={isLoadingQR}
       />
-
       <TestMessageModal
         opened={testModalOpened}
         onClose={closeTestModal}

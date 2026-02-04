@@ -22,10 +22,8 @@ import {
 } from "react-icons/fi";
 import Link from "next/link";
 import { useMemo } from "react";
-
 export default function Onboarding() {
   const theme = useMantineTheme();
-
   const steps = useMemo(
     () => [
       {
@@ -63,7 +61,6 @@ export default function Onboarding() {
     ],
     []
   );
-
   return (
     <Container size="lg" py={50}>
       <Stack gap={40}>
@@ -100,7 +97,6 @@ export default function Onboarding() {
             Sigue estos pasos para completar la configuración.
           </Text>
         </Box>
-
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           {steps.map((step, index) => (
             <Paper
@@ -146,7 +142,6 @@ export default function Onboarding() {
             </Paper>
           ))}
         </SimpleGrid>
-
         <Divider
           my="xl"
           label={
@@ -156,7 +151,6 @@ export default function Onboarding() {
           }
           labelPosition="center"
         />
-
         <Paper
           p="xl"
           radius="lg"

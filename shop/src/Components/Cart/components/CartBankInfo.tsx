@@ -11,20 +11,17 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { FaUniversity, FaCopy, FaCheck } from "react-icons/fa";
-
 type BankData = {
   bank_name: string;
   account_number: string;
   account_holder: string;
 };
-
 type CartBankInfoProps = {
   isLoading: boolean;
   error: Error | null;
   bankData: BankData[] | undefined;
   onFileChange: (file: File | null) => void;
 };
-
 export function CartBankInfo({ isLoading, error, bankData, onFileChange }: CartBankInfoProps) {
   if (isLoading) {
     return (
@@ -34,7 +31,6 @@ export function CartBankInfo({ isLoading, error, bankData, onFileChange }: CartB
       </Group>
     );
   }
-
   if (error) {
     return (
       <Alert color="red" title="Error">
@@ -42,11 +38,9 @@ export function CartBankInfo({ isLoading, error, bankData, onFileChange }: CartB
       </Alert>
     );
   }
-
   if (!bankData || bankData.length === 0) {
     return <Alert color="yellow">No hay cuentas bancarias configuradas.</Alert>;
   }
-
   return (
     <Stack gap="sm">
       <Text size="sm" fw={500}>

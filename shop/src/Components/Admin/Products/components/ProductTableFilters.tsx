@@ -1,7 +1,6 @@
 import { Flex, TextInput, Button, Select, Paper } from '@mantine/core';
 import { FiPlus, FiSearch } from 'react-icons/fi';
-import type { ProductState } from '@/Api/admin/ProductsApi';
-
+type ProductState = 'active' | 'inactive' | 'draft' | 'out_stock' | 'deleted';
 interface ProductTableFiltersProps {
   search: string;
   limit: number;
@@ -15,7 +14,6 @@ interface ProductTableFiltersProps {
   onSortOrderChange: (sortOrder: 'asc' | 'desc') => void;
   onAddProduct: () => void;
 }
-
 export const ProductTableFilters = ({
   search,
   limit,
@@ -50,7 +48,6 @@ export const ProductTableFilters = ({
             Añadir nuevo producto
           </Button>
         </Flex>
-
         <Flex gap="md" align="flex-end" wrap="wrap">
           <Select
             value={String(limit)}
@@ -65,7 +62,6 @@ export const ProductTableFilters = ({
             ]}
             style={{ width: 140 }}
           />
-
           <Select
             value={String(state)}
             label="Filtrar estado"
@@ -80,7 +76,6 @@ export const ProductTableFilters = ({
             ]}
             style={{ width: 140 }}
           />
-
           <Select
             value={sortBy ?? ''}
             label="Ordenar por"
@@ -94,7 +89,6 @@ export const ProductTableFilters = ({
             ]}
             style={{ width: 160 }}
           />
-
           <Select
             value={sortOrder}
             label="Dirección"
@@ -111,4 +105,3 @@ export const ProductTableFilters = ({
     </Paper>
   );
 };
-

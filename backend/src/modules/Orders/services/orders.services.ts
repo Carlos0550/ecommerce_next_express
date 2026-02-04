@@ -18,7 +18,6 @@ type CustomerInput = {
   province?: string;
   pickup?: boolean;
 };
-
 export default class OrdersServices {
   async createOrder(
     userId: number | undefined,
@@ -31,7 +30,6 @@ export default class OrdersServices {
       where: { id: { in: productIds } },
     });
     const productsMap = new Map(products.map((p) => [p.id, p]));
-
     const snapshot = items
       .map((item) => {
         const product = productsMap.get(item.product_id);
@@ -51,19 +49,15 @@ export default class OrdersServices {
       quantity: number;
       options: any;
     }[];
-
     const subtotal = snapshot.reduce(
       (acc, it) => acc + Number(it.price) * Number(it.quantity),
       0,
     );
     const total = subtotal;
-
     const paymentNormalized: PaymentMethod =
       String(paymentMethod).toUpperCase() === "EN_LOCAL"
         ? "EFECTIVO"
         : (String(paymentMethod).toUpperCase() as PaymentMethod);
-
-    // Validar si el usuario existe realmente antes de intentar conectarlo
     if (userId && Number.isInteger(userId)) {
       const userExists = await prisma.user.findUnique({
         where: { id: userId },
@@ -73,8 +67,6 @@ export default class OrdersServices {
         userId = undefined;
       }
     }
-
-    // Construir data base
     const orderData: any = {
       total,
       subtotal,
@@ -84,16 +76,12 @@ export default class OrdersServices {
       buyer_phone: customer.phone || undefined,
       buyer_name: customer.name || undefined,
     };
-
-    // Agregar relación con usuario si existe
     if (userId && Number.isInteger(userId)) {
       orderData.user = { connect: { id: userId } };
     }
-
     const order = await prisma.orders.create({
       data: orderData,
     });
-
     if (userId && Number.isInteger(userId)) {
       await prisma.user.update({
         where: { id: userId },
@@ -154,7 +142,6 @@ export default class OrdersServices {
     });
     return { ok: true, order_id: order.id, total };
   }
-
   async getOrderById(orderId: string) {
     return prisma.orders.findUnique({
       where: { id: orderId },
@@ -166,7 +153,6 @@ export default class OrdersServices {
       },
     });
   }
-
   async saveTransferReceipt(orderId: string, file: Express.Multer.File) {
     try {
       const order = await prisma.orders.findUnique({ where: { id: orderId } });
@@ -193,7 +179,6 @@ export default class OrdersServices {
       return { ok: false, status: 500, error: "internal_error" };
     }
   }
-
   async listUserOrders(userId: number, page: number = 1, limit: number = 10) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const [items, total] = await Promise.all([

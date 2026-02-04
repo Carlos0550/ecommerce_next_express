@@ -6,11 +6,8 @@ import {
   ensureProductId,
   ensureQuantity,
 } from "./router.controller";
-
 const router = Router();
 const service = new CartServices();
-
-// Middleware para evitar que admins intenten operar sobre carritos (que no tienen)
 router.use(requireAuth, (req, res, next) => {
   const user = (req as any).user;
   if (user.subjectType === "admin" && req.method !== "GET") {
@@ -22,21 +19,17 @@ router.use(requireAuth, (req, res, next) => {
   }
   next();
 });
-
 router.get("/", async (req, res) => {
   const user = (req as any).user;
-
   if (user.subjectType === "admin") {
     return res.json({
       ok: true,
       cart: { items: [], total: 0, is_admin: true },
     });
   }
-
   const cart = await service.getCart(Number(user.sub || user.id));
   res.json({ ok: true, cart });
 });
-
 router.post("/items", ensureProductId, ensureQuantity, async (req, res) => {
   const user = (req as any).user;
   const options = (req.body as any).options || [];
@@ -49,7 +42,6 @@ router.post("/items", ensureProductId, ensureQuantity, async (req, res) => {
   if (!rs.ok) return res.status(rs.status || 400).json(rs);
   res.json({ ok: true, item: rs.item, total: rs.total });
 });
-
 router.patch(
   "/items/:product_id",
   ensureProductId,
@@ -67,7 +59,6 @@ router.patch(
     res.json({ ok: true, total: rs.total });
   },
 );
-
 router.delete("/items/:product_id", ensureProductId, async (req, res) => {
   const user = (req as any).user;
   const options = (req.body as any)?.options;
@@ -79,13 +70,11 @@ router.delete("/items/:product_id", ensureProductId, async (req, res) => {
   if (!rs.ok) return res.status(rs.status || 400).json(rs);
   res.json({ ok: true, total: rs.total });
 });
-
 router.delete("/", async (req, res) => {
   const user = (req as any).user;
   const rs = await service.clearCart(Number(user.sub || user.id));
   res.json(rs);
 });
-
 router.post("/merge", ensureMergeItems, async (req, res) => {
   const user = (req as any).user;
   const rs = await service.merge(
@@ -94,5 +83,4 @@ router.post("/merge", ensureMergeItems, async (req, res) => {
   );
   res.json(rs);
 });
-
 export default router;

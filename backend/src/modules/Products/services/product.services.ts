@@ -66,7 +66,6 @@ class ProductServices {
         .json({ ok: false, error: "Error al mejorar el contenido con IA" });
     }
   }
-
   async saveProduct(req: Request, res: Response) {
     const {
       title,
@@ -80,16 +79,12 @@ class ProductServices {
       additionalContext,
       options,
     } = req.body;
-
     const productImages = req.files;
-
     let imageUrls: string[] = [];
-
     if (productImages && Array.isArray(productImages)) {
       for (const image of productImages as any[]) {
         try {
           const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-
           const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
           const result = await uploadImage(
             buffer,
@@ -97,7 +92,6 @@ class ProductServices {
             "products",
             image.mimetype,
           );
-
           if (result.url) {
             imageUrls.push(result.url);
           } else {
@@ -108,7 +102,6 @@ class ProductServices {
         }
       }
     }
-
     let finalTitle = title;
     let finalDescription = description ?? "";
     let finalPrice = price ? parseFloat(price) : 0;
@@ -128,7 +121,6 @@ class ProductServices {
         : Array.isArray(options)
           ? options
           : [];
-
     if (fillWithAI === true || fillWithAI === "true") {
       if (imageUrls.length === 0) {
         return res.status(400).json({
@@ -136,7 +128,6 @@ class ProductServices {
           error: "Se requieren imágenes para completar con IA",
         });
       }
-
       try {
         const aiResult = await analyzeProductImages(
           imageUrls,
@@ -160,7 +151,6 @@ class ProductServices {
         });
       }
     }
-
     const product = await prisma.products.create({
       data: {
         title: finalTitle,
@@ -174,7 +164,6 @@ class ProductServices {
         options: finalOptions,
       },
     });
-
     return res.status(201).json({
       ok: true,
       message: fillWithAI
@@ -183,26 +172,22 @@ class ProductServices {
       product,
     });
   }
-
   async saveCategory(req: Request, res: Response) {
     const { title } = req.body;
     const image = req.file;
     const normalized_title = title.trim().toLowerCase();
-
     try {
       const category_exists = await prisma.categories.findFirst({
         where: {
           title: normalized_title,
         },
       });
-
       if (category_exists) {
         return res.status(409).json({
           ok: false,
           error: "Esta categoría ya existe.",
         });
       }
-
       let image_url: string = "";
       if (image) {
         const fileName = `category-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
@@ -220,14 +205,12 @@ class ProductServices {
           console.log("Error subiendo imagen a Supabase", result.error);
         }
       }
-
       await prisma.categories.create({
         data: {
           title: normalized_title,
           image: image_url,
         },
       });
-
       return res.status(201).json({
         ok: true,
         message: "Categoría creada exitosamente",
@@ -240,7 +223,6 @@ class ProductServices {
       });
     }
   }
-
   async getAllCategories(req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
@@ -251,20 +233,17 @@ class ProductServices {
           products: true,
         },
       });
-
       if (categories.length === 0) {
         return res.status(404).json({
           ok: false,
           error: "No se encontraron categorías.",
         });
       }
-
       const status_to_number: Record<CategoryStatus, number> = {
         [CategoryStatus.active]: 1,
         [CategoryStatus.inactive]: 2,
         [CategoryStatus.deleted]: 3,
       };
-
       const categories_with_status = categories.map(
         (c: { status: CategoryStatus }) => {
           return {
@@ -285,44 +264,35 @@ class ProductServices {
       });
     }
   }
-
   async getAllProducts(req: Request, res: Response) {
     try {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 10;
       const skip = (page - 1) * limit;
-
       const title = req.query.title as string;
       const categoryId = req.query.categoryId as string;
-
       const state = req.query.state as ProductState;
       const sortBy = req.query.sortBy as string;
       const sortOrder = req.query.sortOrder as "asc" | "desc";
-
       const isActive =
         req.query.isActive === "true"
           ? true
           : req.query.isActive === "false"
             ? false
             : undefined;
-
       const where: any = {};
-
       if (title) {
         where.title = {
           contains: title,
           mode: "insensitive",
         };
       }
-
       if (categoryId) {
         where.categoryId = categoryId;
       }
-
       if (isActive !== undefined) {
         where.is_active = isActive;
       }
-
       console.log(state);
       if (state) {
         where.state = state;
@@ -330,7 +300,6 @@ class ProductServices {
       console.log("Filtros:", where);
       const [totalProducts, products] = await Promise.all([
         prisma.products.count({ where }),
-
         prisma.products.findMany({
           where,
           skip,
@@ -343,9 +312,7 @@ class ProductServices {
             : [{ created_at: "desc" }],
         }),
       ]);
-
       const totalPages = Math.ceil(totalProducts / limit);
-
       return res.status(200).json({
         ok: true,
         data: {
@@ -368,7 +335,6 @@ class ProductServices {
       });
     }
   }
-
   extractPathFromPublicUrl = (url: string): string | null => {
     try {
       const u = new URL(url);
@@ -392,18 +358,15 @@ class ProductServices {
   async deleteProduct(req: Request, res: Response) {
     try {
       const { product_id } = req.params;
-
       const product_info = await prisma.products.findFirst({
         where: { id: product_id },
       });
-
       if (!product_info) {
         return res.status(404).json({
           ok: false,
           error: "Producto no encontrado",
         });
       }
-
       if (product_info.state === ProductState.deleted) {
         return res.status(400).json({
           ok: false,
@@ -411,14 +374,12 @@ class ProductServices {
           message: "El producto ha sido eliminado previamente.",
         });
       }
-
       await prisma.products.update({
         where: { id: product_id },
         data: {
           state: ProductState.deleted,
         },
       });
-
       return res.status(200).json({
         ok: true,
         message: "Producto eliminado exitosamente",
@@ -431,7 +392,6 @@ class ProductServices {
       });
     }
   }
-
   async updateProduct(req: Request, res: Response) {
     try {
       const {
@@ -447,41 +407,32 @@ class ProductServices {
         options,
       } = req.body as UpdateProductRequest;
       console.log("Estatus actual:", state);
-
       const rawExisting =
         existingImageUrls ?? (req.body as any).existing_image_urls;
       const rawDeleted =
         deletedImageUrls ?? (req.body as any).deleted_image_urls;
-
       const normalizedExisting: string[] = Array.isArray(rawExisting)
         ? rawExisting
         : typeof rawExisting === "string" && rawExisting.trim().length
           ? JSON.parse(rawExisting)
           : [];
-
       const normalizedDeleted: string[] = Array.isArray(rawDeleted)
         ? rawDeleted
         : typeof rawDeleted === "string" && rawDeleted.trim().length
           ? JSON.parse(rawDeleted)
           : [];
-
       const { product_id } = req.params;
-
       const productImages = req.files;
-
       let imageUrls: string[] = [];
-
       const existentProduct = await prisma.products.findFirst({
         where: { id: product_id },
       });
-
       if (!existentProduct) {
         return res.status(404).json({
           ok: false,
           error: "Producto no encontrado",
         });
       }
-
       if (normalizedDeleted.length > 0) {
         const imagePaths = normalizedDeleted
           .map((img: string) => this.extractPathFromPublicUrl(img))
@@ -498,12 +449,10 @@ class ProductServices {
           }
         }
       }
-
       if (productImages && Array.isArray(productImages)) {
         for (const image of productImages as any[]) {
           try {
             const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-
             const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
             const result = await uploadImage(
               buffer,
@@ -511,7 +460,6 @@ class ProductServices {
               "products",
               image.mimetype,
             );
-
             if (result.url) {
               imageUrls.push(result.url);
             } else {
@@ -522,7 +470,6 @@ class ProductServices {
           }
         }
       }
-
       const updatedImages = [...normalizedExisting, ...imageUrls];
       const parsedStock =
         typeof stock === "string"
@@ -541,7 +488,6 @@ class ProductServices {
           ? JSON.parse(options)
           : options
         : undefined;
-
       await prisma.products.update({
         where: { id: product_id },
         data: {
@@ -562,7 +508,6 @@ class ProductServices {
           ...(finalOptions !== undefined ? { options: finalOptions } : {}),
         },
       });
-
       return res.status(200).json({
         ok: true,
         message: "Producto actualizado exitosamente",
@@ -576,12 +521,10 @@ class ProductServices {
       });
     }
   }
-
   async productChangeStatus(req: Request, res: Response) {
     try {
       const { product_id, state } =
         req.params as unknown as UpdateProductStatusSchema;
-
       const product = await prisma.products.findUnique({
         where: { id: product_id },
       });
@@ -591,12 +534,10 @@ class ProductServices {
           error: "Producto no encontrado",
         });
       }
-
       await prisma.products.update({
         where: { id: product_id },
         data: { state: state as ProductState },
       });
-
       return res.status(200).json({
         ok: true,
         message: "Estado del producto actualizado exitosamente",
@@ -609,7 +550,6 @@ class ProductServices {
       });
     }
   }
-
   async updateStock(req: Request, res: Response) {
     try {
       const { product_id, quantity } = req.params as unknown as {
@@ -636,7 +576,6 @@ class ProductServices {
         where: { id: product_id },
         data: { stock: q, state: nextState },
       });
-
       return res.status(200).json({
         ok: true,
         message: "Stock actualizado",
@@ -650,49 +589,40 @@ class ProductServices {
         .json({ ok: false, error: "Error al actualizar el stock" });
     }
   }
-
   async updateCategory(req: Request, res: Response) {
     try {
       const { category_id } = req.params;
       const { title } = req.body;
       const image = req.file;
-
       if (!title) {
         return res.status(400).json({
           ok: false,
           error: "El título es requerido",
         });
       }
-
       const existingCategory = await prisma.categories.findUnique({
         where: { id: category_id },
       });
-
       if (!existingCategory) {
         return res.status(404).json({
           ok: false,
           error: "Categoría no encontrada",
         });
       }
-
       const normalized_title = title.toLowerCase().trim();
-
       const existingCategoryWithTitle = await prisma.categories.findFirst({
         where: {
           title: normalized_title,
           id: { not: category_id },
         },
       });
-
       if (existingCategoryWithTitle) {
         return res.status(400).json({
           ok: false,
           error: "Ya existe una categoría con este título",
         });
       }
-
       let image_url = existingCategory.image;
-
       if (image) {
         if (existingCategory.image) {
           const imagePath = this.extractPathFromPublicUrl(
@@ -702,7 +632,6 @@ class ProductServices {
             await deleteImage(imagePath);
           }
         }
-
         const fileName = `category-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
         const buffer: Buffer =
           (image as any).buffer ?? fs.readFileSync((image as any).path);
@@ -712,7 +641,6 @@ class ProductServices {
           "categories",
           image.mimetype,
         );
-
         if (result.url) {
           image_url = result.url;
         } else {
@@ -723,7 +651,6 @@ class ProductServices {
           });
         }
       }
-
       await prisma.categories.update({
         where: { id: category_id },
         data: {
@@ -731,7 +658,6 @@ class ProductServices {
           image: image_url,
         },
       });
-
       return res.status(200).json({
         ok: true,
         message: "Categoría actualizada exitosamente",
@@ -744,20 +670,16 @@ class ProductServices {
       });
     }
   }
-
   async categoryChangeStatus(req: Request, res: Response) {
     try {
       const { category_id, status } =
         req.params as unknown as UpdateCategoryStatusSchema;
-
       const statusNumber = parseInt(status);
-
       const status_map: { [key: number]: CategoryStatus } = {
         1: CategoryStatus.active,
         2: CategoryStatus.inactive,
         3: CategoryStatus.deleted,
       };
-
       if (!status_map[statusNumber] || isNaN(statusNumber)) {
         return res.status(400).json({
           ok: false,
@@ -765,20 +687,17 @@ class ProductServices {
             "Estado de categoría inválido. Debe ser activo(1), inactivo(2) o eliminado(3)",
         });
       }
-
       await prisma.categories.update({
         where: { id: category_id },
         data: {
           status: status_map[statusNumber],
         },
       });
-
       const statusMessages = {
         1: "activada",
         2: "desactivada",
         3: "eliminada",
       };
-
       return res.status(200).json({
         ok: true,
         message: `Categoría ${statusMessages[statusNumber as keyof typeof statusMessages]} exitosamente`,
@@ -791,7 +710,6 @@ class ProductServices {
       });
     }
   }
-
   async getPublicCategories(req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
@@ -820,7 +738,6 @@ class ProductServices {
       const categoryId = (req.query.categoryId as string) || undefined;
       const sortBy = (req.query.sortBy as string) || undefined;
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
-
       const skip = (page - 1) * limit;
       const where: any = { is_active: true, state: "active" };
       if (title) where.title = { contains: title, mode: "insensitive" };
@@ -860,7 +777,6 @@ class ProductServices {
       });
     }
   }
-
   async getPublicProductById(req: Request, res: Response) {
     try {
       const { id } = req.params as { id: string };
@@ -891,5 +807,4 @@ class ProductServices {
     }
   }
 }
-
 export default ProductServices;

@@ -1,19 +1,14 @@
-/// <reference types="node" />
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import fs from 'fs';
 import path from 'path';
-
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL as string });
 const prisma = new PrismaClient({ adapter });
 const BACKUP_FILE = path.join(__dirname, 'db-backup.json');
-
 async function backup() {
   console.log('📦 Iniciando backup de la base de datos...');
-  
   try {
-    // Fallback dinámico para BusinessData ante drift de columnas
     const businessColumnsRows: { column_name: string }[] = await prisma.$queryRawUnsafe(`
       SELECT column_name
       FROM information_schema.columns
@@ -29,7 +24,6 @@ async function backup() {
       ...row,
       bankData: bankDataAll.filter(b => b.businessId === row.id)
     }));
-
     const data = {
       users: await prisma.user.findMany(),
       admins: await prisma.admin.findMany(),
@@ -44,7 +38,6 @@ async function backup() {
       businessData,
       colorPalette: await prisma.colorPalette.findMany(),
     };
-
     fs.writeFileSync(BACKUP_FILE, JSON.stringify(data, null, 2));
     console.log(`✅ Backup guardado exitosamente en: ${BACKUP_FILE}`);
     console.log(`📊 Resumen:
@@ -59,20 +52,14 @@ async function backup() {
     process.exit(1);
   }
 }
-
 async function restore() {
   console.log('♻️ Iniciando restauración de la base de datos...');
-  
   if (!fs.existsSync(BACKUP_FILE)) {
     console.error('❌ No se encontró archivo de backup');
     process.exit(1);
   }
-
   try {
     const data = JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf-8'));
-
-    // Limpiar tablas en orden correcto (por dependencias)
-    // Nota: Prisma migrate reset ya limpia, pero esto asegura si se corre standalone
     console.log('🧹 Limpiando tablas existentes...');
     await prisma.businessBankData.deleteMany();
     await prisma.businessData.deleteMany();
@@ -87,10 +74,7 @@ async function restore() {
     await prisma.colorPalette.deleteMany();
     await prisma.admin.deleteMany();
     await prisma.user.deleteMany();
-
     console.log('📥 Insertando datos...');
-
-    // Restaurar en orden de dependencias
     if (data.users?.length) await prisma.user.createMany({ data: data.users });
     if (data.admins?.length) await prisma.admin.createMany({ data: data.admins });
     if (data.categories?.length) await prisma.categories.createMany({ data: data.categories });
@@ -102,8 +86,6 @@ async function restore() {
     if (data.orders?.length) await prisma.orders.createMany({ data: data.orders });
     if (data.faq?.length) await prisma.fAQ.createMany({ data: data.faq });
     if (data.colorPalette?.length) await prisma.colorPalette.createMany({ data: data.colorPalette });
-    
-    // Business Data con relaciones anidadas
     if (data.businessData?.length) {
       for (const business of data.businessData) {
         const { bankData, ...businessInfo } = business;
@@ -118,17 +100,14 @@ async function restore() {
         });
       }
     }
-
     console.log('✅ Restauración completada exitosamente');
   } catch (error) {
     console.error('❌ Error durante la restauración:', error);
     process.exit(1);
   }
 }
-
 async function main() {
   const mode = process.argv[2];
-  
   if (mode === '--backup') {
     await backup();
   } else if (mode === '--restore') {
@@ -141,7 +120,6 @@ async function main() {
     `);
   }
 }
-
 main()
   .catch((e) => {
     console.error(e);

@@ -6,7 +6,6 @@ import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { SalesForm } from "@/Components/Admin/Sales/SalesForm";
 import { useMediaQuery, useWindowScroll } from "@mantine/hooks";
 import { FiPlus } from "react-icons/fi";
-
 export function Sales() {
     const [opened, setOpened] = useState<boolean>(false)
     const isMobile = useMediaQuery("(max-width: 768px)")
@@ -28,11 +27,9 @@ export function Sales() {
                     Resumen detallado de ingresos y gestión de pedidos.
                 </Text>
             </Flex>
-
             <Box mt="lg">
                 <SalesTable />
             </Box>
-
             <Affix position={{ bottom: 20, right: 20 }}>
                 <Transition transition="slide-up" mounted={true}>
                     {(transitionStyles) => (
@@ -61,7 +58,6 @@ export function Sales() {
                     )}
                 </Transition>
             </Affix>
-
             {opened && <ModalWrapper
                 size="90vw"
                 fullScreen={isMobile}

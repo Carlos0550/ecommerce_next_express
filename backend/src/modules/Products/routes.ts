@@ -3,12 +3,8 @@ import { saveProduct, saveCategory, getAllProducts, updateProductController, cha
 import { uploadMultipleImages, handleImageUploadError, uploadSingleImage } from "../../middlewares/image.middleware";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import ProductServices from "./services/product.services";
- 
-// Endpoint para mejora de título y descripción con IA
-
 const router = Router();
 const product_service = new ProductServices
-
 router.post(
     "/save-product",
      requireAuth,
@@ -17,16 +13,11 @@ router.post(
      saveProduct,
      (req: any, res: any) => product_service.saveProduct(req, res)
 )
-
 router.post("/categories", requireAuth, requireRole([1]), uploadSingleImage("image"), saveCategory, (req, res) => product_service.saveCategory(req, res))
 router.put("/categories/:category_id", requireAuth, requireRole([1]), uploadSingleImage("image"), (req, res) => product_service.updateCategory(req, res))
 router.get("/categories", requireAuth, requireRole([1]), (req, res) => product_service.getAllCategories(req, res))
-
 router.get("/", requireAuth, getAllProducts, requireRole([1]),(req, res) => product_service.getAllProducts(req, res))
-
-
 router.delete("/:product_id", requireAuth,requireRole([1]), (req, res) => product_service.deleteProduct(req, res))
-
 router.put(
     "/:product_id",
     requireAuth,
@@ -36,7 +27,6 @@ router.put(
     updateProductController,
     (req: any, res: any) => product_service.updateProduct(req, res)
 )
-
 router.patch(
     "/categories/status/:category_id/:status",
     requireAuth,
@@ -44,7 +34,6 @@ router.patch(
     changeCategoryStatus,
     (req, res) => product_service.categoryChangeStatus(req, res)
 )
-
 router.patch(
     "/status/:product_id/:state",
     requireAuth,
@@ -52,23 +41,18 @@ router.patch(
     changeProductStatus,
     (req, res) => product_service.productChangeStatus(req, res)
 )
-
 router.patch(
     "/stock/:product_id/:quantity",
     requireAuth,
     requireRole([1]),
     (req, res) => product_service.updateStock(req, res)
 )
-
-// AI: mejora de título y descripción del producto (no modifica hasta confirmar)
 router.post(
     "/ai/enhance/:product_id",
     requireAuth,
     requireRole([1]),
     (req, res) => product_service.enhanceProductContent(req, res)
 )
-
-//Public endpoints
 router.get("/public", (req, res) => product_service.getPublicProducts(req, res))
 router.get("/public/categories", (req, res) => product_service.getPublicCategories(req, res))
 router.get("/public/:id", (req, res) => product_service.getPublicProductById(req, res))

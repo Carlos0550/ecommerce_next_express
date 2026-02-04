@@ -13,87 +13,73 @@ import {
   Divider,
   SimpleGrid,
 } from "@mantine/core";
-import { useInfiniteProducts, Products, ProductsResponse } from "@/Api/useProducts";
 import ProductsCards from "./sub-components/ProductsCards";
-import { Categories, CategoriesResponse, useCategories } from "@/Api/useCategories";
-import { BusinessData } from "@/Api/useBusiness";
+import { useInfiniteProducts } from "@/hooks/usePublicProducts";
+import { usePublicCategories } from "@/hooks/usePublicCategories";
 import CategoriesCards from "./sub-components/CategoriesCards";
 import Hero from "./sub-components/Hero";
 import EmptyState from "./sub-components/EmptyState";
-import { useAppContext } from "@/providers/AppContext";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CartWrapper from "../Cart/CartWrapper";
 import Onboarding from "./sub-components/Onboarding";
 import { FiSearch, FiPackage } from "react-icons/fi";
-
+import { capitalizeTexts } from "@/utils/constants";
+import { useWindowSize } from "@/utils/hooks/useWindowSize";
+export interface PublicCategory {
+  id: string;
+  title: string;
+}
+export interface PublicProduct {
+  id: string;
+  title: string;
+  price: number;
+  images: string[];
+}
 type Props = {
-  initialProducts?: ProductsResponse;
-  initialCategories?: CategoriesResponse;
-  business?: BusinessData | null;
+  initialProducts?: any;
+  initialCategories?: any;
+  business?: any | null;
 };
-
 export default function Home({ initialProducts, initialCategories, business }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  // Source of truth: URL
   const urlTitle = searchParams.get("title") || "";
   const urlCategoryId = searchParams.get("categoryId") || "";
-
-  // Local state for the search input (to be fast)
   const [search, setSearch] = useState(urlTitle);
   const [debouncedSearch] = useDebouncedValue(search, 500);
-
-  // Synchronization: URL -> Search Input (only if they differ)
   useEffect(() => {
-    if (urlTitle !== search) {
-      setSearch(urlTitle);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSearch(urlTitle);
   }, [urlTitle]);
-
   const { data, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
     limit: 30,
     title: debouncedSearch,
     categoryId: urlCategoryId,
     initialData: initialProducts,
   });
-
-  const { data: categoriesData, isLoading: isLoadingCats } = useCategories(initialCategories);
-  const categories: Categories[] = categoriesData?.data ?? [];
-
-  const products: Products[] = useMemo(
-    () => (Array.isArray(data?.pages) ? data.pages.flatMap((p) => p?.data?.products ?? []) : []),
+  const { data: categoriesData, isLoading: isLoadingCats } = usePublicCategories(initialCategories);
+  const categories: any[] = categoriesData ?? [];
+  const products: any[] = useMemo(
+    () => (Array.isArray(data?.pages) ? data.pages.flatMap((p) => p?.data?.products ?? p?.products ?? []) : []),
     [data]
   );
-
-  const {
-    utils: { capitalizeTexts, isMobile },
-  } = useAppContext();
-
+  const { isMobile } = useWindowSize(); 
   const h1Title = useMemo(() => {
     if (business?.name) return business.name;
     return "Tienda Online";
   }, [business]);
-
-  // Synchronization: Search Input -> URL
-  // Only update URL if debouncedSearch or urlCategoryId changes
   useEffect(() => {
     if (debouncedSearch === urlTitle) return;
-
     const params = new URLSearchParams(searchParams.toString());
     if (debouncedSearch) {
       params.set("title", debouncedSearch);
     } else {
       params.delete("title");
     }
-    
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [debouncedSearch, pathname, router, urlTitle, searchParams]);
-
   const handleCategoryChange = (catId: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (catId) {
@@ -102,8 +88,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
       params.delete("categoryId");
     }
     router.push(`${pathname}?${params.toString()}#productos`, { scroll: false });
-    
-    // Scroll handling
     if (catId) {
         setTimeout(() => {
             const el = document.getElementById("productos");
@@ -111,9 +95,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
         }, 100);
     }
   };
-
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -128,7 +110,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
       obs.disconnect();
     };
   }, [hasNextPage, fetchNextPage]);
-
   return (
     <Box pb={80}>
       {!business ? (
@@ -145,9 +126,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
               backgroundImage={business?.hero_image}
             />
           )}
-
-
-
           {categories.length > 0 && (
             <Box id="categorias" my={50}>
               <Container size="xl">
@@ -159,7 +137,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     Explorá nuestras categorías y encontrá tu estilo ideal.
                   </Text>
                 </Stack>
-
                 {isLoadingCats ? (
                   <Center h={200}>
                     <Loader variant="dots" color="dark" />
@@ -170,9 +147,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
               </Container>
             </Box>
           )}
-
           <Divider my={40} color="rgba(0,0,0,0.05)" />
-
           <Box id="productos-seccion" pt={20}>
             <Container size="xl">
               <Flex justify="space-between" align="flex-end" mb={40} wrap="wrap" gap="md">
@@ -184,7 +159,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     Calidad artesanal y materiales de primera.
                   </Text>
                 </Stack>
-
                 <Flex gap={10} wrap={"wrap"} style={{ flex: isMobile ? "1 1 100%" : "0 0 auto" }}>
                   <Input
                     placeholder="Buscar..."
@@ -214,7 +188,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
                   )}
                 </Flex>
               </Flex>
-
               <SimpleGrid
                 id="productos"
                 cols={{ base: 2, sm: 3, lg: 4 }}
@@ -241,7 +214,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
                   </Box>
                 )}
               </SimpleGrid>
-
               <Box
                 ref={(el) => {
                   sentinelRef.current = el;

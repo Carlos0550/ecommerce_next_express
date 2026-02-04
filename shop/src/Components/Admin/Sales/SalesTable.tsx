@@ -3,15 +3,14 @@ import { DatePickerInput } from "@mantine/dates"
 import { LineChart } from "@mui/x-charts"
 import { useMediaQuery } from "@mantine/hooks"
 import { theme } from "@/theme"
-import type { Product } from "@/Api/admin/ProductsApi"
-import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale, useGetSalesAnalytics } from "@/Api/admin/SalesApi"
+import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale, useGetSalesAnalytics } from "@/hooks/useAdminSales"
 import type { PaymentMethods, SaleSource, ManualProductItem } from "./SalesForm"
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper"
 import React, { useMemo, useState } from "react"
 import { SalesForm } from "./SalesForm"
 import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiArrowLeft, FiArrowRight } from "react-icons/fi"
 import dayjs from "dayjs"
-
+import { capitalizeTexts } from "@/utils/constants"
 export type SaleItemOption = { name: string; value?: string; values?: string[] }
 export type SaleItem = { id: string; title: string; price: number; quantity: number; options?: SaleItemOption[] }
 export type Sales = {
@@ -27,20 +26,18 @@ export type Sales = {
     email?: string,
   } | null,
   orders?: { buyer_name?: string; buyer_email?: string; buyer_phone?: string }[],
-  products: Product[],
+  products: any[],
   manualProducts?: ManualProductItem[],
   items?: SaleItem[],
   loadedManually?: boolean,
   processed?: boolean
   declined?: boolean
 }
-
 export default function SalesTable() {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [perPage, setPerPage] = useState<number>(5)
   const [preset, setPreset] = useState<string>("HOY")
   const [range, setRange] = useState<[Date | null, Date | null]>([null, null])
-
   const startEndFromPreset = useMemo(() => {
     const today = new Date();
     const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
@@ -71,7 +68,6 @@ export default function SalesTable() {
       }
     }
   }, [preset, range])
-
   const toDateOnly = (d: unknown) => {
     if (!d) return undefined;
     const date = d instanceof Date ? d : new Date(d as unknown as string);
@@ -81,37 +77,33 @@ export default function SalesTable() {
     const day = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
-
   const start_date = toDateOnly(startEndFromPreset.start)
   const end_date = toDateOnly(startEndFromPreset.end)
-
   const [pendingOnly, setPendingOnly] = useState<boolean>(false)
   const { data, isLoading } = useGetSales(currentPage, perPage, start_date, end_date, pendingOnly)
   const { data: analytics, isLoading: isLoadingAnalytics } = useGetSalesAnalytics(start_date, end_date)
-  
   const processSaleMutation = useProcessSale()
   const getReceiptMutation = useGetSaleReceipt()
   const declineSaleMutation = useDeclineSale()
   const deleteSaleMutation = useDeleteSale()
-
   const [receiptOpen, setReceiptOpen] = useState<boolean>(false)
   const [receiptUrl, setReceiptUrl] = useState<string>("")
-
   const openReceipt = (saleId: string) => {
     getReceiptMutation.mutate(saleId, {
-      onSuccess: (url) => {
-        setReceiptUrl(url);
-        setReceiptOpen(true);
-        return
+      onSuccess: (response: any) => {
+        if (response?.url) {
+            setReceiptUrl(response.url);
+            setReceiptOpen(true);
+        } else {
+            console.warn("Valid response but no URL", response);
+        }
       },
       onError: () => {
         setReceiptUrl("");
         setReceiptOpen(false);
-        return
       }
     });
   }
-
   const sales: Sales[] = (data?.sales ?? []) as Sales[]
   const pagination = data?.pagination as undefined | {
     total: number,
@@ -123,7 +115,6 @@ export default function SalesTable() {
   }
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`)
   const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), [])
-
   const [viewProductsOpen, setViewProductsOpen] = useState<boolean>(false)
   const [selectedSale, setSelectedSale] = useState<Sales | null>(null)
   const [viewBuyerOpen, setViewBuyerOpen] = useState<boolean>(false)
@@ -131,57 +122,45 @@ export default function SalesTable() {
   const [editOpen, setEditOpen] = useState<boolean>(false)
   const [editSale, setEditSale] = useState<Sales | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  // Handlers que resetean página
   const handlePresetChange = (value: string) => {
     setPreset(value)
     setCurrentPage(1)
   }
-
   const handleRangeChange = (value: [Date | null, Date | null]) => {
     setRange(value)
     setCurrentPage(1)
   }
-
   const openProducts = (sale: Sales) => {
     setSelectedSale(sale)
     setViewProductsOpen(true)
   }
-
   const closeProducts = () => {
     setViewProductsOpen(false)
     setSelectedSale(null)
   }
-
   const openBuyer = (sale: Sales) => {
     setBuyerSale(sale)
     setViewBuyerOpen(true)
   }
-
   const closeBuyer = () => {
     setViewBuyerOpen(false)
     setBuyerSale(null)
   }
-
   const formatDate = (value?: string) => {
     if (!value) return "—"
     const d = new Date(value)
     return isNaN(d.getTime()) ? String(value) : d.toLocaleString('es-AR')
   }
-
   const [declineModalOpen, setDeclineModalOpen] = useState(false)
   const [saleToDecline, setSaleToDecline] = useState<string | null>(null)
   const [declineReason, setDeclineReason] = useState("")
-
   const handleDeclineSale = (saleId: string) => {
     setSaleToDecline(saleId)
     setDeclineReason("")
     setDeclineModalOpen(true)
   }
-
   const confirmDecline = () => {
     if (!saleToDecline || !declineReason.trim()) return
-
     declineSaleMutation.mutate(
       { saleId: saleToDecline, reason: declineReason },
       {
@@ -193,14 +172,12 @@ export default function SalesTable() {
       }
     );
   }
-
   const renderActionButtons = (sale: Sales) => {
     return (
       <Group gap="xs" wrap="nowrap">
         <ActionIcon variant="light" color="blue" onClick={() => openProducts(sale)} title="Ver productos">
            <FiShoppingCart size={16} />
         </ActionIcon>
-        
         {sale.source === 'WEB' && (
           <React.Fragment>
             {processSaleMutation.isPending ? (
@@ -235,17 +212,14 @@ export default function SalesTable() {
             </ActionIcon>
           </React.Fragment>
         )}
-        
         <ActionIcon variant="light" color="indigo" onClick={() => openBuyer(sale)} title="Ver comprador">
             <FiUsers size={16} />
         </ActionIcon>
-
         {sale.source !== 'WEB' && (
           <ActionIcon variant="light" color="gray" onClick={() => { setEditSale(sale); setEditOpen(true); }} title="Editar">
              <FiEdit size={16} />
           </ActionIcon>
         )}
-
         <ActionIcon color="red" variant="light" aria-label="Eliminar"
           onClick={() => { setDeletingId(sale.id); deleteSaleMutation.mutate(sale.id, { onSettled: () => setDeletingId(null) }); }}
           loading={deleteSaleMutation.isPending && deletingId === sale.id}
@@ -257,7 +231,6 @@ export default function SalesTable() {
       </Group>
     )
   }
-
   const renderStatusBadge = (sale: Sales) => {
     if (sale.source === "WEB") {
       if (sale.processed) return <Badge color="green" variant="dot">Procesada</Badge>
@@ -266,21 +239,17 @@ export default function SalesTable() {
     }
     return <Badge color="gray" variant="dot">Manual</Badge>
   }
-
   const chartData = useMemo(() => {
     if (!analytics?.timeseries?.by_day) return []
-    return analytics.timeseries.by_day.map(point => ({
+    return analytics.timeseries.by_day.map((point: { date: string; revenue: number }) => ({
         date: dayjs(point.date).format('DD MMM'),
         ventas: point.revenue
     }))
   }, [analytics])
-
   const totalToday = useMemo(() => data?.totalSalesByDate || 0, [data?.totalSalesByDate])
-
-
   return (
     <Box>
-      {/* Dashboard Stats */}
+      {}
       <SimpleGrid cols={{ base: 1, sm: 3 }} mb="xl" spacing="lg">
         <Paper withBorder p="md" radius="md" bg="rose.6" c="white">
             <Group justify="space-between" mb="xs">
@@ -294,7 +263,6 @@ export default function SalesTable() {
                 </Stack>
             )}
         </Paper>
-
         <Paper withBorder p="md" radius="md">
             <Group justify="space-between" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Vendido Hoy</Text>
@@ -307,7 +275,6 @@ export default function SalesTable() {
                 <Text size="xs" c="dimmed">Ingresos brutos de hoy</Text>
             </Stack>
         </Paper>
-
         <Paper withBorder p="md" radius="md">
             <Group justify="space-between" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Ventas Totales</Text>
@@ -321,20 +288,19 @@ export default function SalesTable() {
             </Stack>
         </Paper>
       </SimpleGrid>
-
-      {/* Trend Chart */}
+      {}
       {!isMobile && (preset === "ULTIMOS_7" || preset === "MES") && analytics?.timeseries?.by_day && analytics.timeseries.by_day.length >= 1 && (
         <Paper withBorder p="xl" radius="md" mb="xl">
             <Text fw={700} mb="lg">Tendencia de Ingresos</Text>
             <Box h={220}>
                 <LineChart
                     xAxis={[{
-                        data: chartData.map((_, i) => i),
+                        data: chartData.map((_: { date: string; ventas: number }, i: number) => i),
                         scaleType: "point",
                         valueFormatter: (value: number) => chartData[value]?.date || "",
                     }]}
                     series={[{
-                        data: chartData.map(d => d.ventas),
+                        data: chartData.map((d: { ventas: number }) => d.ventas),
                         area: true,
                         color: "#e64980",
                         curve: "catmullRom",
@@ -349,8 +315,7 @@ export default function SalesTable() {
             </Box>
         </Paper>
       )}
-
-      {/* Filters Section */}
+      {}
       <Paper withBorder p="sm" radius="md" mb="md" bg="gray.0">
         <Group justify="space-between" align="center" wrap="wrap">
             <Group gap="md">
@@ -380,7 +345,6 @@ export default function SalesTable() {
                     />
                 )}
             </Group>
-            
             <Group gap="lg">
                 <Checkbox 
                     label="Pendientes" 
@@ -388,7 +352,6 @@ export default function SalesTable() {
                     checked={pendingOnly} 
                     onChange={(e) => { setPendingOnly(e.currentTarget.checked); setCurrentPage(1); }} 
                 />
-                
                 <Group gap="xs" align="center">
                     <Text size="sm" fw={600} c="dimmed">Resultados:</Text>
                     <SegmentedControl
@@ -402,7 +365,6 @@ export default function SalesTable() {
             </Group>
         </Group>
       </Paper>
-
       {isLoading ? (
         <Group justify="center" align="center" h={200}>
           <Loader color="rose" />
@@ -416,7 +378,6 @@ export default function SalesTable() {
         <Stack>
           {sales.map((sale) => {
             const finalTotal = Number(sale.total) || 0
-
             return (
               <Paper key={sale.id} withBorder p="md" radius="md" >
                 <Stack gap="xs">
@@ -431,14 +392,11 @@ export default function SalesTable() {
                     </Stack>
                     <Badge color="blue" variant="light" size="sm">{sale.payment_method}</Badge>
                   </Group>
-                  
                   <Divider variant="dashed" />
-                  
                   <Group justify="space-between">
                     <Text size="sm">Total</Text>
                     <Text fw={800} fz="lg" c="rose.7">{currency.format(finalTotal)}</Text>
                   </Group>
-                  
                   {renderActionButtons(sale)}
                 </Stack>
               </Paper>
@@ -483,7 +441,7 @@ export default function SalesTable() {
                         </Table.Td>
                         <Table.Td>
                           <Stack gap={2}>
-                            <Text fw={600} size="sm">{sale.user?.name || sale.orders?.[0]?.buyer_name || 'Invitado'}</Text>
+                            <Text fw={600} size="sm">{capitalizeTexts(sale.user?.name || sale.orders?.[0]?.buyer_name || 'Consumidor Final')}</Text>
                             <Text c="dimmed" size="xs" style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {sale.user?.email || sale.orders?.[0]?.buyer_email || '—'}
                             </Text>
@@ -516,7 +474,6 @@ export default function SalesTable() {
           </Paper>
         </React.Fragment>
       )}
-
       {pagination && (
         <Group justify="space-between" mt="xl" px="sm">
           <Text size="sm" c="dimmed" fw={500}>
@@ -546,7 +503,6 @@ export default function SalesTable() {
           </Group>
         </Group>
       )}
-
       {viewProductsOpen && selectedSale && (
         <ModalWrapper
           opened={viewProductsOpen}
@@ -590,7 +546,6 @@ export default function SalesTable() {
             ) : (
               <Text c="dimmed">Sin productos</Text>
             )}
-
             {(() => {
               const finalTotal = Number(selectedSale.total) || 0
               const taxPct = Number(selectedSale.tax) || 0

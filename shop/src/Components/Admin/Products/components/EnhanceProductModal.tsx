@@ -1,8 +1,6 @@
 import { Stack, Text, Textarea, TextInput, Group, Button } from '@mantine/core';
-import type { Product } from '@/Api/admin/ProductsApi';
-
 interface EnhanceProductModalProps {
-  product: Product | null;
+  product: any | null;
   enhanceTitle: string;
   enhanceDescription: string;
   additionalContext: string;
@@ -15,7 +13,6 @@ interface EnhanceProductModalProps {
   onApply: () => void;
   onClose: () => void;
 }
-
 export const EnhanceProductModal = ({
   product,
   enhanceTitle,
@@ -31,13 +28,11 @@ export const EnhanceProductModal = ({
   onClose,
 }: EnhanceProductModalProps) => {
   if (!product) return null;
-
   return (
     <Stack>
       <Text size="sm" c="dimmed">
         La IA analizará las imágenes del producto para sugerir mejoras.
       </Text>
-
       <Textarea
         label="Contexto adicional (opcional)"
         description="Ej: beneficios clave, materiales, ocasión de uso, opciones de compra"
@@ -46,7 +41,6 @@ export const EnhanceProductModal = ({
         autosize
         minRows={2}
       />
-
       <Group justify="flex-end">
         <Button
           variant="light"
@@ -56,13 +50,11 @@ export const EnhanceProductModal = ({
           Re-generar sugerencias
         </Button>
       </Group>
-
       <TextInput
         label="Título sugerido"
         value={enhanceTitle}
         onChange={(e) => onTitleChange(e.currentTarget.value)}
       />
-
       <Textarea
         label="Descripción sugerida"
         value={enhanceDescription}
@@ -70,7 +62,6 @@ export const EnhanceProductModal = ({
         autosize
         minRows={4}
       />
-
       <Group justify="flex-end">
         <Button
           variant="light"
@@ -90,4 +81,3 @@ export const EnhanceProductModal = ({
     </Stack>
   );
 };
-

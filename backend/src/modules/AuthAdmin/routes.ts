@@ -1,16 +1,12 @@
 import { Router } from 'express';
 import AuthServices from '@/modules/User/services/auth_services';
 import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
-
 const router = Router();
 const authServices = new AuthServices();
-
 router.post('/login', (req, _res, next) => next(), (req, res) => authServices.loginAdmin(req, res));
 router.post('/register', (req, _res, next) => next(), (req, res) => authServices.registerAdmin(req, res));
 router.post('/password/reset', (req, _res, next) => next(), (req, res) => authServices.resetPasswordAdmin(req, res));
 router.post('/password/change', requireAuth, requireRole([1]), (req, res) => authServices.changePasswordAdmin(req, res));
-
-// Opcional: validar token para admins (compartido con /api/validate-token)
 router.get('/validate-token', requireAuth, (req, res) => {
   const user = (req as any).user;
   res.json({
@@ -25,5 +21,4 @@ router.get('/validate-token', requireAuth, (req, res) => {
     subjectType: 'admin',
   });
 });
-
 export default router;

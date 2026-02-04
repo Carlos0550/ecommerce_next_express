@@ -1,40 +1,25 @@
 import { z } from 'zod';
-
-
 export const WhatsAppConfigSchema = z.object({
   whatsapp_enabled: z.boolean().optional(),
   whatsapp_allowed_remitents: z.string().optional(),
 });
-
 export type WhatsAppConfig = z.infer<typeof WhatsAppConfigSchema>;
-
-// Schema para crear sesión
 export const CreateSessionSchema = z.object({
   name: z.string().min(1, 'Nombre de sesión es requerido'),
   phone_number: z.string().min(1, 'Número de teléfono es requerido'),
 });
-
 export type CreateSessionRequest = z.infer<typeof CreateSessionSchema>;
-
-// Schema para mensaje de prueba
 export const TestMessageSchema = z.object({
   to: z.string().min(1, 'Número destino es requerido'),
   message: z.string().min(1, 'Mensaje es requerido'),
 });
-
 export type TestMessageRequest = z.infer<typeof TestMessageSchema>;
-
-// Estados de sesión de conversación en Redis
 export type ConversationState = 'idle' | 'collecting' | 'reviewing' | 'confirming' | 'searching' | 'selecting' | 'editing';
-
-// Mensaje en el historial de conversación
 export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: Date;
 }
-
-// Datos del producto en construcción
 export interface ProductData {
   images: string[];
   price?: number;
@@ -53,8 +38,6 @@ export interface ProductData {
     };
   };
 }
-
-// Sesión de conversación de WhatsApp
 export interface WhatsAppConversationSession {
   adminId: number;
   phone: string;
@@ -67,9 +50,8 @@ export interface WhatsAppConversationSession {
   searchResults?: Array<{ id: string; title: string; price: number; stock: number; state: string }>;
   userTone?: 'argentino' | 'formal' | 'neutral';
   greetingTone?: 'casual' | 'formal';
-  hasGreeted?: boolean; // Indica si el agente ya envió un saludo inicial
-  categoryPromptShown?: boolean; // Indica si ya se mostró el prompt de categorías
-  // Acción pendiente que se ejecutará después de seleccionar un producto
+  hasGreeted?: boolean; 
+  categoryPromptShown?: boolean; 
   pendingAction?: {
     action: 'update_product' | 'delete_product';
     data?: {
@@ -79,8 +61,6 @@ export interface WhatsAppConversationSession {
     };
   };
 }
-
-// Respuesta de la IA para el flujo conversacional
 export interface AIConversationResponse {
   message: string;
   action: 
@@ -104,7 +84,7 @@ export interface AIConversationResponse {
     stock?: number;
     category_id?: string;
     category_name?: string;
-    category?: string; // Alias para category_name (la IA puede usar cualquiera)
+    category?: string; 
     additional_context?: string;
     product_id?: string;
     draft?: boolean;
@@ -115,14 +95,13 @@ export interface AIConversationResponse {
     update_value?: string | number;
     regenerate_with_ai?: boolean;
     new_images?: string[];
-    product_name?: string; // Nombre del producto mencionado por el usuario
-    user_context?: string; // Correcciones del usuario (ej: "no tiene estrellas de colores")
+    product_name?: string; 
+    user_context?: string; 
     updates?: Array<{
       field: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';
       value?: string | number;
       regenerate_with_ai?: boolean;
     }>;
-    // Acción pendiente que se ejecutará después de seleccionar el producto
     pending_action?: {
       action: 'update_product' | 'delete_product';
       update_field?: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';
@@ -132,16 +111,12 @@ export interface AIConversationResponse {
   };
   next_state: ConversationState;
 }
-
-// Intención detectada en fase de revisión (mantenido para compatibilidad)
 export type ReviewIntent =
   | { action: 'approve' }
   | { action: 'cancel' }
   | { action: 'edit_field'; field: string; newValue: string }
   | { action: 'replace_description'; description: string }
   | { action: 'unclear' };
-
-// Datos extraídos por la IA del mensaje
 export interface ExtractedProductData {
   price?: number;
   stock?: number;
@@ -149,8 +124,6 @@ export interface ExtractedProductData {
   additionalContext?: string;
   missingFields: string[];
 }
-
-// Webhook event types
 export interface WebhookMessageReceived {
   event: 'messages.received';
   session_id: number;
@@ -169,7 +142,6 @@ export interface WebhookMessageReceived {
     groupId?: string;
   };
 }
-
 export interface WebhookSessionStatus {
   event: 'session.status';
   session_id: number;
@@ -179,7 +151,6 @@ export interface WebhookSessionStatus {
     phone_number?: string;
   };
 }
-
 export interface WebhookQRUpdated {
   event: 'qr.updated';
   session_id: number;
@@ -188,7 +159,6 @@ export interface WebhookQRUpdated {
     qr_code: string;
   };
 }
-
 export interface WebhookMessageUpsert {
   event: 'messages.upsert';
   session_id: number;
@@ -208,10 +178,7 @@ export interface WebhookMessageUpsert {
     fromMe?: boolean;
   };
 }
-
 export type WebhookEvent = WebhookMessageReceived | WebhookSessionStatus | WebhookQRUpdated | WebhookMessageUpsert;
-
-// Response types
 export interface WhatsAppConfigResponse {
   whatsapp_enabled: boolean;
   whatsapp_connected: boolean;
@@ -220,18 +187,15 @@ export interface WhatsAppConfigResponse {
   has_access_token: boolean;
   whatsapp_allowed_remitents: string | null;
 }
-
 export interface SessionCreateResponse {
   success: boolean;
   session_id: number;
   message: string;
 }
-
 export interface QRCodeResponse {
   success: boolean;
   qr_code: string;
 }
-
 export interface SessionStatusResponse {
   success: boolean;
   status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready' | 'no_session';

@@ -4,26 +4,27 @@ import { showNotification } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { useState, useMemo, useEffect } from "react";
 import { FiTrash, FiShoppingCart, FiCalendar, FiCreditCard, FiPlus, FiSave, FiList, FiEdit3 } from "react-icons/fi";
-import { useGetAllProducts, type GetProductsParams, type Product } from "@/Api/admin/ProductsApi";
-import { useSaveSale, useUpdateSale } from "@/Api/admin/SalesApi";
+import { useGetAllProducts } from "@/hooks/useAdminProducts";
+import { useSaveSale, useUpdateSale } from "@/hooks/useAdminSales";
+export type Product = {
+    id: string;
+    title: string;
+    price: number;
+}
 import type { Sales } from "./SalesTable";
 export const SaleSource = ["WEB", "CAJA"] as const;
 export type SaleSource = typeof SaleSource[number];
-
 export const PaymentMethods = ["TARJETA", "EFECTIVO", "QR", "NINGUNO", "TRANSFERENCIA"] as const;
 export type PaymentMethods = typeof PaymentMethods[number];
-
 export type UserSale = {
     user_id?: string
 }
-
 export type ManualProductItem = {
     quantity: number;
     title: string;
     price: number;
     options?: Record<string, unknown>;
 }
-
 export type SaleRequest = {
     payment_method: PaymentMethods
     source: SaleSource
@@ -37,17 +38,14 @@ export type SaleRequest = {
     items?: { product_id: string; quantity: number; options?: Record<string, unknown> }[]
     sale_date?: string
 }
-
 type Props = {
     onClose: () => void,
     sale?: Sales
 }
-
 const formatDateOnly = (d: unknown) => {
     const m = dayjs(d as string | number | Date);
     return m.isValid() ? m.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
 };
-
 const getInitialFormValue = (sale?: Sales): SaleRequest => {
     if (sale) {
         const pm = Array.isArray((sale as Sales & { paymentMethods?: { method: PaymentMethods; amount: number }[] }).paymentMethods) ? (sale as Sales & { paymentMethods?: { method: PaymentMethods; amount: number }[] }).paymentMethods : [];
@@ -74,54 +72,44 @@ const getInitialFormValue = (sale?: Sales): SaleRequest => {
         sale_date: formatDateOnly(new Date()),
     };
 };
-
 const getInitialSaleDate = (sale?: Sales): Date | null => {
     if (sale) {
         return dayjs(sale.created_at).toDate();
     }
     return dayjs().toDate();
 };
-
 const getInitialManualText = (sale?: Sales): string => {
     if (sale && Array.isArray(sale.manualProducts)) {
         return sale.manualProducts.map(mi => `${mi.quantity} ${mi.title} ${mi.price}`).join("\n");
     }
     return "";
 };
-
 const getInitialSelectedProducts = (sale?: Sales): Product[] => {
     if (sale && sale.products) {
         return sale.products as Product[];
     }
     return [];
 };
-
 export function SalesForm({ onClose, sale }: Props) {
     const saveSale = useSaveSale();
     const updateSale = useUpdateSale();
-
     const [saleDate, setSaleDate] = useState<Date | null>(() => getInitialSaleDate(sale));
     const [formValue, setFormValue] = useState<SaleRequest>(() => getInitialFormValue(sale));
-
     const [manualText, setManualText] = useState<string>(() => getInitialManualText(sale));
     const [searchTitle, setSearchTitle] = useState<string>("");
     const [selectValue, setSelectValue] = useState<string | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Product[]>(() => getInitialSelectedProducts(sale));
-
-    const productQueryParams: GetProductsParams = useMemo(() => ({
+    const productQueryParams: any = useMemo(() => ({
         page: 1,
         limit: 10,
         state: "active",
         title: searchTitle || undefined,
     }), [searchTitle]);
-
     const { data: productsRes, isLoading } = useGetAllProducts(productQueryParams);
-
     const productsOptions = useMemo(() => {
         const items = productsRes?.products ?? [];
         return items.map(p => ({ value: p.id, label: p.title }));
     }, [productsRes]);
-
     const addProductById = (id?: string | null) => {
         if (!id) return;
         const sourceList = productsRes?.products ?? [];
@@ -136,7 +124,6 @@ export function SalesForm({ onClose, sale }: Props) {
             return next;
         });
     };
-
     const removeProduct = (id: string) => {
         setSelectedProducts(prev => {
             const next = prev.filter(p => p.id !== id);
@@ -152,7 +139,6 @@ export function SalesForm({ onClose, sale }: Props) {
         const re = /^(\d+)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ0-9\s-]+?)\s+(\d+(?:\.\d+)?)$/;
         let invalid = 0;
         for (const line of lines) {
-
             const m = line.match(re);
             if (!m) { invalid++; continue; }
             const quantity = Number(m[1]);
@@ -181,21 +167,16 @@ export function SalesForm({ onClose, sale }: Props) {
         });
     };
     const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), []);
-
-    // Derivar payment_method desde el primer método de pago
     const primaryPaymentMethod = useMemo(() => {
         const primary = formValue.payment_methods?.[0]?.method;
         return primary || formValue.payment_method;
     }, [formValue.payment_methods, formValue.payment_method]);
-
-    // Derivar tax (0 si es EFECTIVO o NINGUNO)
     const effectiveTax = useMemo(() => {
         if (primaryPaymentMethod === "EFECTIVO" || primaryPaymentMethod === "NINGUNO") {
             return 0;
         }
         return formValue.tax;
     }, [primaryPaymentMethod, formValue.tax]);
-
     const resetForm = () => {
         setFormValue(prev => ({
             payment_method: "EFECTIVO",
@@ -214,23 +195,19 @@ export function SalesForm({ onClose, sale }: Props) {
         setSelectValue(null);
         setManualInvalidCount(0);
     }
-
     useEffect(() => {
         if (updateSale.isSuccess) {
             onClose();
         }
     }, [updateSale.isSuccess, onClose])
-
     const productsSubtotal = useMemo(() => selectedProducts.reduce((acc, p) => acc + (typeof p.price === 'number' ? p.price : 0), 0), [selectedProducts]);
     const manualSubtotal = useMemo(() => (formValue.manualProducts || []).reduce((acc, item) => acc + Number(item.quantity) * Number(item.price), 0), [formValue.manualProducts]);
     const subtotal = formValue.loadedManually ? manualSubtotal : productsSubtotal;
     const finalTotal = subtotal * (1 + Number(effectiveTax) / 100);
     const paymentSum = (formValue.payment_methods || []).reduce((acc, pm) => acc + Number(pm.amount || 0), 0);
-
     const remainingBase = effectiveTax > 0 ? subtotal : finalTotal;
     const remainingAmount = Math.max(remainingBase - paymentSum, 0);
     const manualInvalid = useMemo(() => formValue.loadedManually && (manualInvalidCount > 0 || (formValue.manualProducts?.length || 0) === 0), [formValue.loadedManually, manualInvalidCount, formValue.manualProducts]);
-
     return (
         <Box>
             <Paper withBorder p="lg" radius="md" style={{ backgroundColor: '#fcfcfc' }}>
@@ -252,7 +229,6 @@ export function SalesForm({ onClose, sale }: Props) {
                             size="sm"
                         />
                     </Group>
-
                     <Grid gutter="xl">
                         <Grid.Col span={{ base: 12, md: 4 }}>
                             <Stack gap="lg">
@@ -275,7 +251,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                         />
                                     </Stack>
                                 </Card>
-
                                 <Card withBorder shadow="sm" radius="md" p="md">
                                     <Stack gap="sm">
                                         <Group justify="space-between">
@@ -286,7 +261,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                             <Button 
                                                 size="compact-xs" 
                                                 variant="light" 
-                                       
                                                 leftSection={<FiPlus size={14} />}
                                                 disabled={(formValue.payment_methods?.length || 0) >= 2}
                                                 onClick={() => setFormValue(v => ({
@@ -300,9 +274,7 @@ export function SalesForm({ onClose, sale }: Props) {
                                                 Agregar
                                             </Button>
                                         </Group>
-                                        
                                         <Divider />
-                                        
                                         <Stack gap="md">
                                             {(formValue.payment_methods || []).map((pm, idx) => (
                                                 <Paper key={idx} withBorder p="xs" radius="sm" style={{ backgroundColor: '#fdfdfd' }}>
@@ -351,7 +323,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                                     </Group>
                                                 </Paper>
                                             ))}
-                                            
                                             {remainingAmount > 0 && ((formValue.payment_methods?.length || 0) > 1) && (
                                                 <Badge color="orange" variant="light" py="md" style={{ width: '100%' }}>
                                                     Faltan {currency.format(remainingAmount)} {effectiveTax > 0 ? "(sobre base)" : ""}
@@ -362,8 +333,7 @@ export function SalesForm({ onClose, sale }: Props) {
                                 </Card>
                             </Stack>
                         </Grid.Col>
-
-                        {/* Panel Derecho: Productos */}
+                        {}
                         <Grid.Col span={{ base: 12, md: 8 }}>
                             <Stack gap="lg" h="100%">
                                 <Card withBorder shadow="sm" radius="md" p="md" style={{ flex: 1 }}>
@@ -373,7 +343,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                                 <FiShoppingCart />
                                                 <Text fw={600} size="sm">Selección de Productos</Text>
                                             </Group>
-                                            
                                             <Select
                                                 placeholder={isLoading ? "Cargando productos..." : "Buscar por nombre..."}
                                                 data={productsOptions}
@@ -389,13 +358,11 @@ export function SalesForm({ onClose, sale }: Props) {
                                                 }}
                                                 withCheckIcon={false}
                                             />
-
                                             <Paper withBorder radius="md" p="sm" style={{ backgroundColor: '#f8f9fa', flex: 1, minHeight: rem(200) }}>
                                                 <Group justify="space-between" mb="sm">
                                                     <Text size="sm" fw={600} c="dimmed">Items Seleccionados</Text>
                                                     <Badge variant="filled">{selectedProducts.length}</Badge>
                                                 </Group>
-                                                
                                                 <Stack gap="xs" style={{ maxHeight: rem(400), overflowY: 'auto' }}>
                                                     {selectedProducts.length === 0 ? (
                                                         <Stack align="center" gap="xs" py="xl">
@@ -431,7 +398,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                                 </Group>
                                                 <Text size="xs" c="dimmed">Formato: &quot;CANTIDAD PRODUCTO PRECIO&quot; por línea</Text>
                                             </Stack>
-                                            
                                             <Textarea
                                                 placeholder='Ej: "2 Labial Mate 3500"'
                                                 name="manualText"
@@ -458,9 +424,7 @@ export function SalesForm({ onClose, sale }: Props) {
                             </Stack>
                         </Grid.Col>
                     </Grid>
-
                     <Divider />
-
                     <Grid align="center">
                         <Grid.Col span={{ base: 12, md: 8 }}>
                             <Group gap="xl">
@@ -474,20 +438,17 @@ export function SalesForm({ onClose, sale }: Props) {
                                         onChange={handleChangeValues}
                                     />
                                 )}
-                                
                                 <Group gap="lg">
                                     <Stack gap={0}>
                                         <Text size="xs" c="dimmed" fw={600}>SUBTOTAL</Text>
                                         <Text size="lg" fw={600}>{currency.format(subtotal)}</Text>
                                     </Stack>
-                                    
                                     {effectiveTax > 0 && (
                                         <Stack gap={0}>
                                             <Text size="xs" c="dimmed" fw={600}>IMPUESTO ({effectiveTax}%)</Text>
                                             <Text size="lg" fw={600} c="orange">{currency.format(Number(subtotal) * Number(effectiveTax) / 100)}</Text>
                                         </Stack>
                                     )}
-
                                     <Stack gap={0}>
                                         <Text size="xs" c="dimmed" fw={600}>TOTAL FINAL</Text>
                                         <Title order={2}>{currency.format(finalTotal)}</Title>
@@ -495,7 +456,6 @@ export function SalesForm({ onClose, sale }: Props) {
                                 </Group>
                             </Group>
                         </Grid.Col>
-                        
                         <Grid.Col span={{ base: 12, md: 4 }}>
                             <Button
                                 fullWidth
@@ -511,7 +471,7 @@ export function SalesForm({ onClose, sale }: Props) {
                                         payment_method: primaryPaymentMethod 
                                     };
                                     if (sale) {
-                                        updateSale.mutate({ id: sale.id, request: payload });
+                                        updateSale.mutate({ id: sale.id, payload: payload });
                                     } else {
                                         showNotification({
                                             message: "Guardando venta en segundo plano...",
@@ -531,4 +491,3 @@ export function SalesForm({ onClose, sale }: Props) {
         </Box>
     );
 }
-

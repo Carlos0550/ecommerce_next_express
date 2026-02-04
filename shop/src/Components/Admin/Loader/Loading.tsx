@@ -1,6 +1,5 @@
 import { Box, Flex } from "@mantine/core"
 import "./Loading.css"
-
 type LoadingProps = {
   position?: "center" | "top" | "bottom" | "left" | "right"
   height?: string
@@ -9,7 +8,6 @@ type LoadingProps = {
 }
 function Loading({position = "center", height = "100vh", width = "100vw", size = 240}: LoadingProps) {
   return (
-
     <Box>
       <Flex
         h={height}
@@ -27,5 +25,4 @@ function Loading({position = "center", height = "100vh", width = "100vw", size =
     </Box>
   )
 }
-
 export default Loading

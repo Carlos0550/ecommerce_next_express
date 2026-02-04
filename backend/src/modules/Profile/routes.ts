@@ -5,17 +5,14 @@ import ProfileServices from './services/profile.services';
 import { validateUpdatePayload } from './router.controller';
 import fs from 'fs';
 import { uploadImage } from '@/config/minio';
-
 const router = Router();
 const service = new ProfileServices();
-
 router.get('/profile/me', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);
   const rs = await service.getMe(userId);
   res.json(rs);
 });
-
 router.put('/profile/me', requireAuth, validateUpdatePayload, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);
@@ -23,7 +20,6 @@ router.put('/profile/me', requireAuth, validateUpdatePayload, async (req: Reques
   const rs = await service.updateMe(userId, data);
   res.json(rs);
 });
-
 router.post('/profile/avatar', requireAuth, uploadSingleImage('image'), handleImageUploadError, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);
@@ -42,5 +38,4 @@ router.post('/profile/avatar', requireAuth, uploadSingleImage('image'), handleIm
     return res.status(500).json({ ok: false, error: 'upload_exception' });
   }
 });
-
 export default router;

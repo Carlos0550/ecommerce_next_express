@@ -1,8 +1,6 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import { BREAKPOINTS } from "../constants";
-
 type WindowSize = {
   width: number;
   height: number;
@@ -10,7 +8,6 @@ type WindowSize = {
   isTablet: boolean;
   isDesktop: boolean;
 };
-
 const getInitialSize = (): WindowSize => {
   if (typeof window === "undefined") {
     return {
@@ -31,21 +28,17 @@ const getInitialSize = (): WindowSize => {
     isDesktop: width > BREAKPOINTS.tablet,
   };
 };
-
 export function useWindowSize(): WindowSize {
   const [windowSize, setWindowSize] = useState<WindowSize>(getInitialSize);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
-
   useEffect(() => {
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
-
     const handleResize = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-
       timeoutRef.current = setTimeout(() => {
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -56,7 +49,6 @@ export function useWindowSize(): WindowSize {
           isTablet: width > BREAKPOINTS.mobile && width <= BREAKPOINTS.tablet,
           isDesktop: width > BREAKPOINTS.tablet,
         };
-
         setWindowSize((prev) => {
           if (
             prev.width === newSize.width &&
@@ -69,7 +61,6 @@ export function useWindowSize(): WindowSize {
         });
       }, 150);
     };
-
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
@@ -78,6 +69,5 @@ export function useWindowSize(): WindowSize {
       }
     };
   }, []);
-
   return windowSize;
 }

@@ -1,5 +1,4 @@
 const fetch = require('node-fetch');
-
 async function run() {
   const base = process.env.API_URL || 'http://localhost:3000/api';
   const regRes = await fetch(`${base}/admin/register`, {
@@ -20,5 +19,4 @@ async function run() {
   if (!valRes.ok) throw new Error('Validate failed: ' + JSON.stringify(valJson));
   console.log('OK', { token: token.slice(0, 16) + '...', user: valJson.email, role: valJson.role, subjectType: valJson.subjectType });
 }
-
 run().catch((e) => { console.error(e); process.exit(1); });

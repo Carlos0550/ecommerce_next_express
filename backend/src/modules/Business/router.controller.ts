@@ -5,7 +5,6 @@ import { generateBusinessDescription } from "@/config/groq";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
 import fs from "fs";
 import { logger } from "@/utils/logger";
-
 class BusinessController {
   async uploadImage(req: Request, res: Response) {
     try {
@@ -26,7 +25,6 @@ class BusinessController {
       const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
       const timestamp = Date.now();
       const uniqueName = `business-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-
       const uploaded = await uploadToBucket(
         buffer,
         uniqueName,
@@ -34,11 +32,9 @@ class BusinessController {
         "images",
         file.mimetype,
       );
-
       if (!uploaded.path) {
         return res.status(500).json({ error: "Error al subir la imagen" });
       }
-
       let id = idParam;
       if (!id) {
         const current = await businessServices.getBusiness();
@@ -59,7 +55,6 @@ class BusinessController {
       return res.status(500).json({ error: "Error al procesar la imagen" });
     }
   }
-
   async generateDescription(req: Request, res: Response) {
     try {
       const { name, city, province, type, actualDescription } = req.body;
@@ -87,16 +82,13 @@ class BusinessController {
       return res.status(500).json({ error: "Error generando descripción" });
     }
   }
-
   async createBusiness(req: Request, res: Response) {
     const payload = req.body as BusinessDataRequest;
-
     if (!Array.isArray(payload.bankData) || payload.bankData.length === 0) {
       return res
         .status(400)
         .json({ error: "Los datos bancarios no son válidos" });
     }
-
     if (
       !payload.name ||
       !payload.email ||
@@ -112,12 +104,10 @@ class BusinessController {
     const business = await businessServices.createBusiness(payload);
     res.status(201).json(business);
   }
-
   async updateBusiness(req: Request, res: Response) {
     try {
       const { id } = req.params as { id: string };
       const payload = req.body as BusinessDataRequest;
-
       if (
         !payload.name ||
         !payload.email ||
@@ -130,7 +120,6 @@ class BusinessController {
             "Todos los campos son requeridos: Nombre del negocio, email, teléfono, ciudad y estado/provincia",
         });
       }
-
       const business = await businessServices.updateBusiness(id, payload);
       return res.status(200).json(business);
     } catch (error) {
@@ -143,7 +132,6 @@ class BusinessController {
         .json({ error: "Error al actualizar los datos del negocio" });
     }
   }
-
   async getBusiness(req: Request, res: Response) {
     try {
       const data = await businessServices.getBusiness();
@@ -158,5 +146,4 @@ class BusinessController {
     }
   }
 }
-
 export default new BusinessController();

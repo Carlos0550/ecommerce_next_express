@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { applyTheme, BusinessData, PaletteData } from './theme';
-
 export function new_user_html(
     name: string,
     text: string,
@@ -13,6 +12,5 @@ export function new_user_html(
     const safeName = name && name.trim() ? name : 'Usuario';
     html = html.replace(/\{\{name\}\}/g, safeName);
     html = html.replace(/\{\{text_message\}\}/g, text);
-    
     return applyTheme(html, business, palette);
 }

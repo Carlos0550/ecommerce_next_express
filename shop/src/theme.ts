@@ -1,6 +1,5 @@
 import { createTheme } from '@mantine/core';
 import type { MantineColorsTuple } from '@mantine/core';
-
 export const theme = createTheme({
   fontFamily: 'Stack Sans Text, Arial, Helvetica, sans-serif',
   headings: { fontFamily: 'Stack Sans Text, Arial, Helvetica, sans-serif' },

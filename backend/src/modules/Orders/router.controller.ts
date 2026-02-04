@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-
 export function ensureCreatePayload(
   req: Request,
   res: Response,
@@ -8,7 +7,6 @@ export function ensureCreatePayload(
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   const payment = String(req.body?.payment_method || "").trim();
   const customer = req.body?.customer || {};
-
   if (items.length === 0)
     return res.status(400).json({ ok: false, error: "missing_items" });
   if (!payment)
@@ -33,6 +31,5 @@ export function ensureCreatePayload(
   (req as any).items = normalizedItems;
   (req as any).payment_method = payment;
   (req as any).customer = normalizedCustomer;
-
   next();
 }

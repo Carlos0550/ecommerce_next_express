@@ -2,7 +2,6 @@
 import { Stack, Title, Text, Button, Center, ThemeIcon, Box } from '@mantine/core';
 import { FiPackage } from 'react-icons/fi';
 import React from 'react';
-
 interface EmptyStateProps {
   icon?: React.ReactNode;
   title: string;
@@ -12,7 +11,6 @@ interface EmptyStateProps {
     onClick: () => void;
   };
 }
-
 export default function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <Center py={60} w="100%">
@@ -26,7 +24,6 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
         >
           {icon || <FiPackage size={40} color="#888" />}
         </ThemeIcon>
-        
         <Box>
           <Title order={3} fw={700} mb={4}>
             {title}
@@ -35,7 +32,6 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
             {description}
           </Text>
         </Box>
-
         {action && (
           <Button variant="outline" color="dark" radius="xl" onClick={action.onClick}>
             {action.label}

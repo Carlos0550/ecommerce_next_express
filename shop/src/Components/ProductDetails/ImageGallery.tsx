@@ -1,12 +1,10 @@
 "use client";
 import { Image, Group, Stack, Modal, Box } from "@mantine/core"
 import { useState, useRef } from "react"
-
 type Props = {
   images?: string[]
   title: string
 }
-
 export default function ImageGallery({ images = [], title }: Props) {
   const [selected, setSelected] = useState<number>(0)
   const [opened, setOpened] = useState(false)
@@ -15,7 +13,6 @@ export default function ImageGallery({ images = [], title }: Props) {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const lastPos = useRef<{ x: number; y: number } | null>(null)
   const main = images?.[selected] || images?.[0] || "/image_fallback.webp"
-
   return (
     <Stack>
       <Image
@@ -44,7 +41,6 @@ export default function ImageGallery({ images = [], title }: Props) {
           ))}
         </Group>
       )}
-
       <Modal opened={opened} onClose={() => setOpened(false)} size="xl" centered>
         <Box
           style={{
@@ -70,8 +66,7 @@ export default function ImageGallery({ images = [], title }: Props) {
             setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={main}
             alt={title}
             style={{

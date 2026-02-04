@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { Paper, Stack, TextInput, Button, Group, Title, Text, Checkbox } from "@mantine/core";
-
 export type RegisterFormValues = {
   name: string;
   email: string;
   asAdmin: boolean;
 };
-
 export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values: RegisterFormValues) => void, loading?: boolean }) {
   const [values, setValues] = useState<RegisterFormValues>({ name: "", email: "", asAdmin: false });
   const [error, setError] = useState<string>("");
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -20,7 +17,6 @@ export default function RegisterForm({ onSubmit, loading }: { onSubmit?: (values
     }
     onSubmit?.(values);
   };
-
   return (
     <Paper withBorder p="md" radius="md" component="form" onSubmit={handleSubmit}>
       <Stack>

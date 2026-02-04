@@ -1,5 +1,4 @@
 import { Stack, TextInput, Group, Button } from '@mantine/core';
-
 interface StockModalProps {
   stockValue: string;
   isUpdating: boolean;
@@ -7,7 +6,6 @@ interface StockModalProps {
   onSave: () => void;
   onCancel: () => void;
 }
-
 export const StockModal = ({
   stockValue,
   isUpdating,
@@ -21,7 +19,6 @@ export const StockModal = ({
       onSave();
     }
   };
-
   return (
     <Stack>
       <TextInput
@@ -42,4 +39,3 @@ export const StockModal = ({
     </Stack>
   );
 };
-

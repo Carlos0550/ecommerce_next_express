@@ -1,10 +1,9 @@
 "use client";
-import { useListPalettes, useCreatePalette, useActivatePalette, useSetUsage, useGeneratePalette, useRandomPalette, useDeletePalette } from "@/Api/admin/PalettesApi";
+import { useListPalettes, useCreatePalette, useActivatePalette, useSetUsage, useGeneratePalette, useRandomPalette, useDeletePalette } from "@/hooks/useAdminPalettes";
 import { Button, Container, Group, Stack, Table, TextInput, Title, Switch, ColorInput } from "@mantine/core";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { useEffect, useState } from "react";
 import { FiTrash } from "react-icons/fi";
-
 export default function Colors() {
   const { data: palettes } = useListPalettes();
   const createMutation = useCreatePalette();
@@ -17,7 +16,6 @@ export default function Colors() {
   const [colors, setColors] = useState<string[]>(Array.from({ length: 10 }, () => ""));
   const [prompt, setPrompt] = useState("");
   const [promptModal, setPromptModal] = useState(false);
-  
   useEffect(()=>{
     console.log("Paletas:", palettes);
   },[palettes])
@@ -30,38 +28,20 @@ export default function Colors() {
             <Table.Tr>
               <Table.Th>Nombre</Table.Th>
               <Table.Th>Activa</Table.Th>
-              <Table.Th>Admin</Table.Th>
-              <Table.Th>Shop</Table.Th>
               <Table.Th></Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {palettes?.map((p) => (
+            {palettes?.map((p: any) => (
               <Table.Tr key={p.id}>
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td>
                   <Switch
                     checked={p.is_active}
                     disabled={activateMutation.isPending || p.is_active}
-                    
                     onChange={() => activateMutation.mutate({ id: p.id, active: !p.is_active })}
                     size="sm" />
                 </Table.Td>
-                <Table.Td>
-                  <Switch
-                    checked={p.use_for_admin}
-                    disabled={setUsageMutation.isPending || p.use_for_admin}
-                    onChange={() => setUsageMutation.mutate({ paletteId: p.id, target: "admin" })}
-                    size="sm" />
-                </Table.Td>
-                <Table.Td>
-                  <Switch
-                    checked={p.use_for_shop}
-                    disabled={setUsageMutation.isPending || p.use_for_shop}
-                    onChange={() => setUsageMutation.mutate({ paletteId: p.id, target: "shop" })}
-                    size="sm" />
-                </Table.Td>
-
                 <Table.Td>
                   <Button 
                       variant="light"  
@@ -75,7 +55,6 @@ export default function Colors() {
             ))}
           </Table.Tbody>
         </Table>
-
         <Title order={4}>Crear nueva paleta</Title>
         <TextInput label="Nombre" value={name} onChange={(e) => setName(e.currentTarget.value)} />
         {colors.map((c, i) => (
@@ -105,7 +84,6 @@ export default function Colors() {
           <Button variant="light" onClick={() => setPromptModal(true)}>Generar con IA</Button>
           <Button variant="light" onClick={() => randomMutation.mutate(name)} loading={randomMutation.isPending}>Random</Button>
         </Group>
-
         <ModalWrapper opened={promptModal} onClose={() => setPromptModal(false)} title="Generar paleta con IA" size="md">
           <Stack>
             <TextInput label="Prompt" placeholder="Describe el estilo (p.ej. pastel elegante, vibrante gamer, minimal corporativo)" value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)} />

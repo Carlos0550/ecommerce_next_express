@@ -1,20 +1,16 @@
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
-
 async function ensureDir(dir) {
   try {
     await fsp.mkdir(dir, { recursive: true });
   } catch (err) {
-    // ignore if exists
   }
 }
-
 async function copyFile(src, dest) {
   await ensureDir(path.dirname(dest));
   return fsp.copyFile(src, dest);
 }
-
 async function copyDir(srcDir, destDir) {
   const exists = await fsp.stat(srcDir).then(() => true).catch(() => false);
   if (!exists) return { copied: 0 };
@@ -34,13 +30,11 @@ async function copyDir(srcDir, destDir) {
   }
   return { copied };
 }
-
 async function main() {
-  const root = path.join(__dirname, '..'); // backend directory
+  const root = path.join(__dirname, '..'); 
   const itemsToCopy = [
     { src: path.join(root, 'src', 'templates', 'files'), dest: path.join(root, 'dist', 'templates', 'files') },
   ];
-
   const results = [];
   for (const { src, dest } of itemsToCopy) {
     try {
@@ -51,11 +45,9 @@ async function main() {
       results.push({ src, dest, ok: false });
     }
   }
-
   const summary = results.map(r => `${r.ok ? 'OK' : 'FAIL'}: ${r.src} -> ${r.dest} (copied=${r.copied ?? 0})`).join('\n');
   console.log(summary);
 }
-
 main().catch(err => {
   console.error('[postbuild][copy-static] unexpected error', err);
   process.exit(1);

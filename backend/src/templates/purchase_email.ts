@@ -1,7 +1,6 @@
 import fs from 'fs'
 import path from 'path'
 import { applyTheme, BusinessData, PaletteData } from './theme'
-
 type PurchaseEmailParams = {
   payment_method: string
   products: { title: string; price: number }[]
@@ -14,14 +13,12 @@ type PurchaseEmailParams = {
   business?: BusinessData | null
   palette?: PaletteData | null
 }
-
 export function purchase_email_html(params: PurchaseEmailParams) {
   const tplPath = path.join(__dirname, './files/purchase_email.hbs')
   let html = fs.readFileSync(tplPath, 'utf-8')
   const safeBuyerName = params.buyerName && params.buyerName.trim() ? params.buyerName : 'N/A'
   const safeBuyerEmail = params.buyerEmail && params.buyerEmail.trim() ? params.buyerEmail : 'N/A'
   const saleDateStr = params.saleDate ? new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(params.saleDate) : new Date().toLocaleString('es-AR')
-
   const currency = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
   const productsRows = (Array.isArray(params.products) ? params.products : [])
     .map(p => `
@@ -31,7 +28,6 @@ export function purchase_email_html(params: PurchaseEmailParams) {
       </tr>
     `)
     .join('')
-
   html = html.replace(/\{\{sale_id\}\}/g, String(params.saleId ?? 'N/A'))
   html = html.replace(/\{\{sale_date\}\}/g, saleDateStr)
   html = html.replace(/\{\{buyer_name\}\}/g, safeBuyerName)
@@ -40,6 +36,5 @@ export function purchase_email_html(params: PurchaseEmailParams) {
   html = html.replace(/\{\{products_list\}\}/g, productsRows || '<tr><td style="padding:10px 12px; color:{{color_text_muted}};" colspan="2">Sin productos</td></tr>')
   html = html.replace(/\{\{subtotal\}\}/g, currency.format(Number(params.subtotal) || 0))
   html = html.replace(/\{\{final_total\}\}/g, currency.format(Number(params.finalTotal) || 0))
-  
   return applyTheme(html, params.business, params.palette)
 }

@@ -1,9 +1,8 @@
 "use client";
 import { Button, Group, Modal, Stack, Table, TextInput, Title, Checkbox, NumberInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { useCreateFaq, useDeleteFaq, useListFaqsAdmin, useUpdateFaq } from '@/Api/admin/FAQApi';
+import { useCreateFaq, useDeleteFaq, useListFaqsAdmin, useUpdateFaq } from '@/hooks/useAdminFAQ';
 import { useState } from 'react';
-
 export default function FAQ() {
   const { data } = useListFaqsAdmin();
   const items = data?.items || [];
@@ -13,13 +12,11 @@ export default function FAQ() {
   const [opened, { open, close }] = useDisclosure(false);
   const [form, setForm] = useState({ question: '', answer: '', position: 0, is_active: true });
   const [editId, setEditId] = useState<string | null>(null);
-
   const onSave = async () => {
     if (editId) await update.mutateAsync({ id: editId, data: form });
     else await create.mutateAsync(form);
     close(); setEditId(null); setForm({ question: '', answer: '', position: 0, is_active: true });
   };
-
   return (
     <Stack>
       <Title order={2}>FAQ</Title>
@@ -36,7 +33,7 @@ export default function FAQ() {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {items.map(it => (
+          {(Array.isArray(items) ? items : []).map((it: any) => (
             <Table.Tr key={it.id}>
               <Table.Td>{it.question}</Table.Td>
               <Table.Td>{it.is_active ? 'Sí' : 'No'}</Table.Td>
@@ -51,7 +48,6 @@ export default function FAQ() {
           ))}
         </Table.Tbody>
       </Table>
-
       <Modal opened={opened} onClose={() => { close(); setEditId(null); }} title={editId ? 'Editar FAQ' : 'Nueva FAQ'}>
         <Stack>
           <TextInput label="Pregunta" value={form.question} onChange={e => setForm(s => ({ ...s, question: e.target.value }))} />
@@ -67,4 +63,3 @@ export default function FAQ() {
     </Stack>
   );
 }
-

@@ -1,16 +1,14 @@
 import { Box, Button, Grid, Input, Select, Text } from "@mantine/core"
 import { showNotification } from "@mantine/notifications"
 import { useState } from "react"
-import { useCreateUser } from "@/Api/admin/AuthApi"
+import { useCreateUser } from "@/hooks/useAdminUsers"
 import { FaWhatsapp } from "react-icons/fa"
-
 type UsersFormValues = {
     name: string,
     email: string,
     role_id: "1" | "2",
     phone: string,
 }
-
 export const UsersForm = ({ onCancel }: { onCancel: () => void }) => {
     const [values, setValues] = useState<UsersFormValues>({
         name: '',
@@ -19,49 +17,36 @@ export const UsersForm = ({ onCancel }: { onCancel: () => void }) => {
         phone: '',
     })
     const [loading, setLoading] = useState<boolean>(false);
-    
     const createUserMutation = useCreateUser();
-    
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setValues({
             ...values,
             [e.target.name]: e.target.value,
         })
     }
-
     const handleSubmit = async () => {
         const { name, email, role_id, phone } = values;
         setLoading(true);
         try {
-            const data = await createUserMutation.mutateAsync({ name, email, role_id, phone: phone || undefined });
-            if(data.ok){
-                showNotification({
-                    message: "Usuario creado exitosamente",
-                    color: "green",
-                    autoClose: 3000,
-                })
-                return onCancel();
-                
-            }
-
-            throw new Error(data.error)
-        } catch (error) {
+            await createUserMutation.mutateAsync({ name, email, role_id, phone: phone || undefined });
+            onCancel();
+        } catch (error: any) {
             console.log(error);
-            if (error instanceof Error && error.message === "email_already_registered") {
+            const message = error?.response?.data?.error || error?.message;
+            if (message === "email_already_registered") {
                 showNotification({
                     message: "El email ya está registrado",
                     color: "red",
                     autoClose: 3000,
                 })
-            }else{
+            } else {
                 showNotification({
                     message: "Error al crear el usuario",
                     color: "red",
                     autoClose: 3000,
                 })
             }
-            
-        }finally{
+        } finally {
             setLoading(false);
         }
     }

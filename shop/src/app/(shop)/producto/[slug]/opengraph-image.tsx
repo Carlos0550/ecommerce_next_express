@@ -1,11 +1,9 @@
 import { ImageResponse } from 'next/og'
 import { extractIdFromSlug } from '@/utils/slugs'
-
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 export const runtime = 'edge'
 export const alt = 'Producto | Tienda Online'
-
 export default async function OG({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const id = extractIdFromSlug(slug)
@@ -22,7 +20,6 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
   const cat = product?.category?.title || 'Categoría'
   const price = typeof product?.price === 'number' ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(product.price as number) : ''
   const productImage = Array.isArray(product?.images) && product.images.length > 0 ? product.images[0] : ''
-
   return new ImageResponse(
     (
       <div

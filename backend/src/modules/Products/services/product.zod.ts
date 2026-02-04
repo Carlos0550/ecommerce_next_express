@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 extendZodWithOpenApi(z);
-
-// Archivo binario para multipart/form-data
 export const BinaryFileSchema = z
   .string()
   .openapi({
@@ -10,7 +8,6 @@ export const BinaryFileSchema = z
     format: "binary",
     description: "Archivo binario",
   });
-
 export const SaveProductRequestSchema = z
   .object({
     title: z.string().min(1),
@@ -33,14 +30,12 @@ export const SaveProductRequestSchema = z
       .optional(),
   })
   .openapi({ description: "Body multipart para crear producto" });
-
 export const SaveCategoryRequestSchema = z
   .object({
     title: z.string().min(1),
     image: BinaryFileSchema.optional(),
   })
   .openapi({ description: "Body multipart para crear categoría" });
-
 export const GetProductsQuerySchema = z
   .object({
     page: z.number().int().min(1),
@@ -55,7 +50,6 @@ export const GetProductsQuerySchema = z
     sortOrder: z.enum(["asc", "desc"]).optional(),
   })
   .openapi({ description: "Query params para listar productos" });
-
 export const UpdateProductRequestSchema = z
   .object({
     title: z.string().min(1),
@@ -79,17 +73,14 @@ export const UpdateProductRequestSchema = z
       .optional(),
   })
   .openapi({ description: "Body multipart para actualizar producto" });
-
 export const UpdateCategoryStatusSchema = z.object({
   status: z.string(),
   category_id: z.string(),
 });
-
 export const UpdateProductStatusSchema = z.object({
   state: z.enum(["active", "inactive", "draft", "out_stock", "deleted"]),
   product_id: z.string(),
 });
-
 export type SaveProductRequest = z.infer<typeof SaveProductRequestSchema>;
 export type SaveCategoryRequest = z.infer<typeof SaveCategoryRequestSchema>;
 export type GetProductsQuery = z.infer<typeof GetProductsQuerySchema>;

@@ -1,12 +1,10 @@
 import { prisma } from "@/config/prisma";
-
 type MergeItem = {
   product_id: string;
   quantity: number;
   price?: number;
   options?: any;
 };
-
 function areOptionsEqual(a: any, b: any) {
   if (!a && !b) return true;
   if (!a || !b) return false;
@@ -16,20 +14,17 @@ function areOptionsEqual(a: any, b: any) {
     if (!Array.isArray(arrA) || !Array.isArray(arrB))
       return JSON.stringify(a) === JSON.stringify(b);
     if (arrA.length !== arrB.length) return false;
-
     const sortedA = [...arrA].sort((x, y) =>
       (x.name || "").localeCompare(y.name || ""),
     );
     const sortedB = [...arrB].sort((x, y) =>
       (x.name || "").localeCompare(y.name || ""),
     );
-
     return JSON.stringify(sortedA) === JSON.stringify(sortedB);
   } catch {
     return false;
   }
 }
-
 export default class CartServices {
   async getOrCreateUserCart(userId: number) {
     const cart = await prisma.cart.findUnique({
@@ -37,19 +32,15 @@ export default class CartServices {
       include: { items: { include: { product: true } } },
     });
     if (cart) return cart;
-
-    // Verificar que el usuario exista en la tabla User antes de crear el carrito
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error(`User with ID ${userId} not found. Cannot create cart.`);
     }
-
     return prisma.cart.create({
       data: { user: { connect: { id: userId } } },
       include: { items: { include: { product: true } } },
     });
   }
-
   async getCart(userId: number) {
     const cart = await this.getOrCreateUserCart(userId);
     const total = cart.items.reduce(
@@ -62,7 +53,6 @@ export default class CartServices {
     }
     return cart;
   }
-
   async addItem(
     userId: number,
     productId: string,
@@ -75,17 +65,12 @@ export default class CartServices {
     });
     if (!product || !product.is_active || product.state !== "active")
       return { ok: false, status: 400, error: "product_not_available" };
-
-    // Find all items for this product in cart
     const existingItems = await prisma.orderItems.findMany({
       where: { cartId: cart.id, productId },
     });
-
-    // Find matching options
     const match = existingItems.find((item) =>
       areOptionsEqual(item.selected_options, options),
     );
-
     if (match) {
       const updated = await prisma.orderItems.update({
         where: { id: match.id },
@@ -106,7 +91,6 @@ export default class CartServices {
     const total = await this.recomputeTotal(cart.id);
     return { ok: true, item, total };
   }
-
   async updateQuantity(
     userId: number,
     productId: string,
@@ -124,7 +108,6 @@ export default class CartServices {
           areOptionsEqual(item.selected_options, options),
         ) || existingItems[0]
       : existingItems[0];
-
     if (quantity <= 0) {
       await prisma.orderItems.delete({ where: { id: target.id } });
     } else {
@@ -133,11 +116,9 @@ export default class CartServices {
         data: { quantity },
       });
     }
-
     const total = await this.recomputeTotal(cart.id);
     return { ok: true, total };
   }
-
   async removeItem(userId: number, productId: string, options?: any) {
     const cart = await this.getOrCreateUserCart(userId);
     const existingItems = await prisma.orderItems.findMany({
@@ -154,14 +135,12 @@ export default class CartServices {
     const total = await this.recomputeTotal(cart.id);
     return { ok: true, total };
   }
-
   async clearCart(userId: number) {
     const cart = await this.getOrCreateUserCart(userId);
     await prisma.orderItems.deleteMany({ where: { cartId: cart.id } });
     await prisma.cart.update({ where: { id: cart.id }, data: { total: 0 } });
     return { ok: true };
   }
-
   async merge(userId: number, items: MergeItem[]) {
     const cart = await this.getOrCreateUserCart(userId);
     for (const incoming of items) {
@@ -169,23 +148,19 @@ export default class CartServices {
         where: { id: incoming.product_id },
       });
       if (!product) continue;
-
       const existingItems = await prisma.orderItems.findMany({
         where: { cartId: cart.id, productId: incoming.product_id },
       });
       const existing = existingItems.find((item) =>
         areOptionsEqual(item.selected_options, incoming.options),
       );
-
       const priceChanged =
         typeof incoming.price === "number" &&
         Number(incoming.price) !== Number(product.price);
       if (existing) {
         if (Number(incoming.quantity) <= 0) {
-          // Remove item if quantity is 0 or less
           await prisma.orderItems.delete({ where: { id: existing.id } });
         } else {
-          // Update quantity if greater than 0
           await prisma.orderItems.update({
             where: { id: existing.id },
             data: {
@@ -195,7 +170,6 @@ export default class CartServices {
           });
         }
       } else if (Number(incoming.quantity) > 0) {
-        // Only create new item if quantity is greater than 0
         await prisma.orderItems.create({
           data: {
             cart: { connect: { id: cart.id } },
@@ -210,7 +184,6 @@ export default class CartServices {
     const total = await this.recomputeTotal(cart.id);
     return { ok: true, total };
   }
-
   private async recomputeTotal(cartId: number) {
     const items = await prisma.orderItems.findMany({
       where: { cartId },

@@ -1,5 +1,4 @@
 import { BusinessBankData } from "@prisma/client";
-
 export type BusinessDataRequest = {
   name: string;
   email: string;

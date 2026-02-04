@@ -1,25 +1,21 @@
 import { Paper, ScrollArea, Table, Group, ActionIcon, Button, Image, Text, Tooltip } from '@mantine/core';
 import { FiEdit, FiEye, FiTrash, FiTrendingUp, FiBox } from 'react-icons/fi';
-import type { Product, ProductState } from '@/Api/admin/ProductsApi';
 import { ProductBadge } from './ProductBadge';
 import { theme } from '@/theme';
-
 const dummyImage = "/image_fallback.webp";
-
 interface ProductTableDesktopProps {
-  products: Product[];
-  state: ProductState;
+  products: any[];
+  state: any;
   deletingId: string | null;
   isDeleting: boolean;
   isUpdatingStock: boolean;
   isEnhancing: boolean;
-  onView: (product: Product) => void;
-  onEdit: (product: Product) => void;
+  onView: (product: any) => void;
+  onEdit: (product: any) => void;
   onDelete: (productId: string) => void;
-  onUpdateStock: (product: Product) => void;
-  onEnhance: (product: Product) => void;
+  onUpdateStock: (product: any) => void;
+  onEnhance: (product: any) => void;
 }
-
 export const ProductTableDesktop = ({
   products,
   state,
@@ -56,7 +52,7 @@ export const ProductTableDesktop = ({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {products.map((p) => (
+            {(products || []).map((p) => (
               <Table.Tr key={p.id}>
                 <Table.Td>
                   <Image
@@ -115,7 +111,6 @@ export const ProductTableDesktop = ({
                         <FiEye size={18} />
                       </ActionIcon>
                     </Tooltip>
-
                     <Tooltip label="Editar producto" withArrow>
                       <ActionIcon
                         variant="subtle"
@@ -125,7 +120,6 @@ export const ProductTableDesktop = ({
                         <FiEdit size={18} />
                       </ActionIcon>
                     </Tooltip>
-
                     <Tooltip label="Mejorar con IA" withArrow>
                       <ActionIcon
                         variant="subtle"
@@ -136,7 +130,6 @@ export const ProductTableDesktop = ({
                         <FiTrendingUp size={18} />
                       </ActionIcon>
                     </Tooltip>
-
                     <Button
                       size="compact-xs"
                       variant="light"
@@ -147,7 +140,6 @@ export const ProductTableDesktop = ({
                     >
                       Stock
                     </Button>
-
                     <Tooltip label="Eliminar" withArrow>
                       <ActionIcon
                         color="red"
@@ -168,4 +160,3 @@ export const ProductTableDesktop = ({
     </Paper>
   );
 };
-

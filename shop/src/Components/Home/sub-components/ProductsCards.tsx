@@ -1,7 +1,5 @@
 "use client";
-import { Products } from '@/Api/useProducts'
 import AddToCartButton from '@/Components/Cart/AddToCartButton';
-import { useAppContext } from '@/providers/AppContext'
 import { Badge, Button, Card, Flex, Group, Text, Loader, Stack, Box } from '@mantine/core'
 import { FiInfo } from 'react-icons/fi'
 import { useState } from 'react'
@@ -9,22 +7,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createProductSlug } from '@/utils/slugs';
 import classes from './ProductsCards.module.css';
-
 type Props = {
-    product: Products
+    product: any
     priority?: boolean
 }
-
+import { useWindowSize } from "@/utils/hooks/useWindowSize";
 function ProductsCards({ product, priority = false }: Props) {
-    const {
-        utils: {
-            isMobile,
-        },
-    } = useAppContext()
+    const { isMobile } = useWindowSize();
     const [imageLoading, setImageLoading] = useState(true)
- 
     const slug = createProductSlug(product.title, product.id);
-
     return (
         <Card radius="xl" className={classes.card} padding={0}>
              <Link href={`/producto/${slug}`} className={classes.imageLink}>
@@ -56,7 +47,6 @@ function ProductsCards({ product, priority = false }: Props) {
                     </div>
                 </Box>
             </Link>
-
             <Stack gap="xs" className={classes.body}>
                 <Stack gap={4}>
                     <Group justify="space-between" align="flex-start" wrap="nowrap">
@@ -77,18 +67,15 @@ function ProductsCards({ product, priority = false }: Props) {
                             </Badge>
                         )}
                     </Group>
-                    
                     <Text fw={800} fz="xl" className={classes.price}>
                         ${product.price.toLocaleString('es-AR')}
                     </Text>
                 </Stack>
-
                 {!isMobile && (
                     <Text size="sm" c="dimmed" lineClamp={2} className={classes.description}>
                         {product.description}
                     </Text>
                 )}
-
                 <Box mt="xs" className={classes.footer}>
                     <AddToCartButton productId={product.id} fullWidth />
                 </Box>
@@ -96,5 +83,4 @@ function ProductsCards({ product, priority = false }: Props) {
         </Card>
     )
 }
-
 export default ProductsCards

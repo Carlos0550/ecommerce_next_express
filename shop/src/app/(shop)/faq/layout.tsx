@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
-import { getBusinessInfo } from '@/Api/useBusiness'
-
+import { configService } from '@/services/config.service'
 export async function generateMetadata(): Promise<Metadata> {
-  const business = await getBusinessInfo();
+  const business = await configService.getPublicBusinessInfo();
   const businessName = business?.name || "Tienda Online";
   return {
     title: `Preguntas frecuentes | ${businessName}`,
@@ -11,8 +10,6 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: '/faq' },
   }
 }
-
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children
 }
-

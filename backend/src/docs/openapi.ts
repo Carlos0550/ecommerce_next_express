@@ -23,15 +23,12 @@ import {
   FaqUpdateSchema,
 } from "@/modules/FAQ/services/faq.zod";
 extendZodWithOpenApi(z);
-
 const registry = new OpenAPIRegistry();
-
 registry.registerComponent("securitySchemes", "bearerAuth", {
   type: "http",
   scheme: "bearer",
   bearerFormat: "JWT",
 });
-
 registry.register("SaveProductRequest", SaveProductRequestSchema);
 registry.register("SaveCategoryRequest", SaveCategoryRequestSchema);
 registry.register("GetProductsQuery", GetProductsQuerySchema);
@@ -44,7 +41,6 @@ registry.register("SalesSaveRequest", SalesSchema);
 registry.register("ProfileUpdateRequest", ProfileUpdateSchema);
 registry.register("FaqCreateRequest", FaqCreateSchema);
 registry.register("FaqUpdateRequest", FaqUpdateSchema);
-
 registry.registerPath({
   method: "get",
   path: "/health",
@@ -64,8 +60,6 @@ registry.registerPath({
     },
   },
 });
-
-// User endpoints
 registry.registerPath({
   method: "post",
   path: "/login",
@@ -78,7 +72,6 @@ registry.registerPath({
     400: { description: "Credenciales inválidas" },
   },
 });
-
 registry.registerPath({
   method: "post",
   path: "/register",
@@ -93,7 +86,6 @@ registry.registerPath({
     400: { description: "Validación inválida" },
   },
 });
-
 registry.registerPath({
   method: "post",
   path: "/new",
@@ -106,7 +98,6 @@ registry.registerPath({
     400: { description: "Validación inválida" },
   },
 });
-
 registry.registerPath({
   method: "get",
   path: "/",
@@ -117,7 +108,6 @@ registry.registerPath({
     200: { description: "Usuarios obtenidos" },
   },
 });
-
 registry.registerPath({
   method: "get",
   path: "/validate-token",
@@ -128,8 +118,6 @@ registry.registerPath({
     401: { description: "Token inválido o sesión expirada" },
   },
 });
-
-// Products
 registry.registerPath({
   method: "post",
   path: "/products/save-product",
@@ -145,8 +133,6 @@ registry.registerPath({
     400: { description: "Validación inválida" },
   },
 });
-
-// Sales
 registry.registerPath({
   method: "post",
   path: "/sales/save",
@@ -161,7 +147,6 @@ registry.registerPath({
     500: { description: "Error interno del servidor" },
   },
 });
-
 registry.registerPath({
   method: "get",
   path: "/sales",
@@ -180,7 +165,6 @@ registry.registerPath({
     500: { description: "Error interno del servidor" },
   },
 });
-
 registry.registerPath({
   method: "get",
   path: "/sales/analytics",
@@ -198,7 +182,6 @@ registry.registerPath({
     500: { description: "Error interno del servidor" },
   },
 });
-
 registry.registerPath({
   method: "post",
   path: "/products/categories",
@@ -214,14 +197,12 @@ registry.registerPath({
     400: { description: "Validación inválida" },
   },
 });
-
 registry.registerPath({
   method: "get",
   path: "/products/categories",
   summary: "Listar categorías",
   responses: { 200: { description: "Categorías obtenidas" } },
 });
-
 registry.registerPath({
   method: "get",
   path: "/products",
@@ -232,7 +213,6 @@ registry.registerPath({
     400: { description: "Parámetros inválidos" },
   },
 });
-
 registry.registerPath({
   method: "delete",
   path: "/products/{product_id}",
@@ -251,7 +231,6 @@ registry.registerPath({
     404: { description: "Producto no encontrado" },
   },
 });
-
 registry.registerPath({
   method: "put",
   path: "/products/{product_id}",
@@ -278,7 +257,6 @@ registry.registerPath({
     404: { description: "Producto no encontrado" },
   },
 });
-
 registry.registerPath({
   method: "patch",
   path: "/products/status/{product_id}/{state}",
@@ -307,7 +285,6 @@ registry.registerPath({
     404: { description: "Producto no encontrado" },
   },
 });
-
 const generator = new OpenApiGeneratorV3(registry.definitions);
 const spec = generator.generateDocument({
   openapi: "3.0.3",
@@ -318,9 +295,7 @@ const spec = generator.generateDocument({
   },
   servers: [{ url: "http://localhost:3000/api", description: "API local" }],
 });
-
 export default spec;
-// Profile
 registry.registerPath({
   method: "get",
   path: "/profile/me",
@@ -331,7 +306,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
 registry.registerPath({
   method: "put",
   path: "/profile/me",
@@ -346,7 +320,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
 registry.registerPath({
   method: "post",
   path: "/profile/avatar",
@@ -365,8 +338,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
-// Orders
 registry.registerPath({
   method: "get",
   path: "/orders/me",
@@ -383,15 +354,12 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
-// FAQs
 registry.registerPath({
   method: "get",
   path: "/faqs",
   summary: "Listar FAQs públicas",
   responses: { 200: { description: "FAQs públicas" } },
 });
-
 registry.registerPath({
   method: "get",
   path: "/faqs/admin",
@@ -402,7 +370,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
 registry.registerPath({
   method: "post",
   path: "/faqs",
@@ -417,7 +384,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
 registry.registerPath({
   method: "put",
   path: "/faqs/{id}",
@@ -435,7 +401,6 @@ registry.registerPath({
     401: { description: "No autenticado" },
   },
 });
-
 registry.registerPath({
   method: "delete",
   path: "/faqs/{id}",

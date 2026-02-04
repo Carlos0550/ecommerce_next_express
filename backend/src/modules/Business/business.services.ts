@@ -2,7 +2,6 @@ import { prisma } from "@/config/prisma";
 import { BusinessDataRequest } from "./schemas/business.schemas";
 import { Prisma } from "@prisma/client";
 import { getPublicUrlFor } from "@/config/minio";
-
 class BusinessServices {
   async createBusiness(payload: BusinessDataRequest) {
     const business_data: Prisma.BusinessDataCreateInput = {
@@ -28,14 +27,12 @@ class BusinessServices {
             }
           : undefined,
     };
-
     const business = await prisma.businessData.create({
       data: business_data,
       include: { bankData: true },
     });
     return business;
   }
-
   async updateBusiness(id: string, payload: BusinessDataRequest) {
     try {
       const existing = await prisma.businessData.findUnique({
@@ -45,7 +42,6 @@ class BusinessServices {
       if (!existing) {
         throw new Error("BUSINESS_NOT_FOUND");
       }
-
       const updated = await prisma.businessData.update({
         where: { id },
         data: {
@@ -74,14 +70,12 @@ class BusinessServices {
         },
         include: { bankData: true },
       });
-
       return updated;
     } catch (e) {
       console.error("BusinessServices.updateBusiness error:", e);
       throw e;
     }
   }
-
   async getBusiness() {
     const business = await prisma.businessData.findFirst({
       include: { bankData: true },
@@ -91,7 +85,7 @@ class BusinessServices {
     const img = business.business_image;
     const fav = business.favicon;
     const hero = business.hero_image;
-    const isHttp = (s?: string) => !!s && /^https?:\/\//i.test(s);
+    const isHttp = (s?: string) => !!s && /^https?:\/\//.test(s);
     const toPublic = (s?: string) =>
       !s || isHttp(s) ? s || undefined : getPublicUrlFor("business", s);
     return {
@@ -101,7 +95,6 @@ class BusinessServices {
       hero_image: toPublic(hero!),
     } as any;
   }
-
   async updateImageField(
     id: string,
     field: "business_image" | "favicon" | "hero_image",
@@ -128,5 +121,4 @@ class BusinessServices {
     return updated;
   }
 }
-
 export default new BusinessServices();

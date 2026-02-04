@@ -2,15 +2,12 @@
 import { ActionIcon, useMantineColorScheme } from "@mantine/core";
 import { useSyncExternalStore } from "react";
 import { FiMoon, FiSun } from "react-icons/fi";
-
 const subscribe = () => () => {};
 const getSnapshot = () => true;
 const getServerSnapshot = () => false;
-
 export function ColorSchemeToggle() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const mounted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-
   if (!mounted) {
     return (
       <ActionIcon variant="light" aria-label="Toggle color scheme">
@@ -18,7 +15,6 @@ export function ColorSchemeToggle() {
       </ActionIcon>
     );
   }
-
   const isDark = colorScheme === "dark";
   return (
     <ActionIcon

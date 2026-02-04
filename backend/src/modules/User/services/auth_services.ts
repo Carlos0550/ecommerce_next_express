@@ -7,14 +7,12 @@ import { welcomeKuromiHTML } from "@/templates/welcome_kuromi";
 import { new_user_html } from "@/templates/new_user";
 import BusinessServices from "@/modules/Business/business.services";
 import PaletteServices from "@/modules/Palettes/services/palette.services";
-
 class AuthServices {
   async loginAdmin(req: Request, res: Response) {
     const { email, password } = req.body;
     const rows: any[] =
       await prisma.$queryRaw`SELECT id, email, password, name, role, profile_image, is_active FROM "Admin" WHERE email = ${email} LIMIT 1`;
     const user = rows[0];
-
     if (!user) {
       return res.status(400).json({
         ok: false,
@@ -22,7 +20,6 @@ class AuthServices {
         message: "El correo electrónico no está registrado",
       });
     }
-
     if (!user.is_active) {
       return res.status(403).json({
         ok: false,
@@ -31,7 +28,6 @@ class AuthServices {
           "Tu cuenta de administrador aún no ha sido aprobada o ha sido desactivada.",
       });
     }
-
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -40,7 +36,6 @@ class AuthServices {
         message: "La contraseña es incorrecta",
       });
     }
-
     const payload = {
       sub: user.id.toString(),
       email: user.email,
@@ -49,17 +44,14 @@ class AuthServices {
       subjectType: "admin",
     };
     const token = signToken(payload);
-
     const user_without_password = {
       ...user,
       password: undefined,
     };
-
     return res
       .status(200)
       .json({ ok: true, token, user: user_without_password });
   }
-
   async loginShop(req: Request, res: Response) {
     const { email, password } = req.body;
     const user = await prisma.user.findFirst({
@@ -77,7 +69,6 @@ class AuthServices {
         profile_image: true,
       },
     });
-
     if (!user) {
       return res.status(400).json({
         ok: false,
@@ -85,7 +76,6 @@ class AuthServices {
         message: "El correo electrónico no está registrado",
       });
     }
-
     if (!user.is_active) {
       return res.status(403).json({
         ok: false,
@@ -102,7 +92,6 @@ class AuthServices {
         message: "La contraseña es incorrecta",
       });
     }
-
     const payload = {
       sub: user.id.toString(),
       email: user.email,
@@ -112,17 +101,14 @@ class AuthServices {
       subjectType: "user",
     };
     const token = signToken(payload);
-
     const user_without_password = {
       ...user,
       password: undefined,
     };
-
     return res
       .status(200)
       .json({ ok: true, token, user: user_without_password });
   }
-
   async registerShop(req: Request, res: Response) {
     try {
       const { email, name, asAdmin } = req.body;
@@ -133,9 +119,7 @@ class AuthServices {
           message: "Todos los campos son obligatorios",
         });
       }
-
       var secure_password = Math.random().toString(36).slice(-10);
-
       const existingUser = await prisma.user.findFirst({
         where: { email, role: 2 },
         select: { id: true },
@@ -147,12 +131,9 @@ class AuthServices {
           message: "El correo ya está registrado",
         });
       }
-
       const normalized_name = name.trim().toLowerCase();
       const hashed = await hashPassword(secure_password);
-
       if (asAdmin) {
-        // Check if admin already exists with this email
         const adminExists: any[] =
           await prisma.$queryRaw`SELECT id FROM "Admin" WHERE email = ${email} LIMIT 1`;
         if (adminExists?.[0]) {
@@ -162,20 +143,14 @@ class AuthServices {
             message: "El correo ya está registrado como administrador",
           });
         }
-
-        // Count how many admins there are
         const adminCountRows: any[] =
           await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "Admin"`;
         const adminCount = Number(adminCountRows?.[0]?.count || 0);
-
         const shouldAutoApprove = adminCount === 0;
-
         await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, is_active, role, created_at, updated_at) VALUES (${email}, ${hashed}, ${normalized_name}, ${shouldAutoApprove}, 1, NOW(), NOW())`;
-
         const createdAdminRows: any[] =
           await prisma.$queryRaw`SELECT id, email, name, role, is_active FROM "Admin" WHERE email = ${email} LIMIT 1`;
         const admin = createdAdminRows[0];
-
         if (!shouldAutoApprove) {
           return res.status(200).json({
             ok: true,
@@ -184,7 +159,6 @@ class AuthServices {
               "Tu solicitud de administrador ha sido enviada. Un administrador existente debe aprobarla.",
           });
         }
-
         const payload = {
           sub: admin.id.toString(),
           email: admin.email,
@@ -197,7 +171,6 @@ class AuthServices {
           .status(200)
           .json({ ok: true, token, user: { ...admin, id: String(admin.id) } });
       }
-
       const user = await prisma.user.create({
         data: {
           email,
@@ -207,8 +180,6 @@ class AuthServices {
           is_active: true,
         },
       });
-
-      // Send welcome email
       const capitalized_name = normalized_name.replace(
         /\b\w/g,
         (match: string) => match.toUpperCase(),
@@ -243,7 +214,6 @@ class AuthServices {
       } catch (err) {
         console.error("resend_send_failed", err);
       }
-
       const payload = {
         sub: user.id.toString(),
         email: user.email,
@@ -252,7 +222,6 @@ class AuthServices {
         subjectType: "user",
       };
       const token = signToken(payload);
-
       const user_without_password = { ...user, password: undefined };
       return res
         .status(200)
@@ -266,7 +235,6 @@ class AuthServices {
       });
     }
   }
-
   async resetPasswordShop(req: Request, res: Response) {
     try {
       const { email } = req.body as { email?: string };
@@ -295,7 +263,6 @@ class AuthServices {
         .json({ ok: false, error: "reset_password_failed" });
     }
   }
-
   async changePasswordShop(req: Request, res: Response) {
     try {
       const { old_password, new_password } = req.body as {
@@ -327,13 +294,11 @@ class AuthServices {
         .json({ ok: false, error: "change_password_failed" });
     }
   }
-
   async registerAdmin(req: Request, res: Response) {
     const { email, name } = req.body;
     const existingRows: any[] =
       await prisma.$queryRaw`SELECT id FROM "Admin" WHERE email = ${email} LIMIT 1`;
     const user_exists = existingRows[0];
-
     if (user_exists) {
       return res
         .status(400)
@@ -346,7 +311,6 @@ class AuthServices {
     const createdRows: any[] =
       await prisma.$queryRaw`SELECT id, email, name, role, profile_image, created_at, updated_at FROM "Admin" WHERE email = ${email} LIMIT 1`;
     const user = createdRows[0];
-
     const capitalized_name = normalized_name.replace(/\b\w/g, (match: string) =>
       match.toUpperCase(),
     );
@@ -377,7 +341,6 @@ class AuthServices {
     }
     return res.status(200).json({ ok: true, user });
   }
-
   async newUser(req: Request, res: Response) {
     const { email, role_id, name, phone } = req.body;
     if (Number(role_id) === 1) {
@@ -397,13 +360,11 @@ class AuthServices {
           .json({ ok: false, error: "email_already_registered" });
       }
     }
-
     var secure_password = Math.random().toString(36).slice(-8);
     var hashedPassword = await hashPassword(secure_password);
     const normalized_name = name.trim().toLowerCase();
     let user: any;
     if (Number(role_id) === 1) {
-      // Crear admin con phone si está disponible
       const phoneValue = phone ? String(phone).trim() : null;
       await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, phone, is_active, role, created_at, updated_at) VALUES (${email}, ${hashedPassword}, ${normalized_name}, ${phoneValue}, true, 1, NOW(), NOW())`;
       const created: any[] =
@@ -460,16 +421,13 @@ class AuthServices {
     }
     return res.status(200).json({ ok: true, user });
   }
-
   async getUsers(req: Request, res: Response) {
     const { page, limit, search, type } = req.query as any;
-
     const pageQ = Number(page) || 1;
     const limitQ = Number(limit) || 10;
     const searchQ = (search ? String(search) : "").toLowerCase();
     const typeQ =
       String(type || "user").toLowerCase() === "admin" ? "admin" : "user";
-
     if (typeQ === "admin") {
       try {
         const pattern = `%${searchQ}%`;
@@ -509,7 +467,6 @@ class AuthServices {
         return res.status(500).json({ ok: false, error: "internal_error" });
       }
     }
-
     const where: any = { role: 2 };
     if (searchQ) {
       where.OR = [
@@ -548,7 +505,6 @@ class AuthServices {
       pagination,
     });
   }
-
   async disableUser(req: Request, res: Response) {
     const { id } = req.params as any;
     const type = String((req.query as any)?.type || "user").toLowerCase();
@@ -569,7 +525,6 @@ class AuthServices {
     });
     return res.status(200).json({ ok: true });
   }
-
   async enableUser(req: Request, res: Response) {
     const { id } = req.params as any;
     const type = String((req.query as any)?.type || "user").toLowerCase();
@@ -590,7 +545,6 @@ class AuthServices {
     });
     return res.status(200).json({ ok: true });
   }
-
   async deleteUser(req: Request, res: Response) {
     const { id } = req.params as any;
     const type = String((req.query as any)?.type || "user").toLowerCase();
@@ -608,7 +562,6 @@ class AuthServices {
     await prisma.user.delete({ where: { id: Number(id) } });
     return res.status(200).json({ ok: true });
   }
-
   async resetPasswordAdmin(req: Request, res: Response) {
     try {
       const { email } = req.body as { email?: string };
@@ -636,7 +589,6 @@ class AuthServices {
         .json({ ok: false, error: "reset_password_failed" });
     }
   }
-
   async changePasswordAdmin(req: Request, res: Response) {
     try {
       const { old_password, new_password } = req.body as {
@@ -666,5 +618,4 @@ class AuthServices {
     }
   }
 }
-
 export default AuthServices;

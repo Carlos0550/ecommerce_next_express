@@ -1,9 +1,7 @@
 import { Router } from 'express';
 import { getSales, saveSale, getSalesAnalytics, processSale, declineSale, getSaleReceipt, updateSale, deleteSale } from './router.controller';
 import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
-
 const router = Router();
-
 router.post("/save", requireAuth,requireRole([1]),saveSale);
 router.get("/", requireAuth,requireRole([1]), getSales);
 router.get("/analytics", requireAuth,requireRole([1]), getSalesAnalytics);
@@ -12,5 +10,4 @@ router.patch("/:id/decline", requireAuth,requireRole([1]), ...declineSale);
 router.get("/:id/receipt", requireAuth,requireRole([1]), ...getSaleReceipt);
 router.put("/:id", requireAuth,requireRole([1]), ...updateSale);
 router.delete("/:id", requireAuth,requireRole([1]), ...deleteSale);
-
 export default router;

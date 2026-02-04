@@ -1,68 +1,38 @@
-/**
- * Acciones de búsqueda para el flujo conversacional
- * Maneja búsqueda de productos, listado de bajo stock y selección
- */
-
 import { prisma } from '@/config/prisma';
 import { messageService } from '../../message.service';
 import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
-
-// ============================================================================
-// CONFIGURACIÓN
-// ============================================================================
-
 const STORE_URL = process.env.STORE_URL || '';
-
-// ============================================================================
-// CONSTANTES DE FORMATO
-// ============================================================================
-
 const STATE_LABELS: Record<string, string> = {
   active: '✅ Activo',
   draft: '📝 Borrador',
   out_stock: '📦 Sin stock',
   deleted: '🗑️ Eliminado',
 };
-
-// ============================================================================
-// ACCIONES
-// ============================================================================
-
 class SearchActions {
-  /**
-   * Busca productos por nombre o categoría
-   * Retorna true si la búsqueda se ejecutó (aunque no haya resultados)
-   * Retorna false si no se pudo ejecutar (query vacío)
-   */
   async searchProducts(
     session: WhatsAppConversationSession,
     query: string,
     searchBy: 'name' | 'category'
   ): Promise<boolean> {
-    // Validar que el query no esté vacío
     if (!query || query.trim().length === 0) {
       console.log('⚠️ Query de búsqueda vacío, no se ejecuta búsqueda');
-      return false; // No se ejecutó la búsqueda
+      return false; 
     }
-
     try {
       let products;
-      
       if (searchBy === 'category') {
         products = await this.searchByCategory(session, query);
       } else {
         products = await this.searchByName(query);
       }
-      
       if (!products || products.length === 0) {
         await messageService.sendMessage(
           session.phone,
           `🔍 No encontré productos ${searchBy === 'category' ? `en la categoría "${query}"` : `que coincidan con "${query}"`}.`
         );
         session.state = 'idle';
-        return true; // Se ejecutó pero sin resultados
+        return true; 
       }
-      
       session.searchResults = products.map(p => ({
         id: p.id,
         title: p.title,
@@ -70,23 +40,16 @@ class SearchActions {
         stock: p.stock,
         state: p.state,
       }));
-      
-      // Si hay solo 1 resultado O hay coincidencia exacta por título, seleccionar automáticamente
       const normalizedQuery = query.toLowerCase().trim();
       const exactMatch = products.find(p => p.title.toLowerCase().trim() === normalizedQuery);
-      
       if (products.length === 1 || exactMatch) {
         const productToSelect = exactMatch || products[0];
         session.selectedProductId = productToSelect.id;
         session.state = 'editing';
-        
         console.log(`✅ Producto seleccionado automáticamente: ${productToSelect.title} (coincidencia ${exactMatch ? 'exacta' : 'única'})`);
-        
-        // Si hay una acción pendiente, ejecutarla inmediatamente
         if (session.pendingAction) {
           await this.executePendingAction(session);
         } else {
-          // Mostrar info del producto seleccionado
           const productLink = STORE_URL ? `${STORE_URL}/producto/${productToSelect.id}` : '';
           let message = `✅ Encontré: *${productToSelect.title}*\n\n`;
           message += `💰 Precio: $${Number(productToSelect.price).toLocaleString()}\n`;
@@ -96,40 +59,29 @@ class SearchActions {
             message += `🔗 ${productLink}\n`;
           }
           message += `\n¿Qué deseas hacer con este producto?`;
-          
           await messageService.sendMessage(session.phone, message);
         }
         return true;
       }
-      
-      // Si hay múltiples resultados sin coincidencia exacta, mostrar lista
       const productList = this.formatProductList(session.searchResults);
       await messageService.sendMessage(session.phone, productList);
       session.state = 'selecting';
-      return true; // Búsqueda exitosa
-      
+      return true; 
     } catch (error) {
       console.error('Error buscando productos:', error);
       await messageService.sendMessage(
         session.phone,
         '❌ Error al buscar productos. Intenta de nuevo.'
       );
-      return true; // Se intentó ejecutar (aunque falló)
+      return true; 
     }
   }
-
-  /**
-   * Ejecuta la acción pendiente después de seleccionar un producto
-   */
   private async executePendingAction(session: WhatsAppConversationSession): Promise<void> {
     if (!session.pendingAction || !session.selectedProductId) return;
-    
     const { action, data } = session.pendingAction;
     const product = session.searchResults?.find(p => p.id === session.selectedProductId);
-    
     if (action === 'update_product' && data) {
       if (data.regenerate_with_ai && data.update_field === 'description') {
-        // Importamos productActions aquí para evitar dependencia circular
         const { productActions } = await import('./product.actions');
         await messageService.sendMessage(
           session.phone,
@@ -144,14 +96,8 @@ class SearchActions {
       const { productActions } = await import('./product.actions');
       await productActions.deleteProduct(session);
     }
-    
-    // Limpiar la acción pendiente
     session.pendingAction = undefined;
   }
-
-  /**
-   * Lista todos los productos del inventario (activos y borradores)
-   */
   async listAllProducts(session: WhatsAppConversationSession): Promise<void> {
     try {
       const products = await prisma.products.findMany({
@@ -162,7 +108,6 @@ class SearchActions {
         orderBy: { created_at: 'desc' },
         include: { category: true },
       });
-      
       if (products.length === 0) {
         await messageService.sendMessage(
           session.phone,
@@ -171,7 +116,6 @@ class SearchActions {
         session.state = 'idle';
         return;
       }
-      
       session.searchResults = products.map(p => ({
         id: p.id,
         title: p.title,
@@ -179,14 +123,10 @@ class SearchActions {
         stock: p.stock,
         state: p.state,
       }));
-      
-      // Contar totales por estado
       const totalActive = products.filter(p => p.state === 'active').length;
       const totalDraft = products.filter(p => p.state === 'draft').length;
       const totalOutStock = products.filter(p => p.state === 'out_stock').length;
-      
       let message = `📦 *Actualmente tienes los siguientes productos en tu inventario:*\n\n`;
-      
       products.forEach((p, i) => {
         const link = STORE_URL ? `${STORE_URL}/producto/${p.id}` : '';
         message += `*${i + 1}.* ${p.title}\n`;
@@ -199,15 +139,12 @@ class SearchActions {
         }
         message += '\n';
       });
-      
       message += `━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       message += `📊 *Resumen:* ${products.length} producto(s)\n`;
       message += `✅ Activos: ${totalActive} | 📝 Borradores: ${totalDraft} | 📦 Sin stock: ${totalOutStock}\n\n`;
       message += `¿Hay algo más en lo que pueda ayudarte?`;
-      
       await messageService.sendMessage(session.phone, message);
       session.state = 'selecting';
-      
     } catch (error) {
       console.error('Error listando todos los productos:', error);
       await messageService.sendMessage(
@@ -216,10 +153,6 @@ class SearchActions {
       );
     }
   }
-
-  /**
-   * Lista productos con bajo stock
-   */
   async listLowStockProducts(session: WhatsAppConversationSession): Promise<void> {
     try {
       const products = await prisma.products.findMany({
@@ -231,7 +164,6 @@ class SearchActions {
         orderBy: { stock: 'asc' },
         include: { category: true },
       });
-      
       if (products.length === 0) {
         await messageService.sendMessage(
           session.phone,
@@ -240,7 +172,6 @@ class SearchActions {
         session.state = 'idle';
         return;
       }
-      
       session.searchResults = products.map(p => ({
         id: p.id,
         title: p.title,
@@ -248,12 +179,10 @@ class SearchActions {
         stock: p.stock,
         state: p.state,
       }));
-      
       let message = `📊 *Productos con bajo stock (< 3 unidades):*\n\n`;
       message += this.formatProductList(session.searchResults);
       await messageService.sendMessage(session.phone, message);
       session.state = 'selecting';
-      
     } catch (error) {
       console.error('Error listando productos con bajo stock:', error);
       await messageService.sendMessage(
@@ -262,10 +191,6 @@ class SearchActions {
       );
     }
   }
-
-  /**
-   * Selecciona un producto de la lista de resultados
-   */
   async selectProduct(
     session: WhatsAppConversationSession,
     index: number
@@ -277,7 +202,6 @@ class SearchActions {
       );
       return;
     }
-    
     if (index < 1 || index > session.searchResults.length) {
       await messageService.sendMessage(
         session.phone,
@@ -285,19 +209,14 @@ class SearchActions {
       );
       return;
     }
-    
     const selected = session.searchResults[index - 1];
     session.selectedProductId = selected.id;
     session.state = 'editing';
-    
-    // Si hay una acción pendiente, ejecutarla
     if (session.pendingAction) {
       await this.executePendingAction(session);
       return;
     }
-    
     const link = STORE_URL ? `\n🔗 ${STORE_URL}/producto/${selected.id}` : '';
-    
     await messageService.sendMessage(
       session.phone,
       `✅ Seleccionaste: *${selected.title}*\n\n` +
@@ -312,14 +231,6 @@ class SearchActions {
       `• Eliminar`
     );
   }
-
-  // ============================================================================
-  // MÉTODOS PRIVADOS
-  // ============================================================================
-
-  /**
-   * Busca productos por categoría
-   */
   private async searchByCategory(
     session: WhatsAppConversationSession,
     query: string
@@ -330,7 +241,6 @@ class SearchActions {
         status: 'active',
       },
     });
-    
     if (!category) {
       await messageService.sendMessage(
         session.phone,
@@ -339,7 +249,6 @@ class SearchActions {
       session.state = 'idle';
       return null;
     }
-    
     return prisma.products.findMany({
       where: { 
         categoryId: category.id,
@@ -350,17 +259,12 @@ class SearchActions {
       include: { category: true },
     });
   }
-
-  /**
-   * Busca productos por nombre
-   */
   private async searchByName(query: string): Promise<any[]> {
     const words = query
       .toLowerCase()
       .split(/\s+/)
       .filter(w => w.length > 2)
       .slice(0, 5);
-    
     if (words.length === 0) {
       return prisma.products.findMany({
         where: { 
@@ -372,7 +276,6 @@ class SearchActions {
         include: { category: true },
       });
     }
-    
     const products = await prisma.products.findMany({
       where: { 
         AND: [
@@ -384,21 +287,14 @@ class SearchActions {
       orderBy: { created_at: 'desc' },
       include: { category: true },
     });
-    
-    // Ordenar por relevancia
     const matchScores = products.map(p => {
       const titleLower = p.title.toLowerCase();
       const matches = words.filter(w => titleLower.includes(w)).length;
       return { product: p, score: matches };
     });
-    
     matchScores.sort((a, b) => b.score - a.score);
     return matchScores.slice(0, 10).map(m => m.product);
   }
-
-  /**
-   * Formatea la lista de productos para enviar
-   */
   private formatProductList(
     products: NonNullable<WhatsAppConversationSession['searchResults']>
   ): string {
@@ -408,12 +304,9 @@ class SearchActions {
       list += `   💰 $${p.price.toLocaleString()} | 📊 Stock: ${p.stock}\n`;
       list += `   ${STATE_LABELS[p.state] || p.state}\n\n`;
     });
-    
     list += `\n_Escribe el número del producto que deseas seleccionar._`;
     return list;
   }
 }
-
 export const searchActions = new SearchActions();
 export default searchActions;
-

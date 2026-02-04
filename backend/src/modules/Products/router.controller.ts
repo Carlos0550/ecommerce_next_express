@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express"
 import { UpdateCategoryStatusSchema } from "./services/product.zod"
-
 export const saveProduct = async (req: Request, res: Response, next: NextFunction) => {
     const {
         title,
@@ -8,7 +7,6 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
         category_id,
         fillWithAI,
     } = req.body
-
     try {
         console.log("fillWithAI:", fillWithAI)
         if (fillWithAI === true || fillWithAI === 'true') {
@@ -18,8 +16,6 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
                     error: "La categoría es obligatoria para completar con IA."
                 })
             }
-            
-            // Check if images are provided for AI processing
             const productImages = req.files;
             if (!productImages || !Array.isArray(productImages) || productImages.length === 0) {
                 return res.status(400).json({
@@ -28,7 +24,6 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
                 })
             }
         } else {
-            // Normal validation for manual product creation
             if (!title || !price || !category_id) {
                 return res.status(400).json({
                     ok: false,
@@ -36,7 +31,6 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
                 })
             }
         }
-        
         next()
     } catch (error) {
         console.log(error)
@@ -46,20 +40,17 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
         })
     }
 }
-
 export const saveCategory = async(req:Request, res:Response, next:NextFunction) => {
     try {
         const {
             title,
         } = req.body
-
         if(!title){
             return res.status(400).json({
                 ok: false,
                 error: "El título esta vacio, por favor coloque un titulo."
             })
         }
-
         next()
     } catch (error) {
         console.log(error)
@@ -69,7 +60,6 @@ export const saveCategory = async(req:Request, res:Response, next:NextFunction) 
         })
     }
 }
-
 export const getAllProducts = async (req:Request, res: Response, next: NextFunction) => {
     try {
         const {
@@ -79,28 +69,24 @@ export const getAllProducts = async (req:Request, res: Response, next: NextFunct
             categoryId,
             isActive
         } = req.query
-
         if(!page || !limit){
             return res.status(400).json({
                 ok: false,
                 error: "Faltan parametros obligatorios: page, limit."
             })
         }
-
         if(title !== undefined && title == ""){
             return res.status(400).json({
                 ok: false,
                 error: "El parametro title no puede estar vacio."
             })
         }
-
         if(categoryId !== undefined && categoryId == ""){
             return res.status(400).json({
                 ok: false,
                 error: "El parametro categoryId no puede estar vacio."
             })
         }
-    
         if(isActive !== undefined){
             var parsedBool = isActive === 'true' ? true : 
                             isActive === 'false' ? false : undefined;
@@ -111,7 +97,6 @@ export const getAllProducts = async (req:Request, res: Response, next: NextFunct
                 })
             }
         }
-
         next()
     } catch (error) {
         console.log(error)
@@ -121,7 +106,6 @@ export const getAllProducts = async (req:Request, res: Response, next: NextFunct
         })
     }
 }
-
 export const updateProductController = async (req: Request, res: Response, next: NextFunction) => {
     const {
         title,
@@ -132,7 +116,6 @@ export const updateProductController = async (req: Request, res: Response, next:
         existing_image_urls,
         deleted_image_urls,
     } = req.body;
-
     const {
         product_id,
     } = req.params;
@@ -144,21 +127,18 @@ export const updateProductController = async (req: Request, res: Response, next:
                 error: "Uno o más campos obligatorios están vacios."
             })
         }
-
         if(!product_id){
             return res.status(400).json({
                 ok: false,
                 error: "Faltan parametros obligatorios: product_id."
             })
         }
-
         if(!existing_image_urls){
             return res.status(400).json({
                 ok: false,
                 error: "Faltan parametros obligatorios: existingImageUrls."
             })
         }
-        
         next()
     } catch (error) {
         console.log(error)
@@ -168,21 +148,18 @@ export const updateProductController = async (req: Request, res: Response, next:
         })
     }
 }
-
 export const changeCategoryStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {
             category_id,
             status,
         } = req.params as unknown as UpdateCategoryStatusSchema
-
         if(!category_id || !status){
             return res.status(400).json({
                 ok: false,
                 error: "Faltan parametros obligatorios: category_id, status."
             })
         }
-
         const statusNumber = parseInt(status as string);
         if(![1,2,3].includes(statusNumber) || isNaN(statusNumber)){
             return res.status(400).json({
@@ -190,7 +167,6 @@ export const changeCategoryStatus = async (req: Request, res: Response, next: Ne
                 error: "El parametro status debe ser activo(1), inactivo(2) o eliminado(3)."
             })
         }
-
         next()
     } catch (error) {
         console.log(error)
@@ -200,18 +176,15 @@ export const changeCategoryStatus = async (req: Request, res: Response, next: Ne
         })
     }
 }
-
 export const changeProductStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { product_id, state } = req.params as { product_id?: string; state?: string };
-
         if (!product_id || !state) {
             return res.status(400).json({
                 ok: false,
                 error: "Faltan parametros obligatorios: product_id, state."
             })
         }
-
         const allowed = ["active","inactive","draft","out_stock","deleted"];
         if (!allowed.includes(state)) {
             return res.status(400).json({
@@ -219,7 +192,6 @@ export const changeProductStatus = async (req: Request, res: Response, next: Nex
                 error: "El estado es inválido. Debe ser active, inactive, draft, out_stock o deleted."
             })
         }
-
         next()
     } catch (error) {
         console.log(error)

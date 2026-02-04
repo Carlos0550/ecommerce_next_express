@@ -1,8 +1,3 @@
-/**
- * Servicio de configuración de WhatsApp
- * Maneja la obtención y actualización de la configuración
- */
-
 import { prisma } from '@/config/prisma';
 import { 
   getBusiness, 
@@ -14,14 +9,9 @@ import {
   WhatsAppConfig, 
   WhatsAppConfigResponse 
 } from '../schemas/whatsapp.schemas';
-
 class ConfigService {
-  /**
-   * Obtiene la configuración actual de WhatsApp
-   */
   async getConfig(): Promise<WhatsAppConfigResponse> {
     const business = await getBusiness();
-    
     if (!business) {
       return {
         whatsapp_enabled: false,
@@ -32,7 +22,6 @@ class ConfigService {
         whatsapp_allowed_remitents: null,
       };
     }
-
     return {
       whatsapp_enabled: business.whatsapp_enabled,
       whatsapp_connected: business.whatsapp_connected,
@@ -42,37 +31,23 @@ class ConfigService {
       whatsapp_allowed_remitents: business.whatsapp_allowed_remitents,
     };
   }
-
-  /**
-   * Actualiza la configuración de WhatsApp
-   */
   async updateConfig(config: WhatsAppConfig): Promise<WhatsAppConfigResponse> {
     const business = await getBusinessOrThrow();
-
     const updateData: Record<string, unknown> = {};
-    
     if (config.whatsapp_enabled !== undefined) {
       updateData.whatsapp_enabled = config.whatsapp_enabled;
     }
-    
-    // whatsapp_access_token ya no se acepta desde el request
-    // Se debe configurar en la variable de entorno WASENDER_API_KEY
-    
     if (config.whatsapp_allowed_remitents !== undefined) {
       updateData.whatsapp_allowed_remitents = config.whatsapp_allowed_remitents 
         ? normalizeRemitentsList(config.whatsapp_allowed_remitents)
         : '';
     }
-
     await prisma.businessData.update({
       where: { id: business.id },
       data: updateData,
     });
-
     return this.getConfig();
   }
 }
-
 export const configService = new ConfigService();
 export default configService;
-

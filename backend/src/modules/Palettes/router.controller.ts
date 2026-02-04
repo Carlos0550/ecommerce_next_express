@@ -1,20 +1,17 @@
 import { Request, Response } from "express";
 import paletteServices from "./services/palette.services";
 import { generatePaletteFromPrompt } from "@/config/groq";
-
 class PaletteController {
   async list(req: Request, res: Response) {
     const items = await paletteServices.list();
     res.json(items);
   }
-
   async get(req: Request, res: Response) {
     const { id } = req.params as { id: string };
     const item = await paletteServices.get(id);
     if (!item) return res.status(404).json({ error: "Palette not found" });
     res.json(item);
   }
-
   async create(req: Request, res: Response) {
     try {
       const { name, colors, is_active } = req.body as { name: string; colors: string[]; is_active?: boolean };
@@ -25,7 +22,6 @@ class PaletteController {
       return res.status(500).json({ error: "Error creando paleta" });
     }
   }
-
   async update(req: Request, res: Response) {
     try {
       const { id } = req.params as { id: string };
@@ -37,7 +33,6 @@ class PaletteController {
       return res.status(500).json({ error: "Error actualizando paleta" });
     }
   }
-
   async remove(req: Request, res: Response) {
     try {
       const { id } = req.params as { id: string };
@@ -47,7 +42,6 @@ class PaletteController {
       return res.status(500).json({ error: "Error eliminando paleta" });
     }
   }
-
   async activate(req: Request, res: Response) {
     try {
       const { id } = req.params as { id: string };
@@ -58,7 +52,6 @@ class PaletteController {
       return res.status(500).json({ error: "Error actualizando estado" });
     }
   }
-
   async setUsage(req: Request, res: Response) {
     try {
       const { paletteId, target } = req.body as { paletteId: string; target: "admin" | "shop" };
@@ -71,7 +64,6 @@ class PaletteController {
       return res.status(500).json({ error: "Error configurando uso" });
     }
   }
-
   async getActiveFor(req: Request, res: Response) {
     const { target } = req.params as { target: "admin" | "shop" };
     if (!["admin", "shop"].includes(String(target))) return res.status(400).json({ error: "target inválido" });
@@ -79,7 +71,6 @@ class PaletteController {
     if (!palette) return res.status(404).json({ error: "No hay paleta activa" });
     res.json(palette);
   }
-
   async generate(req: Request, res: Response) {
     try {
       const { prompt } = req.body as { prompt: string };
@@ -91,7 +82,6 @@ class PaletteController {
       return res.status(500).json({ error: 'Error generando paleta' });
     }
   }
-
   async random(req: Request, res: Response) {
     try {
       const { name } = req.body as { name?: string };
@@ -104,5 +94,4 @@ class PaletteController {
     }
   }
 }
-
 export default new PaletteController();

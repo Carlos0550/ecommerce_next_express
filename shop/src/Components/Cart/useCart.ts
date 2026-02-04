@@ -1,22 +1,21 @@
-import { useAppContext } from "@/providers/AppContext";
 import { useState, useEffect, useCallback } from "react";
-import useBankInfo from "@/Api/useBankInfo";
-import { CheckoutFormValues } from "@/providers/useCart";
-
+import { useConfigStore } from "@/stores/useConfigStore";
+import { CheckoutFormValues, useCartStore } from "@/stores/useCartStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { locationService } from "@/services/location.service";
+import { cartService } from "@/services/cart.service";
 export default function useCart(onClose: () => void) {
   const {
-    cart: {
-      cart,
-      clearCart,
-      updateQuantity,
-      formValues,
-      setFormValues,
-      processOrder,
-    },
-    auth,
-    utils,
-  } = useAppContext();
-
+    items,
+    total,
+    clearCart,
+    updateQuantity,
+    formValues,
+    setFormValues,
+    checkout,
+  } = useCartStore();
+  const { session, token } = useAuthStore();
+  const cart = { items, total };
   const shippingInfoCompleted = (() => {
     if (!formValues.pickup) {
       return !!(
@@ -33,7 +32,6 @@ export default function useCart(onClose: () => void) {
     }
     return !!(formValues.name && formValues.email && formValues.phone);
   })();
-
   const [provinces, setProvinces] = useState<{ id: string; nombre: string }[]>(
     [],
   );
@@ -42,13 +40,9 @@ export default function useCart(onClose: () => void) {
   >([]);
   const [processingOrder, setProcessingOrder] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-
-  const {
-    data: businessData,
-    isLoading: isLoadingBankInfo,
-    error: bankInfoError,
-  } = useBankInfo();
-
+  const businessData = useConfigStore((state) => state.bankInfo);
+  const isLoadingBankInfo = false;
+  const bankInfoError = null;
   const initShipping = useCallback(() => {
     let raw = "{}";
     try {
@@ -56,49 +50,43 @@ export default function useCart(onClose: () => void) {
     } catch {
       console.warn("[Cart] Error reading shipping_info from localStorage");
     }
-
     const s = JSON.parse(raw);
-    setFormValues((prev): CheckoutFormValues => {
-      let nextValues: CheckoutFormValues = {
-        ...prev,
-        pickup: !!s.pickup,
-        name: s.name || "",
-        email: s.email || "",
-        phone: s.phone || "",
-        street: s.street || "",
-        postal_code: s.postal_code || "",
-        city: s.city || "",
-        province: s.province || "",
-        selectedProvinceId: "",
-        selectedLocalityId: "",
-        orderMethod: s.pickup ? "EN_LOCAL" : "TRANSFERENCIA",
-        activeStep: 0,
-        checkoutOpen: true,
-      };
-
-      if (auth?.state?.user) {
-        const u = auth.state.user;
-        if (!s.name || !s.email) {
-          nextValues = {
-            ...nextValues,
-            name: nextValues.name || u.name || "",
-            email: nextValues.email || u.email || "",
-          };
-        }
+    const prev = useCartStore.getState().formValues; 
+    let nextValues: CheckoutFormValues = {
+      ...prev,
+      pickup: !!s.pickup,
+      name: s.name || "",
+      email: s.email || "",
+      phone: s.phone || "",
+      street: s.street || "",
+      postal_code: s.postal_code || "",
+      city: s.city || "",
+      province: s.province || "",
+      selectedProvinceId: "",
+      selectedLocalityId: "",
+      orderMethod: s.pickup ? "EN_LOCAL" : "TRANSFERENCIA",
+      activeStep: 0,
+      checkoutOpen: true,
+    };
+    if (session) {
+      const u = session;
+      if (!s.name || !s.email) {
+        nextValues = {
+          ...nextValues,
+          name: nextValues.name || u.name || "",
+          email: nextValues.email || u.email || "",
+        };
       }
-      return nextValues;
-    });
-  }, [auth, setFormValues]);
-
+    }
+    setFormValues(nextValues);
+  }, [session, setFormValues]);
   useEffect(() => {
     let isMounted = true;
+    const fetchBankInfo = useConfigStore.getState().fetchBankInfo;
+    fetchBankInfo();
     (async () => {
       try {
-        const res = await fetch(
-          "https://apis.datos.gob.ar/georef/api/provincias?campos=id,nombre&max=100",
-        );
-        const json = await res.json().catch(() => null);
-        const list = Array.isArray(json?.provincias) ? json.provincias : [];
+        const list = await locationService.getProvinces();
         if (isMounted) {
           setProvinces(list);
         }
@@ -110,48 +98,53 @@ export default function useCart(onClose: () => void) {
       isMounted = false;
     };
   }, []);
-
   const handleProvinceChange = useCallback(
     async (provId: string) => {
-      setFormValues({
-        ...formValues,
+      setFormValues((prev) => ({
+        ...prev,
         selectedProvinceId: provId,
         province: provinces.find((x) => x.id === provId)?.nombre || "",
         selectedLocalityId: "",
         city: "",
-      });
+      }));
       setLocalities([]);
       try {
-        const res = await fetch(
-          `https://apis.datos.gob.ar/georef/api/municipios?provincia=${encodeURIComponent(
-            provId,
-          )}&campos=id,nombre&max=500`,
-        );
-        const json = await res.json().catch(() => null);
-        const list = Array.isArray(json?.municipios) ? json.municipios : [];
+        const list = await locationService.getLocalities(provId);
         setLocalities(list);
       } catch (err) {
         console.warn("[Cart] Error fetching localities", err);
       }
     },
-    [formValues, provinces, setFormValues],
+    [provinces, setFormValues],
   );
-
   const handleLocalityChange = useCallback(
     (locId: string) => {
       const l = localities.find((x) => x.id === locId);
-      setFormValues({
-        ...formValues,
+      setFormValues((prev) => ({
+        ...prev,
         selectedLocalityId: locId,
         city: l?.nombre || "",
-      });
+      }));
     },
-    [formValues, localities, setFormValues],
+    [localities, setFormValues],
   );
-
   const submitOrder = useCallback(async () => {
     setProcessingOrder(true);
-    const rs = await processOrder(utils.baseUrl, auth.state.token);
+    const payload = {
+      items: items,
+      payment_method: formValues.orderMethod,
+      customer: {
+        name: formValues.name,
+        email: formValues.email,
+        phone: formValues.phone,
+        street: formValues.street,
+        postal_code: formValues.postal_code,
+        city: formValues.city,
+        province: formValues.province,
+        pickup: formValues.pickup,
+      },
+    };
+    const rs = await checkout(payload);
     if (rs.ok) {
       if (
         formValues.orderMethod === "TRANSFERENCIA" &&
@@ -159,21 +152,12 @@ export default function useCart(onClose: () => void) {
         rs.order_id
       ) {
         try {
-          const fd = new FormData();
-          fd.append("file", receiptFile);
-          const up = await fetch(
-            `${utils.baseUrl}/orders/${rs.order_id}/receipt`,
-            {
-              method: "POST",
-              body: fd,
-            },
-          );
-          const j = await up.json().catch(() => null);
-          if (!up.ok || !j?.ok) {
-            alert("La orden fue creada, pero el comprobante no se pudo subir.");
+          const up = await cartService.uploadReceipt(rs.order_id, receiptFile);
+          if (!up || (up.status !== 200 && up.status !== 201)) {
           }
         } catch (err) {
           console.warn("[Cart] Error uploading receipt", err);
+          alert("La orden fue creada, pero el comprobante no se pudo subir.");
         }
       }
       setProcessingOrder(false);
@@ -182,16 +166,15 @@ export default function useCart(onClose: () => void) {
       setProcessingOrder(false);
     }
   }, [
-    processOrder,
-    utils.baseUrl,
-    auth.state.token,
-    formValues.orderMethod,
+    checkout,
+    items,
+    formValues,
+    token, 
     receiptFile,
     onClose,
   ]);
-
   return {
-    cart,
+    cart, 
     clearCart,
     updateQuantity,
     formValues,

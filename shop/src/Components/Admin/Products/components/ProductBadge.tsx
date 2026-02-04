@@ -1,10 +1,7 @@
 import { Badge } from '@mantine/core';
-import type { ProductState } from '@/Api/admin/ProductsApi';
-
 interface ProductBadgeProps {
-  state: ProductState;
+  state: any;
 }
-
 export const ProductBadge = ({ state }: ProductBadgeProps) => {
   const badgeConfig = {
     active: { color: 'green' as const, label: 'Activo' },
@@ -13,14 +10,11 @@ export const ProductBadge = ({ state }: ProductBadgeProps) => {
     out_stock: { color: 'red' as const, label: 'Agotado' },
     deleted: { color: 'red' as const, label: 'Eliminado' },
   } as const;
-
-  const config = badgeConfig[state];
+  const config = (badgeConfig as any)[state];
   if (!config) return null;
-
   return (
     <Badge variant="light" color={config.color} radius="xl">
       {config.label}
     </Badge>
   );
 };
-

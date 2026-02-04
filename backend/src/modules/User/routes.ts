@@ -5,30 +5,33 @@ import AuthServices from "./services/auth_services";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 const authServices = new AuthServices();
 const router = Router();
-
 router.post("/login", login, (req, res) => authServices.loginAdmin(req, res));
 router.post("/register", createUser, (req, res) =>
   authServices.registerShop(req, res),
 );
 router.post("/new", CreateUserController, authServices.newUser);
-
-router.get("/users", requireAuth, requireRole([1]), (req, res) =>
+router.get("/auth/users", requireAuth, requireRole([1]), (req, res) =>
   authServices.getUsers(req, res),
 );
-router.put("/users/:id/disable", requireAuth, requireRole([1]), (req, res) =>
-  authServices.disableUser(req, res),
+router.put(
+  "/auth/users/:id/disable",
+  requireAuth,
+  requireRole([1]),
+  (req, res) => authServices.disableUser(req, res),
 );
-router.put("/users/:id/enable", requireAuth, requireRole([1]), (req, res) =>
-  authServices.enableUser(req, res),
+router.put(
+  "/auth/users/:id/enable",
+  requireAuth,
+  requireRole([1]),
+  (req, res) => authServices.enableUser(req, res),
 );
-router.delete("/users/:id", requireAuth, requireRole([1]), (req, res) =>
+router.delete("/auth/users/:id", requireAuth, requireRole([1]), (req, res) =>
   authServices.deleteUser(req, res),
 );
 router.get("/validate-token", requireAuth, async (req, res) => {
   const userClaim = (req as any).user;
   const is_admin = userClaim.subjectType === "admin";
   let userRecord: any;
-
   if (is_admin) {
     const rows: any[] =
       await prisma.$queryRaw`SELECT is_active FROM "Admin" WHERE id = ${Number(userClaim.sub || userClaim.id)} LIMIT 1`;
@@ -39,7 +42,6 @@ router.get("/validate-token", requireAuth, async (req, res) => {
       select: { is_active: true },
     });
   }
-
   res.json({
     ok: true,
     id: userClaim.sub || userClaim.id,
@@ -51,5 +53,4 @@ router.get("/validate-token", requireAuth, async (req, res) => {
     subjectType: userClaim.subjectType,
   });
 });
-
 export default router;

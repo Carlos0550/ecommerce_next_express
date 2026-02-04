@@ -1,10 +1,4 @@
-/**
- * Cliente para WasenderAPI
- * Documentación: https://wasenderapi.com/api-docs
- */
-
 const WASENDER_BASE_URL = 'https://www.wasenderapi.com';
-
 export interface CreateSessionParams {
   name: string;
   phone_number: string;
@@ -19,7 +13,6 @@ export interface CreateSessionParams {
   ignore_channels?: boolean;
   ignore_broadcasts?: boolean;
 }
-
 export interface CreateSessionResponse {
   success: boolean;
   data: {
@@ -39,7 +32,6 @@ export interface CreateSessionResponse {
     updated_at: string;
   };
 }
-
 export interface SessionStatus {
   success: boolean;
   data: {
@@ -54,33 +46,28 @@ export interface SessionStatus {
     webhook_events: string[];
   };
 }
-
 export interface QRCodeResponse {
   success: boolean;
   data: {
-    qrCode: string; // String del QR para generar imagen
+    qrCode: string; 
   };
 }
-
 export interface SendMessageParams {
   to: string;
   message: string;
 }
-
 export interface SendImageParams {
   to: string;
   image_url?: string;
   image_base64?: string;
   caption?: string;
 }
-
 export interface WebhookEvent {
   event: string;
   session_id: number;
   timestamp: string;
   data: any;
 }
-
 export interface MessageReceivedEvent {
   event: 'messages.received';
   session_id: number;
@@ -99,7 +86,6 @@ export interface MessageReceivedEvent {
     groupId?: string;
   };
 }
-
 export interface SessionStatusEvent {
   event: 'session.status';
   session_id: number;
@@ -109,14 +95,11 @@ export interface SessionStatusEvent {
     phone_number?: string;
   };
 }
-
 class WasenderClient {
   private personalAccessToken: string;
-
   constructor(personalAccessToken: string) {
     this.personalAccessToken = personalAccessToken;
   }
-
   private headers(): Record<string, string> {
     return {
       'Authorization': `Bearer ${this.personalAccessToken}`,
@@ -124,48 +107,36 @@ class WasenderClient {
       'Accept': 'application/json',
     };
   }
-
   private async request<T>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     endpoint: string,
     body?: any
   ): Promise<T> {
     const url = `${WASENDER_BASE_URL}${endpoint}`;
-    
     const options: RequestInit = {
       method,
       headers: this.headers(),
     };
-
     if (body && (method === 'POST' || method === 'PUT')) {
       options.body = JSON.stringify(body);
     }
-
     const response = await fetch(url, options);
-    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `WasenderAPI Error: ${response.status} - ${errorData.message || response.statusText}`
       );
     }
-
-    // Manejar respuestas vacías (como DELETE)
     const text = await response.text();
     if (!text) {
       return { success: true } as T;
     }
-    
     try {
       return JSON.parse(text) as T;
     } catch {
       return { success: true } as T;
     }
   }
-
-  /**
-   * Crear una nueva sesión de WhatsApp
-   */
   async createSession(params: CreateSessionParams): Promise<CreateSessionResponse> {
     const payload = {
       name: params.name,
@@ -183,32 +154,16 @@ class WasenderClient {
       ignore_channels: params.ignore_channels ?? true,
       ignore_broadcasts: params.ignore_broadcasts ?? true,
     };
-
     return this.request<CreateSessionResponse>('POST', '/api/whatsapp-sessions', payload);
   }
-
-  /**
-   * Obtener detalles de una sesión
-   */
   async getSession(sessionId: number): Promise<SessionStatus> {
     return this.request<SessionStatus>('GET', `/api/whatsapp-sessions/${sessionId}`);
   }
-
-  /**
-   * Obtener detalles de una sesión (usando Personal Access Token)
-   */
   async getSessionDetails(sessionId: number): Promise<SessionStatus> {
     return this.request<SessionStatus>('GET', `/api/whatsapp-sessions/${sessionId}`);
   }
-
-  /**
-   * Obtener estado de una sesión usando el API Key de la sesión
-   * Endpoint: GET /api/status
-   * Requiere el API Key de la sesión, no el Personal Access Token
-   */
   async getSessionStatusWithApiKey(apiKey: string): Promise<{ status: string }> {
     const url = `${WASENDER_BASE_URL}/api/status`;
-    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -217,52 +172,28 @@ class WasenderClient {
         'Accept': 'application/json',
       },
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `WasenderAPI Error: ${response.status} - ${errorData.message || response.statusText}`
       );
     }
-
     return response.json();
   }
-
-  /**
-   * Obtener código QR para escanear
-   * Nota: Primero debes llamar a connectSession() para inicializar la sesión
-   */
   async getQRCode(sessionId: number): Promise<QRCodeResponse> {
     return this.request<QRCodeResponse>('GET', `/api/whatsapp-sessions/${sessionId}/qrcode`);
   }
-
-  /**
-   * Eliminar/desconectar una sesión
-   */
   async deleteSession(sessionId: number): Promise<{ success: boolean }> {
     return this.request<{ success: boolean }>('DELETE', `/api/whatsapp-sessions/${sessionId}`);
   }
-
-  /**
-   * Desconectar una sesión sin eliminarla
-   */
   async disconnectSession(sessionId: number): Promise<{ success: boolean }> {
     return this.request<{ success: boolean }>('POST', `/api/whatsapp-sessions/${sessionId}/disconnect`);
   }
-
-  /**
-   * Conectar una sesión existente
-   */
   async connectSession(sessionId: number): Promise<{ success: boolean }> {
     return this.request<{ success: boolean }>('POST', `/api/whatsapp-sessions/${sessionId}/connect`);
   }
-
-  /**
-   * Enviar mensaje de texto usando el API Key de la sesión
-   */
   async sendTextMessage(apiKey: string, params: SendMessageParams): Promise<{ success: boolean; data: any }> {
     const url = `${WASENDER_BASE_URL}/api/send-message`;
-    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -275,37 +206,27 @@ class WasenderClient {
         text: params.message,
       }),
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `WasenderAPI Error: ${response.status} - ${errorData.message || response.statusText}`
       );
     }
-
     return response.json();
   }
-
-  /**
-   * Enviar imagen usando el API Key de la sesión
-   */
   async sendImageMessage(apiKey: string, params: SendImageParams): Promise<{ success: boolean; data: any }> {
     const url = `${WASENDER_BASE_URL}/api/send-image`;
-    
     const payload: any = {
       to: params.to,
     };
-
     if (params.image_url) {
       payload.url = params.image_url;
     } else if (params.image_base64) {
       payload.base64 = params.image_base64;
     }
-
     if (params.caption) {
       payload.caption = params.caption;
     }
-
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -315,22 +236,14 @@ class WasenderClient {
       },
       body: JSON.stringify(payload),
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `WasenderAPI Error: ${response.status} - ${errorData.message || response.statusText}`
       );
     }
-
     return response.json();
   }
-
-  /**
-   * Desencriptar archivo multimedia (imagen, video, audio, documento)
-   * Endpoint: POST /api/decrypt-media
-   * Documentación: https://wasenderapi.com/api-docs/messages/decrypt-media-file
-   */
   async decryptMedia(apiKey: string, messageData: {
     key: { id: string };
     message: {
@@ -342,7 +255,6 @@ class WasenderClient {
     };
   }): Promise<{ success: boolean; publicUrl: string }> {
     const url = `${WASENDER_BASE_URL}/api/decrypt-media`;
-    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -356,38 +268,28 @@ class WasenderClient {
         },
       }),
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
         `WasenderAPI Error: ${response.status} - ${errorData.message || response.statusText}`
       );
     }
-
     return response.json();
   }
-
-  /**
-   * Validar webhook signature
-   */
   static validateWebhookSignature(
     payload: string,
     signature: string,
     webhookSecret: string
   ): boolean {
-    // WasenderAPI usa HMAC-SHA256 para firmar webhooks
     const crypto = require('crypto');
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(payload)
       .digest('hex');
-    
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
     );
   }
 }
-
 export default WasenderClient;
-

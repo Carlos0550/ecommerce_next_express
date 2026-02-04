@@ -5,11 +5,9 @@ import { theme } from "@/theme";
 import { Badge, Box, Button, Flex, Group, Image, Loader, Paper, ScrollArea, Select, Stack, Table, Text, TextInput } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { FiEdit, FiPlus, FiSearch } from "react-icons/fi";
-import { useChangeCategoryStatus, useGetAllCategories } from "@/Api/admin/CategoriesApi";
+import { useChangeCategoryStatus, useGetAllCategories } from "@/hooks/useAdminCategories";
 import { useMounted } from "@/utils/hooks/useMounted";
-
 const NoImage = "/image_fallback.webp";
-
 type CategoryStatus = 1 | 2 | 3;
 export type Category = {
     id: string;
@@ -19,55 +17,42 @@ export type Category = {
     created_at?: string | number | Date;
     status?: CategoryStatus;
 };
-
 type Props = {
     setAddOpened: (opened: boolean) => void;
 }
-
 export function CategoriesTable({setAddOpened}: Props) {
     const mounted = useMounted();
     const [query, setQuery] = useState<string>("");
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
     const [openEdit, setOpenEdit] = useState<boolean>(false);
-
     const { data, isLoading, isError } = useGetAllCategories();
     const useChangeStatus = useChangeCategoryStatus()
-
     const categories: Category[] = useMemo(() => {
         if (!data) return [];
-        if (Array.isArray(data)) return data as Category[];
-        const maybe = data as { data?: unknown; categories?: unknown };
-        if (Array.isArray(maybe.data)) return maybe.data as Category[];
-        if (Array.isArray(maybe.categories)) return maybe.categories as Category[];
-        return [];
+        const raw = (Array.isArray(data) ? data : (data as any)?.categories || (data as any)?.data || []) as any[];
+        return raw as Category[];
     }, [data]);
-
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return categories;
         return categories.filter((c) => String(c.title || "").toLowerCase().includes(q));
     }, [query, categories]);
-
     const status_map: { [key: number]: string } = {
         1: "Activo",
         2: "Inactivo",
         3: "Eliminado"
     }
-
     const handleChange = (value: number, categoryId: string) => {
         useChangeStatus.mutate({
             categoryId: categoryId,
             status: String(value)
         })
     }
-
     const [currentCategory, setCurrentCategory] = useState<Category>()
-
     const handleEdit = (category: Category) => {
         setCurrentCategory(category)
         setOpenEdit(true)
     }
-
     if (!mounted) {
         return (
             <Box>
@@ -77,7 +62,6 @@ export function CategoriesTable({setAddOpened}: Props) {
             </Box>
         );
     }
-
     return (
         <Box>
             <Flex direction={"row"} gap={"md"} align={"center"} mb="md" wrap={"wrap"}>
@@ -92,9 +76,7 @@ export function CategoriesTable({setAddOpened}: Props) {
                     Nueva categoría
                 </Button>
             </Flex>
-
             {isError && <Text color="red">Error al cargar categorías</Text>}
-
             {isMobile ? (
                 isLoading ? (
                     <Flex
@@ -125,7 +107,6 @@ export function CategoriesTable({setAddOpened}: Props) {
                                         <Select
                                             value={c.status ? String(c.status) : undefined}
                                             disabled={useChangeStatus.isPending}
-
                                             onChange={(value) => handleChange(Number(value), c.id)}
                                             style={{ flex: "1" }}
                                             data={Object.entries(status_map).map(([key, value]) => ({
@@ -172,7 +153,6 @@ export function CategoriesTable({setAddOpened}: Props) {
                                             <Table.Td>
                                                 <Text fw={600} style={{ textTransform: 'capitalize' }}>{c.title}</Text>
                                             </Table.Td>
-
                                             <Table.Td>
                                                 {c.created_at ? (
                                                     <Text c="dimmed">{new Date(c.created_at).toLocaleString()}</Text>
@@ -185,7 +165,6 @@ export function CategoriesTable({setAddOpened}: Props) {
                                                     <Select
                                                         value={c.status ? String(c.status) : undefined}
                                                         disabled={useChangeStatus.isPending}
-
                                                         onChange={(value) => handleChange(Number(value), c.id)}
                                                         style={{ flex: "1" }}
                                                         data={Object.entries(status_map).map(([key, value]) => ({
@@ -202,7 +181,6 @@ export function CategoriesTable({setAddOpened}: Props) {
                                                         >
                                                         Editar
                                                     </Button>
-
                                                 </Group>
                                             </Table.Td>
                                         </Table.Tr>
@@ -213,7 +191,6 @@ export function CategoriesTable({setAddOpened}: Props) {
                     </Paper>
                 )
             )}
-
             {openEdit && (
                 <ModalWrapper opened={openEdit} onClose={() => setOpenEdit(false)} title="Editar categoría" size="lg">
                     <CategoriesForm closeForm={() => setOpenEdit(false)} initialValues={currentCategory} />

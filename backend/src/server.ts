@@ -24,12 +24,9 @@ import spec from "./docs/openapi";
 import morgan from "morgan";
 import path from "path";
 import fs from "fs";
-
 validateEnvironmentVariables();
-
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-
 const isProduction = process.env.NODE_ENV === "production";
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
@@ -41,18 +38,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         "http://localhost:5173",
         "http://localhost:5174",
       ];
-
 console.log(
   `🔒 CORS configurado - Producción: ${isProduction}, Orígenes permitidos: ${allowedOrigins.length > 0 ? allowedOrigins.join(", ") : "(ninguno configurado)"}`,
 );
-
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) {
         return callback(null, true);
       }
-
       if (isProduction && allowedOrigins.length === 0) {
         console.warn(
           `⚠️ CORS: Rechazando origen ${origin} - ALLOWED_ORIGINS no configurado`,
@@ -61,7 +55,6 @@ app.use(
           new Error("CORS: ALLOWED_ORIGINS debe configurarse en producción"),
         );
       }
-
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else if (!isProduction) {
@@ -83,7 +76,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-
 app.use(express.json());
 app.use(
   morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
@@ -92,7 +84,6 @@ app.use(
     },
   }),
 );
-
 app.get("/api/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -101,13 +92,12 @@ app.get("/api/health", async (_req, res) => {
     res.status(500).json({ ok: false, error: "health_check_failed" });
   }
 });
-
 app.use("/api/admin", AdminAuthRouter);
 app.use("/api/shop", ShopAuthRouter);
 app.use("/api/auth", AuthRouter);
 app.use("/api", UserRouter);
 app.use("/api", ProfileRouter);
-app.use("/api/faqs", FaqRouter);
+app.use("/api/faq", FaqRouter);
 app.use("/api/products", ProductRouter);
 app.use("/api/sales", SalesRouter);
 app.use("/api/cart", CartRouter);
@@ -115,7 +105,6 @@ app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
 app.use("/api", PaletteRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
-
 app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
   try {
     const matches = req.url.match(/^\/api\/storage\/([^\/]+)\/(.+)$/);
@@ -124,15 +113,12 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
     }
     const bucket = matches[1];
     const filePath = matches[2];
-
     if (!bucket || !filePath) {
       return res.status(400).json({ ok: false, error: "invalid_path" });
     }
-
     if (filePath.includes("..") || bucket.includes("..")) {
       return res.status(403).json({ ok: false, error: "forbidden" });
     }
-
     const fullPath = path.join(
       process.cwd(),
       "uploads",
@@ -140,13 +126,11 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
       bucket,
       filePath,
     );
-
     try {
       await fs.promises.access(fullPath);
     } catch {
       return res.status(404).json({ ok: false, error: "file_not_found" });
     }
-
     const ext = path.extname(filePath).toLowerCase();
     const contentTypes: Record<string, string> = {
       ".jpg": "image/jpeg",
@@ -158,10 +142,8 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
       ".txt": "text/plain",
     };
     const contentType = contentTypes[ext] || "application/octet-stream";
-
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=31536000");
-
     const fileStream = fs.createReadStream(fullPath);
     fileStream.pipe(res);
   } catch (error) {
@@ -169,11 +151,8 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
     res.status(500).json({ ok: false, error: "server_error" });
   }
 });
-
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(spec));
 app.get("/docs.json", (_req, res) => res.json(spec));
-
-// Middleware global de manejo de errores
 app.use(
   (
     err: any,
@@ -182,35 +161,26 @@ app.use(
     next: express.NextFunction,
   ) => {
     console.error("Error no manejado:", err);
-
-    // Errores de CORS
     if (err.message && err.message.includes("CORS")) {
       return res
         .status(403)
         .json({ ok: false, error: "cors_error", message: err.message });
     }
-
-    // Errores de validación
     if (err.name === "ValidationError" || err.name === "ZodError") {
       return res
         .status(400)
         .json({ ok: false, error: "validation_error", message: err.message });
     }
-
-    // Errores de autenticación
     if (err.status === 401 || err.name === "UnauthorizedError") {
       return res
         .status(401)
         .json({ ok: false, error: "unauthorized", message: err.message });
     }
-
-    // Error genérico
     const status = err.status || err.statusCode || 500;
     const message =
       process.env.NODE_ENV === "production"
         ? "Error interno del servidor"
         : err.message;
-
     res.status(status).json({
       ok: false,
       error: "internal_error",
@@ -218,10 +188,8 @@ app.use(
     });
   },
 );
-
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
-
   if (process.env.NODE_ENV === "production") {
     exec("npx prisma migrate deploy", (error, stdout, stderr) => {
       if (error) {
@@ -234,10 +202,7 @@ app.listen(PORT, () => {
       console.log(`Migration result: ${stdout}`);
     });
   }
-
   initUploadsCleanupJob();
-
-  // Iniciar worker de timeout para sesiones de WhatsApp
   import("./modules/WhatsApp/services/whatsapp.services")
     .then(({ whatsAppServices }) => {
       whatsAppServices.startTimeoutWorker();

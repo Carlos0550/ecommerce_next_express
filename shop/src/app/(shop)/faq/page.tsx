@@ -1,16 +1,13 @@
 "use client";
 import { useQuery } from '@tanstack/react-query';
-import { useAppContext } from '@/providers/AppContext';
+import { BASE_URL } from '@/utils/constants';
 import { Accordion, Stack, Title, Text } from '@mantine/core';
-
 type FAQ = { id: string; question: string; answer: string };
-
 export default function FAQPage() {
-  const { utils: { baseUrl } } = useAppContext();
   const { data } = useQuery<{ ok: boolean; items: FAQ[] }, Error>({
     queryKey: ['faqs_public'],
     queryFn: async () => {
-      const res = await fetch(`${baseUrl}/faqs`);
+      const res = await fetch(`${BASE_URL}/faqs`);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'faqs_fetch_failed');
       return json;
