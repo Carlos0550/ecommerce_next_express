@@ -11,6 +11,7 @@ import { SalesForm } from "./SalesForm"
 import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiArrowLeft, FiArrowRight } from "react-icons/fi"
 import dayjs from "dayjs"
 import { capitalizeTexts } from "@/utils/constants"
+import { AdminProduct } from "@/stores/useAdminStore";
 export type SaleItemOption = { name: string; value?: string; values?: string[] }
 export type SaleItem = { id: string; title: string; price: number; quantity: number; options?: SaleItemOption[] }
 export type Sales = {
@@ -26,7 +27,7 @@ export type Sales = {
     email?: string,
   } | null,
   orders?: { buyer_name?: string; buyer_email?: string; buyer_phone?: string }[],
-  products: any[],
+  products: AdminProduct[],
   manualProducts?: ManualProductItem[],
   items?: SaleItem[],
   loadedManually?: boolean,
@@ -90,9 +91,10 @@ export default function SalesTable() {
   const [receiptUrl, setReceiptUrl] = useState<string>("")
   const openReceipt = (saleId: string) => {
     getReceiptMutation.mutate(saleId, {
-      onSuccess: (response: any) => {
-        if (response?.url) {
-            setReceiptUrl(response.url);
+      onSuccess: (response: { url?: string } | string) => {
+        const url = typeof response === 'string' ? response : response?.url;
+        if (url) {
+            setReceiptUrl(url);
             setReceiptOpen(true);
         } else {
             console.warn("Valid response but no URL", response);
@@ -104,15 +106,15 @@ export default function SalesTable() {
       }
     });
   }
-  const sales: Sales[] = (data?.sales ?? []) as Sales[]
-  const pagination = data?.pagination as undefined | {
+  const sales: Sales[] = (data?.sales as unknown as Sales[]) ?? []
+  const pagination = data?.pagination as {
     total: number,
     page: number,
     limit: number,
     totalPages: number,
     hasNextPage: boolean,
     hasPrevPage: boolean,
-  }
+  } | undefined;
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`)
   const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), [])
   const [viewProductsOpen, setViewProductsOpen] = useState<boolean>(false)

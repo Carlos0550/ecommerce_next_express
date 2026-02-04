@@ -3,16 +3,16 @@ import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
 import { useCreateCategory, useUpdateCategory } from "@/hooks/useAdminCategories";
 import { useState, useEffect } from "react";
-import type { Category } from "./CategoriesTable";
+import { AdminCategory } from "@/stores/useAdminStore";
 type FormValues = {
     title: string,
     images: File | null
 }
 type CategoryFormProps = {
     closeForm: () => void;
-    initialValues?: Category       
+    initialValues?: AdminCategory       
 };
-const getInitialFormValues = (initialValues?: Category): FormValues => ({
+const getInitialFormValues = (initialValues?: AdminCategory): FormValues => ({
     title: initialValues?.title || "",
     images: null
 });

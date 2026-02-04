@@ -30,9 +30,10 @@ export const UsersForm = ({ onCancel }: { onCancel: () => void }) => {
         try {
             await createUserMutation.mutateAsync({ name, email, role_id, phone: phone || undefined });
             onCancel();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.log(error);
-            const message = error?.response?.data?.error || error?.message;
+            const err = error as { response?: { data?: { error?: string } }; message?: string };
+            const message = err?.response?.data?.error || err?.message;
             if (message === "email_already_registered") {
                 showNotification({
                     message: "El email ya está registrado",

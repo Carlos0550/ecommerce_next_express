@@ -25,8 +25,13 @@ export const useUpdateFaq = () => {
   const updateFaq = useAdminStore((state) => state.updateFaq);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateFaq(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { question: string; answer: string; category?: string };
+    }) => updateFaq(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-faqs"] });
     },

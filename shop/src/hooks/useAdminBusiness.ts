@@ -14,7 +14,8 @@ export const useCreateBusiness = () => {
   const updateBusiness = useAdminStore((state) => state.updateBusiness);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: any) => updateBusiness("", payload),
+    mutationFn: (payload: Record<string, unknown>) =>
+      updateBusiness("", payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-business"] });
     },
@@ -24,8 +25,13 @@ export const useUpdateBusiness = () => {
   const updateBusiness = useAdminStore((state) => state.updateBusiness);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
-      updateBusiness(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Record<string, unknown>;
+    }) => updateBusiness(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-business"] });
     },
@@ -59,7 +65,13 @@ export const useUploadBusinessImage = () => {
 };
 export const useGenerateDescription = () => {
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: {
+      name: string;
+      type?: string;
+      city?: string;
+      province?: string;
+      actualDescription?: string;
+    }) => {
       const { api } = await import("@/config/api");
       const { data } = await api.post(
         "/business/generate-description",

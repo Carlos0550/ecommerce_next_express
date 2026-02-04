@@ -9,7 +9,8 @@ import CartWrapper from "@/Components/Cart/CartWrapper"
 import { configService } from "@/services/config.service"
 import { extractIdFromSlug } from "@/utils/slugs"
 import ProductDescription from "@/Components/Common/ProductDescription"
-type Products = any;
+import { PublicProduct } from "@/stores/useConfigStore"
+type Products = PublicProduct;
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const id = extractIdFromSlug(slug)

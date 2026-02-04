@@ -7,8 +7,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createProductSlug } from '@/utils/slugs';
 import classes from './ProductsCards.module.css';
+import { PublicProduct } from '@/stores/useConfigStore';
 type Props = {
-    product: any
+    product: PublicProduct
     priority?: boolean
 }
 import { useWindowSize } from "@/utils/hooks/useWindowSize";

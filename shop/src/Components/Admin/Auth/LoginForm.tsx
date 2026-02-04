@@ -68,8 +68,9 @@ export default function LoginForm(){
       showNotification({ title: 'Correo enviado', message: 'Te enviamos una contraseña temporal de 6 dígitos.', color: 'green' });
       setRecoverMode(false);
       setRecoverEmail("");
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Error al recuperar contraseña';
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      const msg = err.response?.data?.error || err.message || 'Error al recuperar contraseña';
       setError(msg);
     }finally{
       isReseting(false);

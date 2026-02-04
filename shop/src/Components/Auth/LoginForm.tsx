@@ -12,7 +12,7 @@ type Props = {
 }
 export default function LoginForm({ onClose }: Props) {
   const { loginUser, registerUser, registerAdmin } = useAuthStore();
-  const business = useConfigStore((state) => state.businessInfo) as any;
+  const business = useConfigStore((state) => state.businessInfo);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recoverMode, setRecoverMode] = useState(false);
@@ -95,8 +95,9 @@ export default function LoginForm({ onClose }: Props) {
       await authService.resetPassword(recoverEmail);
       showNotification({ title: 'Correo enviado', message: 'Revisa tu bandeja: te enviamos una contraseña temporal de 6 dígitos.', color: 'green', autoClose: 4000 });
       setRecoverMode(false);
-    } catch (e: any) {
-      const msg = e.response?.data?.error || e.message || 'Error al recuperar contraseña';
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
+      const msg = err.response?.data?.error || err.message || 'Error al recuperar contraseña';
       setError(msg);
     } finally {
       setLoading(false);

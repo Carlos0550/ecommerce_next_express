@@ -27,20 +27,11 @@ import Onboarding from "./sub-components/Onboarding";
 import { FiSearch, FiPackage } from "react-icons/fi";
 import { capitalizeTexts } from "@/utils/constants";
 import { useWindowSize } from "@/utils/hooks/useWindowSize";
-export interface PublicCategory {
-  id: string;
-  title: string;
-}
-export interface PublicProduct {
-  id: string;
-  title: string;
-  price: number;
-  images: string[];
-}
+import { PublicProduct, PublicCategory, PublicBusinessInfo, PublicProductsResponse } from "@/stores/useConfigStore"
 type Props = {
-  initialProducts?: any;
-  initialCategories?: any;
-  business?: any | null;
+  initialProducts?: PublicProductsResponse;
+  initialCategories?: PublicCategory[] | { data: PublicCategory[] };
+  business?: PublicBusinessInfo | null;
 };
 export default function Home({ initialProducts, initialCategories, business }: Props) {
   const router = useRouter();
@@ -60,10 +51,18 @@ export default function Home({ initialProducts, initialCategories, business }: P
     initialData: initialProducts,
   });
   const { data: categoriesData, isLoading: isLoadingCats } = usePublicCategories(initialCategories);
-  const categories: any[] = categoriesData ?? [];
-  const products: any[] = useMemo(
-    () => (Array.isArray(data?.pages) ? data.pages.flatMap((p) => p?.data?.products ?? p?.products ?? []) : []),
-    [data]
+  const categories: PublicCategory[] = (categoriesData as PublicCategory[]) ?? [];
+  const products = useMemo(
+    (): PublicProduct[] =>
+      Array.isArray(data?.pages)
+        ? data.pages.flatMap(
+            (p: {
+              data?: { products?: PublicProduct[] };
+              products?: PublicProduct[];
+            }) => p?.data?.products ?? p?.products ?? [],
+          )
+        : [],
+    [data],
   );
   const { isMobile } = useWindowSize(); 
   const h1Title = useMemo(() => {

@@ -6,9 +6,13 @@ import {
   useEnhanceProductContent,
   useUpdateProductDetails,
 } from "@/hooks/useAdminProducts";
-type Product = any;
-type GetProductsParams = any;
-type ProductState = any;
+import {
+  AdminProduct,
+  GetProductsParams,
+  ProductState,
+} from "@/stores/useAdminStore";
+
+type Product = AdminProduct;
 export const useProductTable = () => {
   const [search, setSearch] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -50,7 +54,7 @@ export const useProductTable = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const products: Product[] = useMemo(
     () => (Array.isArray(data?.products) ? data.products : []),
-    [data?.products],
+    [data],
   );
   const pagination = data?.pagination;
   const safeSetCurrentPage = useCallback(
@@ -187,7 +191,7 @@ export const useProductTable = () => {
           typeof selected.price === "number"
             ? selected.price
             : String(selected.price || ""),
-        active: selected.active,
+        active: selected.is_active,
         category: selected.category?.id,
         images: [],
         existingImageUrls: Array.isArray(selected.images)

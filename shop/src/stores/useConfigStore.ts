@@ -1,17 +1,55 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { configService } from "@/services/config.service";
+export interface PublicProduct {
+  id: string;
+  title: string;
+  price: number;
+  images: string[];
+  description: string;
+  options: { name: string; values: string[] }[];
+  category?: { id: string; title: string };
+  stock?: number;
+}
+export interface PublicCategory {
+  id: string;
+  title: string;
+  image: string | null;
+}
+export interface PublicProductsResponse {
+  products: PublicProduct[];
+  page: number;
+  totalPages: number;
+}
+export interface PublicBusinessInfo {
+  name: string;
+  description: string;
+  business_image: string;
+  type?: string;
+  city?: string;
+  phone?: string;
+  hero_image?: string;
+}
+export interface PublicBankInfo {
+  bankData: {
+    bank_name: string;
+    account_number: string;
+    account_holder: string;
+  }[];
+}
 interface ConfigState {
-  businessInfo: Record<string, unknown> | null;
+  businessInfo: PublicBusinessInfo | null;
   theme: Record<string, unknown> | null;
-  bankInfo: Record<string, any> | null;
-  publicProducts: any[];
-  publicCategories: any[];
+  bankInfo: PublicBankInfo | null;
+  publicProducts: PublicProduct[];
+  publicCategories: PublicCategory[];
   paletteName: string;
   colors: string[];
   isLoading: boolean;
   fetchConfig: () => Promise<void>;
-  fetchPublicProducts: (params?: any) => Promise<any>;
+  fetchPublicProducts: (
+    params?: Record<string, unknown>,
+  ) => Promise<PublicProductsResponse>;
   fetchPublicCategories: () => Promise<void>;
   fetchBankInfo: () => Promise<void>;
   updateTheme: (name: string, colors: string[]) => void;
@@ -106,7 +144,7 @@ export const useConfigStore = create<ConfigState>()(
       partialize: (state) => ({
         paletteName: state.paletteName,
         colors: state.colors,
-      }), 
+      }),
     },
   ),
 );

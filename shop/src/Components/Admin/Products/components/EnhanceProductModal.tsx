@@ -1,6 +1,8 @@
 import { Stack, Text, Textarea, TextInput, Group, Button } from '@mantine/core';
+import { AdminProduct } from "@/stores/useAdminStore";
+
 interface EnhanceProductModalProps {
-  product: any | null;
+  product: AdminProduct | null;
   enhanceTitle: string;
   enhanceDescription: string;
   additionalContext: string;

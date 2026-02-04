@@ -4,7 +4,7 @@ interface UseInfiniteProductsParams {
   limit?: number;
   title?: string;
   categoryId?: string;
-  initialData?: any;
+  initialData?: unknown;
 }
 export const useInfiniteProducts = ({
   limit = 30,
@@ -26,8 +26,14 @@ export const useInfiniteProducts = ({
       });
     },
     initialPageParam: 1,
-    getNextPageParam: (lastPage: any) => {
-      const { page, totalPages } = lastPage.data || lastPage;
+    getNextPageParam: (lastPage: {
+      data?: { page: number; totalPages: number };
+      page?: number;
+      totalPages?: number;
+    }) => {
+      const page = lastPage.data?.page ?? lastPage.page;
+      const totalPages = lastPage.data?.totalPages ?? lastPage.totalPages;
+      if (page === undefined || totalPages === undefined) return undefined;
       return page < totalPages ? page + 1 : undefined;
     },
     initialData: initialData

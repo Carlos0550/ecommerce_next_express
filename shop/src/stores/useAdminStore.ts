@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { adminService } from "@/services/admin.service";
-import { queryClient } from "@/config/queryClient";
 import { showNotification } from "@mantine/notifications";
+export type ProductState =
+  | "active"
+  | "inactive"
+  | "draft"
+  | "out_stock"
+  | "deleted";
 export interface AdminProduct {
   id: string;
   title: string;
@@ -12,10 +17,20 @@ export interface AdminProduct {
   categoryId: string | null;
   tags: string[] | null;
   description: string;
-  state: "active" | "inactive" | "draft" | "out_stock" | "deleted";
+  state: ProductState;
   stock: number;
   options: { name: string; values: string[] }[];
   category?: { id: string; title: string };
+}
+export interface GetProductsParams {
+  page?: number;
+  limit?: number;
+  title?: string;
+  state?: ProductState;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  isActive?: boolean;
+  categoryId?: string;
 }
 export interface AdminCategory {
   id: string;
@@ -48,6 +63,17 @@ export interface AdminSale {
   }[];
   user?: { name: string; email: string };
 }
+export interface GetSalesParams {
+  page?: number;
+  limit?: number;
+  start_date?: string;
+  end_date?: string;
+  pendingOnly?: boolean;
+}
+export interface AdminSaleAnalyticsParams {
+  start_date: string;
+  end_date: string;
+}
 export interface AdminBusiness {
   id: string;
   name: string;
@@ -70,69 +96,186 @@ export interface AdminBusiness {
     account_holder: string;
   }[];
 }
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role_id: string;
+  is_active: boolean;
+  created_at: string;
+  phone?: string;
+}
+
+export interface AdminFaq {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  created_at: string;
+  position?: number;
+  is_active?: boolean;
+}
+
+export interface AdminAnalytics {
+  totals: {
+    revenue_total: number;
+    sales_count: number;
+    products_sold: number;
+    avg_order_value?: number;
+    total_units_sold?: number;
+    total_tax_collected?: number;
+    best_day?: { date: string; revenue: number };
+    worst_day?: { date: string; revenue: number };
+  };
+  timeseries: {
+    by_day: { date: string; revenue: number; count: number; sales?: number }[];
+  };
+  breakdowns?: {
+    payment_methods?: { method: string; count: number }[];
+    sources?: { source: string; count: number }[];
+    by_category?: { name: string; revenue: number }[];
+    by_hour?: { hour: number; count: number; revenue: number }[];
+  };
+  growth?: {
+    count_percent?: number;
+    revenue_percent?: number;
+    units_percent?: number;
+  };
+  top_products?: { title: string; quantity_sold: number; revenue: number }[];
+  range?: { start_date: string; end_date: string; days: number };
+  previous?: { sales_count: number; revenue_total: number };
+}
+
+export interface Palette {
+  id: string;
+  name: string;
+  colors: string[];
+  is_active: boolean;
+  target?: "admin" | "shop";
+}
+
+export interface WhatsAppStatus {
+  status: "connected" | "disconnected" | "connecting";
+  phone_number?: string;
+}
+
+export interface WhatsAppConfig {
+  whatsapp_enabled: boolean;
+  whatsapp_connected: boolean;
+  whatsapp_phone_number: string | null;
+  whatsapp_allowed_remitents?: string;
+  has_access_token?: boolean;
+}
+
+export interface ProductsPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+export interface AdminSalesResponse {
+  sales: AdminSale[];
+  pagination: ProductsPagination;
+  totalSalesByDate?: number;
+}
 interface AdminState {
   products: AdminProduct[];
   categories: AdminCategory[];
   sales: AdminSale[];
   isLoading: boolean;
   business: AdminBusiness | null;
-  fetchProducts: (params?: any) => Promise<any>;
+  fetchProducts: (params?: GetProductsParams) => Promise<unknown>;
   fetchCategories: () => Promise<void>;
   fetchBusiness: () => Promise<void>;
-  fetchSales: (params?: any) => Promise<any>;
+  fetchSales: (params?: GetSalesParams) => Promise<AdminSalesResponse>;
   createProduct: (formData: FormData) => Promise<void>;
   updateProduct: (id: string, formData: FormData) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   updateProductStock: (id: string, quantity: number) => Promise<void>;
-  enhanceProduct: (payload: any) => Promise<any>;
+  enhanceProduct: (payload: {
+    productId?: string;
+    title?: string;
+    description?: string;
+    additionalContext?: string;
+    imageUrls?: string[];
+  }) => Promise<{ proposal: { title: string; description: string } }>;
   createCategory: (formData: FormData) => Promise<void>;
   updateCategory: (id: string, formData: FormData) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   changeCategoryStatus: (id: string, status: string) => Promise<void>;
-  saveSale: (payload: any) => Promise<void>;
-  updateSale: (id: string, payload: any) => Promise<void>;
+  saveSale: (payload: Record<string, unknown>) => Promise<void>;
+  updateSale: (id: string, payload: Record<string, unknown>) => Promise<void>;
   processSale: (id: string) => Promise<void>;
   declineSale: (id: string, reason: string) => Promise<void>;
   deleteSale: (id: string) => Promise<void>;
-  fetchSalesAnalytics: (params?: any) => Promise<any>;
-  fetchSaleReceipt: (id: string) => Promise<string>;
+  fetchSalesAnalytics: (params?: {
+    start_date: string;
+    end_date: string;
+  }) => Promise<AdminAnalytics | null>;
+  fetchSaleReceipt: (id: string) => Promise<{ url?: string } | string>;
   fetchFaqs: () => Promise<void>;
-  createFaq: (payload: any) => Promise<void>;
-  updateFaq: (id: string, payload: any) => Promise<void>;
+  createFaq: (payload: {
+    question: string;
+    answer: string;
+    category?: string;
+  }) => Promise<void>;
+  updateFaq: (
+    id: string,
+    payload: { question: string; answer: string; category?: string },
+  ) => Promise<void>;
   deleteFaq: (id: string) => Promise<void>;
-  fetchWhatsAppConfig: () => Promise<any>;
-  updateWhatsAppConfig: (payload: any) => Promise<void>;
+  fetchWhatsAppConfig: () => Promise<WhatsAppConfig | undefined>;
+  updateWhatsAppConfig: (payload: Partial<WhatsAppConfig>) => Promise<void>;
   createWhatsAppSession: (payload: {
     name: string;
     phone_number: string;
-  }) => Promise<any>;
-  fetchWhatsAppQR: () => Promise<any>;
-  fetchWhatsAppStatus: () => Promise<any>;
+  }) => Promise<unknown>;
+  fetchWhatsAppQR: () => Promise<{ qr_code: string }>;
+  fetchWhatsAppStatus: () => Promise<WhatsAppStatus | undefined>;
   disconnectWhatsApp: () => Promise<void>;
-  sendWhatsAppTest: (payload: any) => Promise<void>;
-  fetchUsers: (params?: any) => Promise<void>;
-  createUser: (payload: any) => Promise<void>;
+  sendWhatsAppTest: (payload: { to: string; message: string }) => Promise<void>;
+  fetchUsers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+  }) => Promise<void>;
+  createUser: (payload: {
+    name: string;
+    email: string;
+    role_id: string;
+    phone?: string;
+  }) => Promise<void>;
   deleteUser: (id: string, type?: string) => Promise<void>;
   toggleUserStatus: (
     id: string,
     status: boolean,
     type?: string,
   ) => Promise<void>;
-  updateBusiness: (id: string, payload: any) => Promise<void>;
-  palettes: any[];
+  updateBusiness: (
+    id: string,
+    payload: Record<string, unknown>,
+  ) => Promise<void>;
+  palettes: Palette[];
   fetchPalettes: () => Promise<void>;
   createPalette: (payload: { name: string; colors: string[] }) => Promise<void>;
-  updatePalette: (id: string, payload: any) => Promise<void>;
+  updatePalette: (
+    id: string,
+    payload: Partial<{ name: string; colors: string[] }>,
+  ) => Promise<void>;
   deletePalette: (id: string) => Promise<void>;
   activatePalette: (id: string, active: boolean) => Promise<void>;
-  usePalette: (paletteId: string, target: "admin" | "shop") => Promise<void>;
+  applyPalette: (paletteId: string, target: "admin" | "shop") => Promise<void>;
   generatePalette: (prompt: string) => Promise<void>;
   randomPalette: (name: string) => Promise<void>;
-  users: any[];
-  faqs: any[];
-  analytics: any | null;
-  whatsappStatus: any | null;
-  productsPagination: any | null;
+  users: AdminUser[];
+  faqs: AdminFaq[];
+  analytics: AdminAnalytics | null;
+  whatsappStatus: WhatsAppStatus | null;
+  productsPagination: ProductsPagination | null;
 }
 export const useAdminStore = create<AdminState>((set, get) => ({
   products: [],
@@ -146,7 +289,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   whatsappStatus: null,
   productsPagination: null,
   palettes: [],
-  fetchProducts: async (params) => {
+  fetchProducts: async (params?: GetProductsParams) => {
     set({ isLoading: true });
     try {
       const data = await adminService.getProducts(params);
@@ -172,10 +315,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  fetchSales: async (params) => {
+  fetchSales: async (params?: GetSalesParams) => {
     set({ isLoading: true });
     try {
-      const data = await adminService.getSales(params);
+      const data = (await adminService.getSales(params)) as AdminSalesResponse;
       console.log("Sales data raw", data);
       set({ sales: data.sales || data, isLoading: false });
       return data;
@@ -184,7 +327,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  saveSale: async (payload) => {
+  saveSale: async (payload: Record<string, unknown>) => {
     try {
       await adminService.saveSale(payload);
       showNotification({ message: "Venta guardada", color: "green" });
@@ -193,7 +336,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  updateSale: async (id, payload) => {
+  updateSale: async (id: string, payload: Record<string, unknown>) => {
     try {
       await adminService.updateSale(id, payload);
       showNotification({ message: "Venta actualizada", color: "green" });
@@ -229,10 +372,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  fetchSalesAnalytics: async (params) => {
+  fetchSalesAnalytics: async (params?: AdminSaleAnalyticsParams) => {
     try {
       const data = await adminService.getSalesAnalytics(params);
-      const analyticsData = data?.analytics || data;
+      const analyticsData =
+        (data as { analytics?: AdminAnalytics })?.analytics ||
+        (data as AdminAnalytics);
       set({ analytics: analyticsData });
       return analyticsData || null;
     } catch (error) {
@@ -256,7 +401,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.error(error);
     }
   },
-  createFaq: async (payload) => {
+  createFaq: async (payload: {
+    question: string;
+    answer: string;
+    category?: string;
+  }) => {
     try {
       await adminService.createFaq(payload);
       get().fetchFaqs();
@@ -265,7 +414,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  updateFaq: async (id, payload) => {
+  updateFaq: async (
+    id: string,
+    payload: { question: string; answer: string; category?: string },
+  ) => {
     try {
       await adminService.updateFaq(id, payload);
       get().fetchFaqs();
@@ -291,7 +443,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.error(error);
     }
   },
-  updateWhatsAppConfig: async (payload) => {
+  updateWhatsAppConfig: async (payload: Partial<WhatsAppConfig>) => {
     try {
       await adminService.updateWhatsAppConfig(payload);
       showNotification({
@@ -302,7 +454,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  createWhatsAppSession: async (payload) => {
+  createWhatsAppSession: async (payload: {
+    name: string;
+    phone_number: string;
+  }) => {
     try {
       return await adminService.createWhatsAppSession(payload);
     } catch (error) {
@@ -334,7 +489,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  sendWhatsAppTest: async (payload) => {
+  sendWhatsAppTest: async (payload: { to: string; message: string }) => {
     try {
       await adminService.sendWhatsAppTest(payload);
       showNotification({
@@ -345,7 +500,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  fetchUsers: async (params) => {
+  fetchUsers: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+  }) => {
     try {
       const data = await adminService.getUsers(params);
       console.log("user raw data: ", data);
@@ -354,7 +514,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.error(error);
     }
   },
-  createUser: async (payload) => {
+  createUser: async (payload: {
+    name: string;
+    email: string;
+    role_id: string;
+    phone?: string;
+  }) => {
     try {
       await adminService.createUser(payload);
       get().fetchUsers();
@@ -384,7 +549,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  updateBusiness: async (id, payload) => {
+  updateBusiness: async (id: string, payload: Record<string, unknown>) => {
     try {
       await adminService.updateBusiness(id, payload);
       await get().fetchBusiness();
@@ -411,7 +576,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isLoading: true });
     try {
       await adminService.createProduct(formData);
-      await get().fetchProducts(); 
+      await get().fetchProducts();
       showNotification({
         title: "Éxito",
         message: "Producto creado correctamente",
@@ -581,7 +746,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       console.error(error);
     }
   },
-  createPalette: async (payload) => {
+  createPalette: async (payload: { name: string; colors: string[] }) => {
     try {
       await adminService.createPalette(payload);
       get().fetchPalettes();
@@ -590,7 +755,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  updatePalette: async (id, payload) => {
+  updatePalette: async (
+    id: string,
+    payload: Partial<{ name: string; colors: string[] }>,
+  ) => {
     try {
       await adminService.updatePalette(id, payload);
       get().fetchPalettes();
@@ -617,7 +785,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       throw error;
     }
   },
-  usePalette: async (paletteId, target) => {
+  applyPalette: async (paletteId, target) => {
     try {
       await adminService.usePalette(paletteId, target);
       get().fetchPalettes();

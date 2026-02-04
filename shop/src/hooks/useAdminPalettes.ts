@@ -24,8 +24,13 @@ export const useUpdatePalette = () => {
   const updatePalette = useAdminStore((state) => state.updatePalette);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, palette }: { id: string; palette: any }) =>
-      updatePalette(id, palette),
+    mutationFn: ({
+      id,
+      palette,
+    }: {
+      id: string;
+      palette: Partial<{ name: string; colors: string[] }>;
+    }) => updatePalette(id, palette),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-palettes"] });
     },
@@ -53,7 +58,7 @@ export const useActivatePalette = () => {
   });
 };
 export const useSetUsage = () => {
-  const usePalette = useAdminStore((state) => state.usePalette);
+  const applyPalette = useAdminStore((state) => state.applyPalette);
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -62,7 +67,7 @@ export const useSetUsage = () => {
     }: {
       paletteId: string;
       target: "admin" | "shop";
-    }) => usePalette(paletteId, target),
+    }) => applyPalette(paletteId, target),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-palettes"] });
     },

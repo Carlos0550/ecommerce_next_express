@@ -1,4 +1,5 @@
 import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Textarea, SegmentedControl, Title, rem } from "@mantine/core";
+import { GetProductsParams } from "@/stores/useAdminStore";
 import { DateInput } from "@mantine/dates";
 import { showNotification } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -99,7 +100,7 @@ export function SalesForm({ onClose, sale }: Props) {
     const [searchTitle, setSearchTitle] = useState<string>("");
     const [selectValue, setSelectValue] = useState<string | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Product[]>(() => getInitialSelectedProducts(sale));
-    const productQueryParams: any = useMemo(() => ({
+    const productQueryParams: GetProductsParams = useMemo(() => ({
         page: 1,
         limit: 10,
         state: "active",

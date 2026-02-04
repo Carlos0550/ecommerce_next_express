@@ -3,13 +3,9 @@ import { useGetUsers, useDisableUser, useEnableUser, useDeleteUser } from "@/hoo
 import { Box, Table, Flex, Text, Group, Button, Badge, Card, Stack, useMantineTheme, SegmentedControl, Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { FaWhatsapp } from "react-icons/fa";
-type User = {
-    id: string,
-    name: string,
-    email: string,
-    role: number,
-    is_active: boolean,
-    phone?: string,
+import { AdminUser } from "@/stores/useAdminStore";
+type User = AdminUser & {
+    role: number
 }
 type PaginationData = {
     total: number,
@@ -31,7 +27,13 @@ export function UsersTable({
     const { mutate: disableUser } = useDisableUser();
     const { mutate: enableUser } = useEnableUser();
     const { mutate: deleteUser } = useDeleteUser();
-    const users: User[] = useMemo(() => data?.users || [], [data?.users]);
+    const users: User[] = useMemo(() => {
+        const rawUsers = (data?.users || []) as AdminUser[];
+        return rawUsers.map(u => ({
+            ...u,
+            role: Number(u.role_id) || 0
+        }));
+    }, [data?.users]);
     const pagination: PaginationData = useMemo(() => ({
         total: data?.pagination?.total || 0,
         page: data?.pagination?.page || currentPage,

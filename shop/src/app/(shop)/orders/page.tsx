@@ -19,11 +19,23 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const limit = 10;
   const { data } = useGetOrders(page, limit);
-  const items = (data?.data?.items || data?.items || []) as any[];
+  interface OrderItem {
+    title: string;
+    quantity: number;
+    price: number | string;
+  }
+  interface Order {
+    id: string;
+    created_at: string;
+    payment_method: string;
+    total: number;
+    items: OrderItem[];
+  }
+  const items = (data?.data?.items || data?.items || []) as Order[];
   return (
     <Stack>
       <Title order={2}>Mis ordenes</Title>
-      {items.map((o: any) => (
+      {items.map((o: Order) => (
         <Card key={o.id} withBorder>
           <Group justify="space-between">
             <Text fw={600}>#{o.id}</Text>
@@ -52,7 +64,7 @@ export default function OrdersPage() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {o.items.map((it: any, idx: number) => (
+                {o.items.map((it: OrderItem, idx: number) => (
                   <Table.Tr key={idx}>
                     <Table.Td>{it.title}</Table.Td>
                     <Table.Td>{it.quantity}</Table.Td>

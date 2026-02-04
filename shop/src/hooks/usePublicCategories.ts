@@ -1,17 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useConfigStore } from "@/stores/useConfigStore";
-export const usePublicCategories = (initialData?: any) => {
+import { useConfigStore, PublicCategory } from "@/stores/useConfigStore";
+export const usePublicCategories = (initialData?: unknown) => {
   const fetchPublicCategories = useConfigStore(
     (state) => state.fetchPublicCategories,
   );
-  const publicCategories = useConfigStore((state) => state.publicCategories);
-  return useQuery({
+  return useQuery<PublicCategory[]>({
     queryKey: ["public-categories"],
     queryFn: async () => {
       await fetchPublicCategories();
       return useConfigStore.getState().publicCategories;
     },
-    initialData: initialData?.data || initialData,
-    staleTime: 1000 * 60 * 60, 
+    initialData: ((initialData as { data?: unknown })?.data ??
+      (initialData as unknown)) as PublicCategory[],
+    staleTime: 1000 * 60 * 60,
   });
 };

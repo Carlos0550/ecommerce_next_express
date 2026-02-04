@@ -4,7 +4,7 @@ export const configService = {
     const { data } = await api.get("/business/public");
     return data;
   },
-  getPublicProducts: async (params?: any) => {
+  getPublicProducts: async (params?: Record<string, unknown>) => {
     const { data } = await api.get("/products/public", { params });
     return data;
   },

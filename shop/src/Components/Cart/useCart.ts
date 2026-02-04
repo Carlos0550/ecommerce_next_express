@@ -14,7 +14,7 @@ export default function useCart(onClose: () => void) {
     setFormValues,
     checkout,
   } = useCartStore();
-  const { session, token } = useAuthStore();
+  const { session } = useAuthStore();
   const cart = { items, total };
   const shippingInfoCompleted = (() => {
     if (!formValues.pickup) {
@@ -51,7 +51,7 @@ export default function useCart(onClose: () => void) {
       console.warn("[Cart] Error reading shipping_info from localStorage");
     }
     const s = JSON.parse(raw);
-    const prev = useCartStore.getState().formValues; 
+    const prev = useCartStore.getState().formValues;
     let nextValues: CheckoutFormValues = {
       ...prev,
       pickup: !!s.pickup,
@@ -165,16 +165,9 @@ export default function useCart(onClose: () => void) {
     } else {
       setProcessingOrder(false);
     }
-  }, [
-    checkout,
-    items,
-    formValues,
-    token, 
-    receiptFile,
-    onClose,
-  ]);
+  }, [checkout, items, formValues, receiptFile, onClose]);
   return {
-    cart, 
+    cart,
     clearCart,
     updateQuantity,
     formValues,

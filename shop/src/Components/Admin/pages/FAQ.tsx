@@ -2,6 +2,7 @@
 import { Button, Group, Modal, Stack, Table, TextInput, Title, Checkbox, NumberInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useCreateFaq, useDeleteFaq, useListFaqsAdmin, useUpdateFaq } from '@/hooks/useAdminFAQ';
+import { AdminFaq } from '@/stores/useAdminStore';
 import { useState } from 'react';
 export default function FAQ() {
   const { data } = useListFaqsAdmin();
@@ -33,14 +34,14 @@ export default function FAQ() {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {(Array.isArray(items) ? items : []).map((it: any) => (
+          {(Array.isArray(items) ? items : []).map((it: AdminFaq) => (
             <Table.Tr key={it.id}>
               <Table.Td>{it.question}</Table.Td>
               <Table.Td>{it.is_active ? 'Sí' : 'No'}</Table.Td>
               <Table.Td>{it.position}</Table.Td>
               <Table.Td>
                 <Group>
-                  <Button size="xs" variant="light" onClick={() => { setEditId(it.id); setForm({ question: it.question, answer: it.answer, position: it.position, is_active: it.is_active }); open(); }}>Editar</Button>
+                  <Button size="xs" variant="light" onClick={() => { setEditId(it.id); setForm({ question: it.question, answer: it.answer, position: it.position ?? 0, is_active: it.is_active ?? true }); open(); }}>Editar</Button>
                   <Button size="xs" color="red" variant="light" onClick={() => remove.mutate(it.id)}>Eliminar</Button>
                 </Group>
               </Table.Td>

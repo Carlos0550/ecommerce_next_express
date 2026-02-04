@@ -1,22 +1,10 @@
 import { useState } from "react";
 import { Box, Button, Group, Stack, TextInput, Textarea, Badge, Image, TagsInput, Select, Switch, Text, Modal } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
+import { AdminCategory, AdminProduct, ProductState } from "@/stores/useAdminStore";
 import { useGetAllCategories } from "@/hooks/useAdminCategories";
 import { useCreateProduct, useUpdateProductDetails, useEnhanceProductContent } from "@/hooks/useAdminProducts";
-export type ProductState = 'active' | 'inactive' | 'draft' | 'out_stock' | 'deleted';
-export type Product = {
-  id: string;
-  title: string;
-  price: number;
-  active: boolean;
-  category?: { id: string; title: string };
-  description?: string;
-  images: string[];
-  state: ProductState;
-  options?: { name: string; values: string[] }[];
-  stock?: number;
-}
+export type Product = AdminProduct;
 export type ProductFormValues = {
   title: string;
   price: string;
@@ -52,7 +40,7 @@ const PRODUCT_STATE_OPTIONS: { value: ProductState; label: string }[] = (
 const getInitialFormValues = (product?: Product | null): ProductFormValues => ({
   title: product?.title || "",
   price: product?.price != null ? String(product.price) : "",
-  active: product?.active ?? true,
+  active: product?.is_active ?? true,
   tags: [],
   category: product?.category?.id ?? "",
   description: product?.description ?? "",
@@ -68,7 +56,7 @@ const getInitialFormValues = (product?: Product | null): ProductFormValues => ({
   options: product?.options || [],
 });
 export default function ProductForm({ product, onSuccess, onCancel }: ProductFormProps & { product?: Product | null }) {
-  const {data: categories = [] as any} = useGetAllCategories();
+  const { data: categories = [] } = useGetAllCategories();
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProductDetails();
   const enhanceMutation = useEnhanceProductContent();
@@ -162,7 +150,6 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
     });
   };
   const fillWithAI = formValues.fillWithAI ?? false;
-  const publishAutomatically = formValues.publishAutomatically ?? false;
   return (
     <Stack>
       {!product && (
@@ -211,7 +198,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
               setEnhanceDescription("");
               const imgs = Array.isArray(formValues.existingImageUrls) ? formValues.existingImageUrls : [];
               enhanceMutation.mutate({ productId: product.id, additionalContext: formValues.additionalContext, imageUrls: imgs }, {
-                onSuccess: (resp) => {
+                onSuccess: (resp: { proposal: { title: string; description: string } }) => {
                   if (resp?.proposal) {
                     setEnhanceTitle(resp.proposal.title || "");
                     setEnhanceDescription(resp.proposal.description || "");
@@ -234,10 +221,10 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
         label="Categoría"
         name="category" 
         placeholder="Selecciona una categoría"
-        data={Array.isArray(categories?.categories) ? categories.categories.map((cat: { id: string; title: string }) => ({ 
+        data={categories.map((cat: AdminCategory) => ({ 
           value: cat.id, 
           label: capitalizeFirstLetter(cat.title)
-        })) : []}
+        }))}
         value={formValues.category}
         onChange={(value) => setFormValues(prev => ({ ...prev, category: value || "" }))}
         required={fillWithAI}
@@ -288,8 +275,21 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
       <Stack>
         {}
         <input
+          id="file-input"
           type="file"
-          accept="image}
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            if (e.target.files) {
+              const files = Array.from(e.target.files);
+              setFormValues((prev) => ({
+                ...prev,
+                images: [...prev.images, ...files],
+              }));
+            }
+          }}
+        />
         <Button
           variant="filled"
           size="lg"

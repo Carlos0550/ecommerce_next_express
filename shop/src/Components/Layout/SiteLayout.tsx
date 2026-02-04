@@ -4,12 +4,12 @@ import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
 import LoginForm from "../Auth/LoginForm";
 import AuthModal from "../Modals/AuthModal/AuthModal";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { FiHome, FiUser, FiBox, FiHelpCircle, FiLogIn } from "react-icons/fi";
 import { usePathname } from "next/navigation";
 import { useConfigStore } from "@/stores/useConfigStore";
 import { SidebarContent } from "../Common/SidebarContent";
-import { capitalizeTexts, BASE_URL } from "@/utils/constants";
+import { capitalizeTexts } from "@/utils/constants";
 import { useWindowSize } from "@/utils/hooks/useWindowSize";
 type Props = {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ export default function SiteLayout({ children }: Props) {
   const email = user?.email || "";
   const { isMobile } = useWindowSize();
   const pathname = usePathname()
-  const business = useConfigStore((state) => state.businessInfo) as any;
+  const business = useConfigStore((state) => state.businessInfo);
   const fetchConfig = useConfigStore((state) => state.fetchConfig);
   useEffect(() => {
     if (!business) fetchConfig();

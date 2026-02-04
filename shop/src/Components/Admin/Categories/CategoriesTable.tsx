@@ -7,16 +7,10 @@ import { useMediaQuery } from "@mantine/hooks";
 import { FiEdit, FiPlus, FiSearch } from "react-icons/fi";
 import { useChangeCategoryStatus, useGetAllCategories } from "@/hooks/useAdminCategories";
 import { useMounted } from "@/utils/hooks/useMounted";
+import { AdminCategory } from "@/stores/useAdminStore";
+
 const NoImage = "/image_fallback.webp";
-type CategoryStatus = 1 | 2 | 3;
-export type Category = {
-    id: string;
-    title: string;
-    image?: string;
-    is_active?: boolean;
-    created_at?: string | number | Date;
-    status?: CategoryStatus;
-};
+
 type Props = {
     setAddOpened: (opened: boolean) => void;
 }
@@ -27,29 +21,31 @@ export function CategoriesTable({setAddOpened}: Props) {
     const [openEdit, setOpenEdit] = useState<boolean>(false);
     const { data, isLoading, isError } = useGetAllCategories();
     const useChangeStatus = useChangeCategoryStatus()
-    const categories: Category[] = useMemo(() => {
-        if (!data) return [];
-        const raw = (Array.isArray(data) ? data : (data as any)?.categories || (data as any)?.data || []) as any[];
-        return raw as Category[];
+
+    const categories: AdminCategory[] = useMemo(() => {
+        return data || [];
     }, [data]);
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return categories;
         return categories.filter((c) => String(c.title || "").toLowerCase().includes(q));
     }, [query, categories]);
-    const status_map: { [key: number]: string } = {
-        1: "Activo",
-        2: "Inactivo",
-        3: "Eliminado"
+
+    const status_map: { [key: string]: string } = {
+        active: "Activo",
+        inactive: "Inactivo",
+        deleted: "Eliminado"
     }
-    const handleChange = (value: number, categoryId: string) => {
+
+    const handleChange = (value: string, categoryId: string) => {
         useChangeStatus.mutate({
             categoryId: categoryId,
-            status: String(value)
+            status: value
         })
     }
-    const [currentCategory, setCurrentCategory] = useState<Category>()
-    const handleEdit = (category: Category) => {
+    const [currentCategory, setCurrentCategory] = useState<AdminCategory>()
+    const handleEdit = (category: AdminCategory) => {
         setCurrentCategory(category)
         setOpenEdit(true)
     }
@@ -107,7 +103,7 @@ export function CategoriesTable({setAddOpened}: Props) {
                                         <Select
                                             value={c.status ? String(c.status) : undefined}
                                             disabled={useChangeStatus.isPending}
-                                            onChange={(value) => handleChange(Number(value), c.id)}
+                                            onChange={(value) => handleChange(value || "", c.id)}
                                             style={{ flex: "1" }}
                                             data={Object.entries(status_map).map(([key, value]) => ({
                                                 value: key,
@@ -165,7 +161,7 @@ export function CategoriesTable({setAddOpened}: Props) {
                                                     <Select
                                                         value={c.status ? String(c.status) : undefined}
                                                         disabled={useChangeStatus.isPending}
-                                                        onChange={(value) => handleChange(Number(value), c.id)}
+                                                        onChange={(value) => handleChange(value || "", c.id)}
                                                         style={{ flex: "1" }}
                                                         data={Object.entries(status_map).map(([key, value]) => ({
                                                             value: key,

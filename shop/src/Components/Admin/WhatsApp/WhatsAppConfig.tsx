@@ -256,7 +256,7 @@ export default function WhatsAppConfig() {
       : config?.whatsapp_allowed_remitents
       ? config.whatsapp_allowed_remitents
           .split(",")
-          .map((r: any) => r.trim())
+          .map((r: string) => r.trim())
           .filter(Boolean)
       : [];
   const prevStatusRef = useRef<string | undefined>(undefined);
@@ -309,7 +309,7 @@ export default function WhatsAppConfig() {
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };
   const handleRemoveRemitent = async (remitent: string) => {
-    const newList = allowedRemitents.filter((r: any) => r !== remitent);
+    const newList = allowedRemitents.filter((r: string) => r !== remitent);
     setLocalRemitents(newList);
     await updateConfig.mutateAsync({ whatsapp_allowed_remitents: newList.join(",") });
   };

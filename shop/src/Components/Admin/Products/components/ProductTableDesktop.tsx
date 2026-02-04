@@ -3,18 +3,20 @@ import { FiEdit, FiEye, FiTrash, FiTrendingUp, FiBox } from 'react-icons/fi';
 import { ProductBadge } from './ProductBadge';
 import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
+import { AdminProduct } from "@/stores/useAdminStore";
+
 interface ProductTableDesktopProps {
-  products: any[];
-  state: any;
+  products: AdminProduct[];
+  state: string;
   deletingId: string | null;
   isDeleting: boolean;
   isUpdatingStock: boolean;
   isEnhancing: boolean;
-  onView: (product: any) => void;
-  onEdit: (product: any) => void;
+  onView: (product: AdminProduct) => void;
+  onEdit: (product: AdminProduct) => void;
   onDelete: (productId: string) => void;
-  onUpdateStock: (product: any) => void;
-  onEnhance: (product: any) => void;
+  onUpdateStock: (product: AdminProduct) => void;
+  onEnhance: (product: AdminProduct) => void;
 }
 export const ProductTableDesktop = ({
   products,

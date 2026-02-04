@@ -28,11 +28,14 @@ export const useGetSalesAnalytics = (
   const fetchSalesAnalytics = useAdminStore(
     (state) => state.fetchSalesAnalytics,
   );
-  const isAuthenticated = useAdminStore((state) => !!state.business); 
+  const isAuthenticated = useAdminStore((state) => !!state.business);
   return useQuery({
     queryKey: ["admin-sales-analytics", start_date, end_date],
     queryFn: async () => {
-      return await fetchSalesAnalytics({ start_date, end_date });
+      return await fetchSalesAnalytics({
+        start_date: start_date!,
+        end_date: end_date!,
+      });
     },
     enabled: !!start_date && !!end_date && isAuthenticated,
   });
@@ -88,8 +91,13 @@ export const useUpdateSale = () => {
   const updateSale = useAdminStore((state) => state.updateSale);
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
-      updateSale(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Record<string, unknown>;
+    }) => updateSale(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-sales"] });
     },

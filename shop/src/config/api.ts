@@ -28,7 +28,7 @@ api.interceptors.request.use(
           token = parsed?.state?.token;
           isAdmin = parsed?.state?.isAdmin === true;
         }
-      } catch (e) {}
+      } catch {}
       if (!token) {
         const cookieToken = document.cookie
           .split("; ")

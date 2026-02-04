@@ -1,6 +1,13 @@
 import { api } from "@/config/api";
+import {
+  GetProductsParams,
+  GetSalesParams,
+  WhatsAppConfig,
+  WhatsAppStatus,
+  AdminAnalytics,
+} from "@/stores/useAdminStore";
 export const adminService = {
-  getProducts: async (params?: any) => {
+  getProducts: async (params?: GetProductsParams) => {
     const { data } = await api.get("/products", { params });
     return data;
   },
@@ -28,7 +35,13 @@ export const adminService = {
     const { data } = await api.patch(`/products/stock/${id}/${quantity}`);
     return data;
   },
-  enhanceProduct: async (payload: any) => {
+  enhanceProduct: async (payload: {
+    productId?: string;
+    title?: string;
+    description?: string;
+    additionalContext?: string;
+    imageUrls?: string[];
+  }) => {
     const { data } = await api.post("/products/enhance", payload);
     return data;
   },
@@ -48,7 +61,7 @@ export const adminService = {
     });
     return data;
   },
-  changeCategoryStatus: async (id: string, status: any) => {
+  changeCategoryStatus: async (id: string, status: string) => {
     const { data } = await api.patch(
       `/products/categories/status/${id}/${status}`,
     );
@@ -106,15 +119,15 @@ export const adminService = {
     const { data } = await api.post("/palettes/random", { name });
     return data;
   },
-  getSales: async (params?: any) => {
+  getSales: async (params?: GetSalesParams) => {
     const { data } = await api.get("/sales", { params });
     return data;
   },
-  saveSale: async (payload: any) => {
+  saveSale: async (payload: Record<string, unknown>) => {
     const { data } = await api.post("/sales/save", payload);
     return data;
   },
-  updateSale: async (id: string, payload: any) => {
+  updateSale: async (id: string, payload: Record<string, unknown>) => {
     const { data } = await api.put(`/sales/${id}`, payload);
     return data;
   },
@@ -130,9 +143,12 @@ export const adminService = {
     const { data } = await api.delete(`/sales/${id}`);
     return data;
   },
-  getSalesAnalytics: async (params?: any) => {
+  getSalesAnalytics: async (params?: {
+    start_date: string;
+    end_date: string;
+  }) => {
     const { data } = await api.get("/sales/analytics", { params });
-    return data;
+    return data as { analytics: AdminAnalytics } | AdminAnalytics;
   },
   getSaleReceipt: async (id: string) => {
     const { data } = await api.get(`/sales/${id}/receipt`);
@@ -142,11 +158,18 @@ export const adminService = {
     const { data } = await api.get("/faq");
     return data;
   },
-  createFaq: async (payload: any) => {
+  createFaq: async (payload: {
+    question: string;
+    answer: string;
+    category?: string;
+  }) => {
     const { data } = await api.post("/faq", payload);
     return data;
   },
-  updateFaq: async (id: string, payload: any) => {
+  updateFaq: async (
+    id: string,
+    payload: { question: string; answer: string; category?: string },
+  ) => {
     const { data } = await api.put(`/faq/${id}`, payload);
     return data;
   },
@@ -156,13 +179,16 @@ export const adminService = {
   },
   getWhatsAppConfig: async () => {
     const { data } = await api.get("/whatsapp/config");
-    return data;
+    return data as WhatsAppConfig;
   },
-  updateWhatsAppConfig: async (payload: any) => {
+  updateWhatsAppConfig: async (payload: Partial<WhatsAppConfig>) => {
     const { data } = await api.put("/whatsapp/config", payload);
     return data;
   },
-  createWhatsAppSession: async (payload: any) => {
+  createWhatsAppSession: async (payload: {
+    name: string;
+    phone_number: string;
+  }) => {
     const { data } = await api.post("/whatsapp/session", payload);
     return data;
   },
@@ -172,21 +198,26 @@ export const adminService = {
   },
   getWhatsAppStatus: async () => {
     const { data } = await api.get("/whatsapp/session/status");
-    return data;
+    return data as WhatsAppStatus;
   },
   disconnectWhatsApp: async () => {
     const { data } = await api.delete("/whatsapp/session/disconnect");
     return data;
   },
-  sendWhatsAppTest: async (payload: any) => {
+  sendWhatsAppTest: async (payload: { to: string; message: string }) => {
     const { data } = await api.post("/whatsapp/test", payload);
     return data;
   },
-  getUsers: async (params?: any) => {
+  getUsers: async (params?: { page?: number; limit?: number }) => {
     const { data } = await api.get("/auth/users", { params });
     return data;
   },
-  createUser: async (payload: any) => {
+  createUser: async (payload: {
+    name: string;
+    email: string;
+    role_id: string;
+    phone?: string;
+  }) => {
     const { data } = await api.post("/auth/register", payload);
     return data;
   },

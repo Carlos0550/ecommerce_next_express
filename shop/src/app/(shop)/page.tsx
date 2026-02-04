@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import HomeComponent from "@/Components/Home/Home"
 import { configService } from "@/services/config.service"
 import { createProductSlug } from "@/utils/slugs"
+import { PublicProduct, PublicProductsResponse, PublicCategory } from "@/stores/useConfigStore"
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
@@ -13,16 +14,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   qp.append("limit", "30") 
   if (sp?.title && sp.title.trim()) qp.append("title", sp.title.trim())
   if (sp?.categoryId && sp.categoryId.trim()) qp.append("categoryId", sp.categoryId.trim())
-  let productsData: any = undefined
-  let products: any[] = []
+  let productsData: PublicProductsResponse | undefined = undefined
+  let products: PublicProduct[] = []
   try {
     const res = await fetch(`${baseUrl}/products/public?${qp.toString()}`, { next: { revalidate: 0 } })
     if (res.ok) {
-        productsData = await res.json()
-        products = productsData?.data?.products || []
+        const json = await res.json()
+        productsData = json.data || json
+        products = productsData?.products || []
     }
   } catch {}
-  let categoriesData: any = undefined
+  let categoriesData: PublicCategory[] | undefined = undefined
   try {
     const resCat = await fetch(`${baseUrl}/products/public/categories`, { next: { revalidate: 0 } })
     if (resCat.ok) {
@@ -32,7 +34,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const itemList = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    itemListElement: Array.isArray(products) ? products.map((p, idx) => ({
+    itemListElement: Array.isArray(products) ? products.map((p: PublicProduct, idx: number) => ({
       "@type": "ListItem",
       position: idx + 1,
       url: `${siteUrl}/producto/${createProductSlug(p.title, p.id)}`,

@@ -35,11 +35,11 @@ export default function AccountPage() {
       setTimeout(() => {
         setForm({
           name: u.name || '',
-          phone: (u as any).phone || '',
-          shipping_street: (u as any).shipping_street || '',
-          shipping_postal_code: (u as any).shipping_postal_code || '',
-          shipping_city: (u as any).shipping_city || '',
-          shipping_province: (u as any).shipping_province || '',
+          phone: u.phone || '',
+          shipping_street: u.shipping_street || '',
+          shipping_postal_code: u.shipping_postal_code || '',
+          shipping_city: u.shipping_city || '',
+          shipping_province: u.shipping_province || '',
         });
       }, 0);
     }
@@ -117,7 +117,7 @@ export default function AccountPage() {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      const res: any = await upload.mutateAsync(formData);
+      const res = await upload.mutateAsync(formData);
       setAvatarPreview(res?.profileImage || null);
       showNotification({ message: 'Imagen de perfil actualizada', color: 'green' });
     } catch (e) {
@@ -143,7 +143,7 @@ export default function AccountPage() {
       const er = e as Error; setChangeError(er.message || 'Error al cambiar contraseña');
     }
   }
-  const profileImage = avatarPreview || (data as any)?.profile_image || session?.profileImage || '';
+  const profileImage = avatarPreview || data?.profile_image || session?.profileImage || '';
   const email = data?.email || session?.email || '';
   return (
     <Stack gap="md">

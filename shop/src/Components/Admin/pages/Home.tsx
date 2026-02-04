@@ -165,10 +165,10 @@ export default function Home() {
     setRange([toDate(value[0]), toDate(value[1])]);
   };
   const revenueSeries = useMemo(() => {
-    return (data?.timeseries?.by_day || []).map((d: any) => ({ date: d.date, revenue: Number(d.revenue || 0) }));
+    return (data?.timeseries?.by_day || []).map((d: { date: string; revenue: number }) => ({ date: d.date, revenue: Number(d.revenue || 0) }));
   }, [data]);
   const countSeries = useMemo(() => {
-    return (data?.timeseries?.by_day || []).map((d: any) => ({ date: d.date, count: Number(d.count || 0) }));
+    return (data?.timeseries?.by_day || []).map((d: { date: string; count: number }) => ({ date: d.date, count: Number(d.count || 0) }));
   }, [data]);
   const paymentPieData = useMemo(() => {
     const mapMethod: Record<string, string> = {
@@ -179,7 +179,7 @@ export default function Home() {
       NINGUNO: "Ninguno",
     };
     const colors = [MUI_COLORS.blue, MUI_COLORS.green, MUI_COLORS.violet, MUI_COLORS.orange, MUI_COLORS.gray];
-    return (data?.breakdowns?.payment_methods || []).map((pm: any, idx: any) => ({
+    return (data?.breakdowns?.payment_methods || []).map((pm: { method: string; count: number }, idx: number) => ({
       id: idx,
       label: mapMethod[pm.method] || pm.method,
       value: pm.count,
@@ -192,7 +192,7 @@ export default function Home() {
       WEB: "Tienda online",
     };
     const colors = [MUI_COLORS.teal, MUI_COLORS.cyan, MUI_COLORS.indigo];
-    return (data?.breakdowns?.sources || []).map((sc: any, idx: any) => ({
+    return (data?.breakdowns?.sources || []).map((sc: { source: string; count: number }, idx: number) => ({
       id: idx,
       label: mapSource[sc.source] || sc.source,
       value: sc.count,
@@ -201,7 +201,7 @@ export default function Home() {
   }, [data]);
   const categoryPieData = useMemo(() => {
     const colors = [MUI_COLORS.pink, MUI_COLORS.grape, MUI_COLORS.violet, MUI_COLORS.indigo, MUI_COLORS.blue, MUI_COLORS.cyan, MUI_COLORS.teal, MUI_COLORS.green];
-    return (data?.breakdowns?.by_category || []).map((cat: any, idx: any) => ({
+    return (data?.breakdowns?.by_category || []).map((cat: { name: string; revenue: number }, idx: number) => ({
       id: idx,
       label: cat.name,
       value: cat.revenue,
@@ -209,14 +209,14 @@ export default function Home() {
     }));
   }, [data]);
   const topProductsData = useMemo(() => {
-    return (data?.top_products || []).map((p: any) => ({
+    return (data?.top_products || []).map((p: { title: string; quantity_sold: number; revenue: number }) => ({
       product: p.title.length > 15 ? p.title.substring(0, 15) + "..." : p.title,
       cantidad: p.quantity_sold,
       ingresos: p.revenue,
     }));
   }, [data]);
   const hourlyData = useMemo(() => {
-    return (data?.breakdowns?.by_hour || []).map((h: any) => ({
+    return (data?.breakdowns?.by_hour || []).map((h: { hour: number; count: number; revenue: number }) => ({
       hora: `${h.hour.toString().padStart(2, "0")}:00`,
       ventas: h.count,
       ingresos: h.revenue,
@@ -245,9 +245,9 @@ export default function Home() {
       [""],
       ["Ventas diarias"],
       ["Fecha", "Ventas", "Ingresos"],
-      ...(data.timeseries?.by_day || []).map((d: any) => [d.date, d.count.toString(), formatCurrency(d.revenue)]),
+      ...(data.timeseries?.by_day || []).map((d: { date: string; count: number; revenue: number }) => [d.date, d.count.toString(), formatCurrency(d.revenue)]),
     ];
-    const csvContent = rows.map((r: any) => r.join(",")).join("\n");
+    const csvContent = rows.map((r: string[]) => r.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -367,7 +367,7 @@ export default function Home() {
               <Box h={280}>
                 <LineChart
                   xAxis={[{
-                    data: revenueSeries.map((_: any, i: any) => i),
+                    data: revenueSeries.map((_: { date: string; revenue: number }, i: number) => i),
                     scaleType: "point",
                     valueFormatter: (value: number) => revenueSeries[value]?.date || "",
                   }]}
@@ -376,7 +376,7 @@ export default function Home() {
                   }]}
                   series={[
                     {
-                      data: revenueSeries.map((d: any) => d.revenue),
+                      data: revenueSeries.map((d: { date: string; revenue: number }) => d.revenue),
                       area: true,
                       color: MUI_COLORS.green,
                       curve: "catmullRom",
@@ -401,12 +401,12 @@ export default function Home() {
               <Box h={280}>
                 <BarChart
                   xAxis={[{
-                    data: countSeries.map((d: any) => d.date),
+                    data: countSeries.map((d: { date: string; count: number }) => d.date),
                     scaleType: "band",
                   }]}
                   series={[
                     {
-                      data: countSeries.map((d: any) => d.count),
+                      data: countSeries.map((d: { date: string; count: number }) => d.count),
                       color: MUI_COLORS.blue,
                       label: "Ventas",
                     },
@@ -433,7 +433,7 @@ export default function Home() {
                 <Box h={280}>
                   <BarChart
                     yAxis={[{
-                      data: topProductsData.map((d: any) => d.product),
+                      data: topProductsData.map((d: { product: string; cantidad: number; ingresos: number }) => d.product),
                       scaleType: "band",
                     }]}
                     xAxis={[{
@@ -441,7 +441,7 @@ export default function Home() {
                     }]}
                     series={[
                       {
-                        data: topProductsData.map((d: any) => d.cantidad),
+                        data: topProductsData.map((d: { product: string; cantidad: number; ingresos: number }) => d.cantidad),
                         color: MUI_COLORS.violet,
                         label: "Cantidad",
                       },
@@ -471,12 +471,12 @@ export default function Home() {
               <Box h={280}>
                 <BarChart
                   xAxis={[{
-                    data: hourlyData.map((d: any) => d.hora),
+                    data: hourlyData.map((d: { hora: string; ventas: number; ingresos: number }) => d.hora),
                     scaleType: "band",
                   }]}
                   series={[
                     {
-                      data: hourlyData.map((d: any) => d.ventas),
+                      data: hourlyData.map((d: { hora: string; ventas: number; ingresos: number }) => d.ventas),
                       color: MUI_COLORS.cyan,
                       label: "Ventas",
                     },
@@ -500,7 +500,7 @@ export default function Home() {
                         data: paymentPieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item: any) => `${((item.value / paymentPieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: { value: number }) => `${((item.value / paymentPieData.reduce((a: number, b: { value: number }) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
@@ -528,7 +528,7 @@ export default function Home() {
                         data: sourcePieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item: any) => `${((item.value / sourcePieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: { value: number }) => `${((item.value / sourcePieData.reduce((a: number, b: { value: number }) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
@@ -556,13 +556,13 @@ export default function Home() {
                         data: categoryPieData,
                         highlightScope: { fade: "global", highlight: "item" },
                         faded: { innerRadius: 30, additionalRadius: -30, color: "gray" },
-                        arcLabel: (item: any) => `${((item.value / categoryPieData.reduce((a: any, b: any) => a + b.value, 0)) * 100).toFixed(0)}%`,
+                        arcLabel: (item: { value: number }) => `${((item.value / categoryPieData.reduce((a: number, b: { value: number }) => a + b.value, 0)) * 100).toFixed(0)}%`,
                         arcLabelMinAngle: 20,
                         innerRadius: 30,
                         outerRadius: 80,
                         paddingAngle: 2,
                         cornerRadius: 4,
-                        valueFormatter: (item: any) => formatCurrencyCompact(item.value),
+                        valueFormatter: (item: { value: number }) => formatCurrencyCompact(item.value),
                       },
                     ]}
                     height={220}

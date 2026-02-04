@@ -1,5 +1,6 @@
 "use client";
-import { useListPalettes, useCreatePalette, useActivatePalette, useSetUsage, useGeneratePalette, useRandomPalette, useDeletePalette } from "@/hooks/useAdminPalettes";
+import { useListPalettes, useCreatePalette, useActivatePalette, useGeneratePalette, useRandomPalette, useDeletePalette } from "@/hooks/useAdminPalettes";
+import { Palette } from "@/stores/useAdminStore";
 import { Button, Container, Group, Stack, Table, TextInput, Title, Switch, ColorInput } from "@mantine/core";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { useEffect, useState } from "react";
@@ -8,7 +9,6 @@ export default function Colors() {
   const { data: palettes } = useListPalettes();
   const createMutation = useCreatePalette();
   const activateMutation = useActivatePalette();
-  const setUsageMutation = useSetUsage();
   const generateMutation = useGeneratePalette();
   const deleteMutation = useDeletePalette()
   const randomMutation = useRandomPalette();
@@ -32,7 +32,7 @@ export default function Colors() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {palettes?.map((p: any) => (
+            {palettes?.map((p: Palette) => (
               <Table.Tr key={p.id}>
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td>

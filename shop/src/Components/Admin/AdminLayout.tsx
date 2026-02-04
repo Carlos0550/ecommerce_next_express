@@ -25,7 +25,7 @@ import { authService } from "@/services/auth.service";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const router = useRouter();
-  const { token, logout, isAuthenticated, isAdmin, validateSession, loading } = useAuthStore();
+  const { token, logout, isAuthenticated, validateSession, loading } = useAuthStore();
   const { business, fetchBusiness } = useAdminStore();
   const { isMobile } = useWindowSize();
   const [changeOpened, setChangeOpened] = useState(false);
@@ -169,9 +169,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   setConfirmNew("");
                   setChangeOpened(false);
                   showNotification({ title: 'Éxito', message: 'Contraseña actualizada', color: 'green' });
-                } catch (e: any) {
-                  const msg = e.response?.data?.error || e.message || "Error al cambiar contraseña";
-                  setError(msg);
+                } catch (error: unknown) {
+                    const err = error as { response?: { data?: { error?: string } }; message?: string };
+                    const msg = err.response?.data?.error || err.message || "Error al cambiar contraseña";
+                    setError(msg);
                 } finally {
                   setChanging(false);
                 }

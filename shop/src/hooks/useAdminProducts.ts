@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAdminStore } from "@/stores/useAdminStore";
-export const useGetAllProducts = (params?: any) => {
+import { useAdminStore, GetProductsParams } from "@/stores/useAdminStore";
+export const useGetAllProducts = (params?: GetProductsParams) => {
   const fetchProducts = useAdminStore((state) => state.fetchProducts);
   return useQuery({
     queryKey: ["admin-products", params],
@@ -64,7 +64,13 @@ export const useUpdateProductStock = () => {
 export const useEnhanceProductContent = () => {
   const enhanceProduct = useAdminStore((state) => state.enhanceProduct);
   return useMutation({
-    mutationFn: enhanceProduct,
+    mutationFn: (payload: {
+      productId?: string;
+      title?: string;
+      description?: string;
+      additionalContext?: string;
+      imageUrls?: string[];
+    }) => enhanceProduct(payload),
   });
 };
 export const useUpdateProductDetails = () => {
@@ -76,7 +82,7 @@ export const useUpdateProductDetails = () => {
       ...payload
     }: {
       productId: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }) => {
       const formData = new FormData();
       Object.entries(payload).forEach(([key, value]) => {

@@ -18,10 +18,13 @@ interface AuthState {
   registerAdmin: (name: string, email: string) => Promise<unknown>;
   logout: (options?: { expired?: boolean; redirect?: string }) => void;
   fetchProfile: () => Promise<void>;
-  updateProfile: (payload: any) => Promise<void>;
-  uploadAvatar: (formData: FormData) => Promise<void>;
-  changePassword: (payload: any) => Promise<void>;
-  fetchOrders: (params?: any) => Promise<any>;
+  updateProfile: (payload: { name?: string; email?: string }) => Promise<void>;
+  uploadAvatar: (formData: FormData) => Promise<UserSession>;
+  changePassword: (payload: {
+    old_password?: string;
+    new_password?: string;
+  }) => Promise<void>;
+  fetchOrders: (params?: { page?: number; limit?: number }) => Promise<unknown>;
 }
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -204,6 +207,7 @@ export const useAuthStore = create<AuthState>()(
             message: "Imagen actualizada correctamente",
             color: "green",
           });
+          return data;
         } catch (error) {
           set({ loading: false });
           showNotification({
@@ -246,7 +250,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth_storage",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ token: state.token, isAdmin: state.isAdmin }), 
+      partialize: (state) => ({ token: state.token, isAdmin: state.isAdmin }),
     },
   ),
 );
