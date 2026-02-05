@@ -36,10 +36,17 @@ export const useAuthStore = create<AuthState>()(
       isUser: false,
       loading: true,
       setToken: (token) => {
+        if (typeof document !== "undefined") {
+          const isSecure = window.location.protocol === "https:";
+          if (token) {
+            const encoded = encodeURIComponent(token);
+            document.cookie = `auth_token=${encoded}; path=/; samesite=lax${isSecure ? "; secure" : ""}`;
+          } else {
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+          }
+        }
         set({ token });
-        if (token) {
-          get().validateSession();
-        } else {
+        if (!token) {
           set({
             session: null,
             isAuthenticated: false,
@@ -80,7 +87,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authService.loginUser(email, password);
           console.log("raw token", data);
-          set({ token: data.token });
+          get().setToken(data.token);
           await get().validateSession();
           showNotification({
             title: "Bienvenido",
@@ -96,7 +103,7 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
         try {
           const data = await authService.loginAdmin(email, password);
-          set({ token: data.token });
+          get().setToken(data.token);
           await get().validateSession();
           showNotification({
             title: "Bienvenido Admin",
@@ -113,7 +120,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authService.registerUser(name, email);
           if (data.token) {
-            set({ token: data.token });
+            get().setToken(data.token);
             await get().validateSession();
           }
         } catch (error) {
@@ -126,7 +133,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authService.registerAdmin(name, email);
           if (data.token) {
-            set({ token: data.token });
+            get().setToken(data.token);
             await get().validateSession();
           }
           return data;
@@ -138,6 +145,9 @@ export const useAuthStore = create<AuthState>()(
       logout: (options = {}) => {
         const { isAdmin } = get();
 
+        if (typeof document !== "undefined") {
+          document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        }
         if (isAdmin) {
           window.location.href = "/admin/auth";
         } else {
