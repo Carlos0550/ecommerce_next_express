@@ -99,7 +99,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
     if (!el) return;
     const obs = new IntersectionObserver((entries) => {
       const first = entries[0];
-      if (first.isIntersecting && hasNextPage) {
+      if (first.isIntersecting && hasNextPage && !isFetchingNextPage) {
         fetchNextPage();
       }
     });
@@ -107,7 +107,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
     return () => {
       obs.disconnect();
     };
-  }, [hasNextPage, fetchNextPage]);
+  }, [hasNextPage, fetchNextPage, isFetchingNextPage]);
   return (
     <Box pb={80}>
       {!business ? (
