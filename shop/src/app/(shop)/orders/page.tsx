@@ -1,21 +1,27 @@
 "use client";
 import { useGetOrders } from '@/hooks/useUserOrders';
-import { Table, Pagination, Badge, Card, Group, Stack, Text, Title } from '@mantine/core';
+import { Table, Pagination, Badge, Card, Group, Stack, Text, Title, LoadingOverlay, Center } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { showNotification } from '@mantine/notifications';
 export default function OrdersPage() {
-  const { session } = useAuthStore();
+  const { session, loading, token } = useAuthStore();
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
-    if (!session) {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || loading) return;
+    if (!session && !token) {
       showNotification({ message: 'Debes iniciar sesión para acceder a esta página', color: 'red', id: 'orders-page' });
-      router.push('/');
-      return
+      router.push('/?auth=required');
     }
-  }, [session, router]);
+  }, [session, token, loading, hydrated, router]);
   const [page, setPage] = useState(1);
   const limit = 10;
   const { data } = useGetOrders(page, limit);
@@ -32,6 +38,23 @@ export default function OrdersPage() {
     items: OrderItem[];
   }
   const items = (data?.data?.items || data?.items || []) as Order[];
+  
+  if (!hydrated) {
+    return (
+      <Center h={300}>
+        <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />
+      </Center>
+    );
+  }
+  
+  if (!session) {
+    return (
+      <Center h={300}>
+        <Text c="dimmed">Redirigiendo...</Text>
+      </Center>
+    );
+  }
+  
   return (
     <Stack>
       <Title order={2}>Mis ordenes</Title>

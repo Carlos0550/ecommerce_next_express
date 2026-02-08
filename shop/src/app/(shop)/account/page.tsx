@@ -1,21 +1,27 @@
 "use client";
 import { useGetProfile, useUpdateProfile, useUploadAvatar, useChangePassword } from '@/hooks/useProfile';
 import { useAuthStore } from "@/stores/useAuthStore";
-import { Avatar, Button, Grid, Group, Stack, Text, TextInput, Title, Tabs, Paper, Divider, FileButton, Loader, Select } from '@mantine/core';
+import { Avatar, Button, Grid, Group, Stack, Text, TextInput, Title, Tabs, Paper, Divider, FileButton, Loader, Select, Center, LoadingOverlay } from '@mantine/core';
 import { PasswordInput } from '@mantine/core';
 import { useEffect, useState, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { showNotification } from '@mantine/notifications';
 export default function AccountPage() {
-  const { session } = useAuthStore();
+const { session, loading, token } = useAuthStore();
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+  
   useEffect(() => {
-    if (!session) {
+    setHydrated(true);
+  }, []);
+  
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!session && !token) {
       showNotification({ message: 'Debes iniciar sesión para acceder a esta página', color: 'red', id: 'account-page' });
-      router.push('/');
-      return
+      router.push('/?auth=required');
     }
-  }, [session, router]);
+  }, [session, token, hydrated, router]);
   const { data } = useGetProfile();
   const update = useUpdateProfile();
   const upload = useUploadAvatar();
@@ -116,7 +122,7 @@ export default function AccountPage() {
     setAvatarLoading(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
+      formData.append('image', file);
       const res = await upload.mutateAsync(formData);
       setAvatarPreview(res?.profileImage || null);
       showNotification({ message: 'Imagen de perfil actualizada', color: 'green' });
@@ -145,6 +151,23 @@ export default function AccountPage() {
   }
   const profileImage = avatarPreview || data?.profile_image || session?.profileImage || '';
   const email = data?.email || session?.email || '';
+  
+  if (!hydrated) {
+    return (
+      <Center h={300}>
+        <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />
+      </Center>
+    );
+  }
+  
+  if (!session) {
+    return (
+      <Center h={300}>
+        <Text c="dimmed">Redirigiendo...</Text>
+      </Center>
+    );
+  }
+  
   return (
     <Stack gap="md">
       <Title order={2}>Mi cuenta</Title>

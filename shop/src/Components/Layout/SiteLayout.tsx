@@ -6,7 +6,7 @@ import LoginForm from "../Auth/LoginForm";
 import AuthModal from "../Modals/AuthModal/AuthModal";
 import { useEffect, useMemo } from "react";
 import { FiHome, FiUser, FiBox, FiHelpCircle, FiLogIn } from "react-icons/fi";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useConfigStore } from "@/stores/useConfigStore";
 import { SidebarContent } from "../Common/SidebarContent";
 import { capitalizeTexts } from "@/utils/constants";
@@ -17,12 +17,33 @@ type Props = {
 export default function SiteLayout({ children }: Props) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const [authOpened, { open: openAuth, close: closeAuth }] = useDisclosure(false);
-  const { session: user, logout } = useAuthStore();
+  const { session: user, logout, token, isAuthenticated, validateSession } = useAuthStore();
   const fullName = capitalizeTexts(user?.name || "");
   const email = user?.email || "";
-  const pathname = usePathname()
+  const profileImage = user?.profile_image || user?.profileImage || "";
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const business = useConfigStore((state) => state.businessInfo);
   const fetchConfig = useConfigStore((state) => state.fetchConfig);
+  
+  useEffect(() => {
+    if (token && !isAuthenticated) {
+      validateSession();
+    }
+  }, [token, isAuthenticated, validateSession]);
+  
+  useEffect(() => {
+    const authRequired = searchParams.get("auth");
+    if (authRequired === "required" && !user) {
+      openAuth();
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("auth");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      }
+    }
+  }, [searchParams, user, openAuth]);
+  
   useEffect(() => {
     if (!business) fetchConfig();
   }, [business, fetchConfig]);
@@ -32,7 +53,7 @@ export default function SiteLayout({ children }: Props) {
     { href: "/orders", label: "Mis ordenes", icon: FiBox },
     { href: "/faq", label: "FAQ", icon: FiHelpCircle },
   ]), [])
-  const isAuthenticated = !!user;
+  const hasUser = !!user;
   return (
     <AppShell
       header={{ height: 60 }}
@@ -46,9 +67,9 @@ export default function SiteLayout({ children }: Props) {
             <Box visibleFrom="sm">
               <Flex align={"center"} justify={"flex-start"} gap={10}>
                 <Stack p="md">
-                  {isAuthenticated ? (
+                  {hasUser ? (
                     <Group align="center" gap="md">
-                      <Avatar src={user?.profileImage} alt={fullName} radius="xl" />
+                      <Avatar src={profileImage} alt={fullName} radius="xl" />
                       <Text size="sm" c="dimmed">{fullName || email || "Usuario"}</Text>
                       <Button variant="light" size="xs" onClick={() => logout()}>Salir</Button>
                     </Group>
@@ -61,9 +82,9 @@ export default function SiteLayout({ children }: Props) {
               </Flex>
             </Box>
             <Box hiddenFrom="sm">
-              {isAuthenticated ? (
+              {hasUser ? (
                 <Group align="center" gap="sm">
-                  <Avatar src={user?.profileImage} alt={fullName} radius="xl" />
+                  <Avatar src={profileImage} alt={fullName} radius="xl" />
                   <Text size="sm" c="dimmed">{fullName || email || "Usuario"}</Text>
                   <Button variant="light" size="xs" onClick={() => logout()}>Salir</Button>
                 </Group>
@@ -83,7 +104,7 @@ export default function SiteLayout({ children }: Props) {
           pathname={pathname}
           onLinkClick={close}
           topExtra={
-            !isAuthenticated && (
+            !hasUser && (
               <Button
                 mt="md"
                 fullWidth

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text } from "@mantine/core";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { showNotification } from "@mantine/notifications";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
@@ -21,6 +21,8 @@ export default function LoginForm(){
   const { isMobile } = useWindowSize();
   const { loginAdmin, session, isAdmin } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("from") || "/admin";
   const loginMutation = useMutation({
     mutationKey: ["adminLogin"],
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -28,7 +30,7 @@ export default function LoginForm(){
     },
     onSuccess: () => { 
       const user = useAuthStore.getState().session;
-      router.push("/admin");
+      router.push(redirectTo);
       showNotification({
         title: "Inicio de sesión exitoso",
         message: `Bienvenido ${capitalizeTexts(user?.name || "usuario")}`,
@@ -46,7 +48,7 @@ export default function LoginForm(){
   });
   useEffect(() => {
     if (session && isAdmin) {
-      router.push("/admin");
+      router.push(redirectTo);
     }
   }, [session, isAdmin, router]);
   const handleSubmit = async(e: React.FormEvent) => {

@@ -61,24 +61,33 @@ export const authService = {
     return data;
   },
   getProfile: async () => {
-    const { data } = await api.get<UserSession>("/auth/profile");
-    return data;
+    const { data } = await api.get<{ ok: boolean; user: UserSession }>(
+      "/profile/me",
+    );
+    return data.user;
   },
   updateProfile: async (payload: { name?: string; email?: string }) => {
-    const { data } = await api.put<UserSession>("/auth/profile", payload);
-    return data;
+    const { data } = await api.put<{ ok: boolean; user: UserSession }>(
+      "/profile/me",
+      payload,
+    );
+    return data.user;
   },
   uploadAvatar: async (formData: FormData) => {
-    const { data } = await api.post<UserSession>("/auth/avatar", formData, {
+    const { data } = await api.post<{
+      ok: boolean;
+      user: UserSession;
+      url: string;
+    }>("/profile/avatar", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return data;
+    return { ...data.user, profileImage: data.url };
   },
   changePassword: async (payload: {
     old_password?: string;
     new_password?: string;
   }) => {
-    const { data } = await api.post("/auth/change-password", payload);
+    const { data } = await api.post("/shop/password/change", payload);
     return data;
   },
   getOrders: async (params?: { page?: number; limit?: number }) => {

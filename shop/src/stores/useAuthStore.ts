@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { authService, UserSession } from "@/services/auth.service";
 import { queryClient } from "@/config/queryClient";
+import { resetLogoutFlag } from "@/config/api";
 import { showNotification } from "@mantine/notifications";
 interface AuthState {
   token: string | null;
@@ -42,7 +43,8 @@ export const useAuthStore = create<AuthState>()(
             const encoded = encodeURIComponent(token);
             document.cookie = `auth_token=${encoded}; path=/; samesite=lax${isSecure ? "; secure" : ""}`;
           } else {
-            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+            document.cookie =
+              "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
           }
         }
         set({ token });
@@ -77,9 +79,18 @@ export const useAuthStore = create<AuthState>()(
           });
         } catch (error) {
           console.error("Session validation failed", error);
-          get().logout({ expired: true });
-        } finally {
-          set({ loading: false });
+          if (typeof document !== "undefined") {
+            document.cookie =
+              "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+          }
+          set({
+            token: null,
+            session: null,
+            isAuthenticated: false,
+            isAdmin: false,
+            isUser: false,
+            loading: false,
+          });
         }
       },
       loginUser: async (email, password) => {
@@ -88,6 +99,7 @@ export const useAuthStore = create<AuthState>()(
           const data = await authService.loginUser(email, password);
           console.log("raw token", data);
           get().setToken(data.token);
+          resetLogoutFlag();
           await get().validateSession();
           showNotification({
             title: "Bienvenido",
@@ -104,6 +116,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const data = await authService.loginAdmin(email, password);
           get().setToken(data.token);
+          resetLogoutFlag();
           await get().validateSession();
           showNotification({
             title: "Bienvenido Admin",
@@ -146,13 +159,10 @@ export const useAuthStore = create<AuthState>()(
         const { isAdmin } = get();
 
         if (typeof document !== "undefined") {
-          document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+          document.cookie =
+            "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
         }
-        if (isAdmin) {
-          window.location.href = "/admin/auth";
-        } else {
-          window.location.href = "/";
-        }
+
         set({
           token: null,
           session: null,
@@ -163,6 +173,7 @@ export const useAuthStore = create<AuthState>()(
         });
 
         queryClient.removeQueries();
+
         if (options.expired) {
           showNotification({
             title: "Sesión expirada",
@@ -176,6 +187,11 @@ export const useAuthStore = create<AuthState>()(
             color: "blue",
           });
         }
+
+        if (typeof window !== "undefined") {
+          const redirectTo = isAdmin ? "/admin/auth" : "/";
+          window.location.href = redirectTo;
+        }
       },
       fetchProfile: async () => {
         try {
@@ -188,7 +204,13 @@ export const useAuthStore = create<AuthState>()(
       updateProfile: async (payload) => {
         set({ loading: true });
         try {
-          const data = await authService.updateProfile(payload);
+          const filteredPayload = Object.fromEntries(
+            Object.entries(payload).filter(
+              ([, value]) =>
+                value !== "" && value !== null && value !== undefined,
+            ),
+          );
+          const data = await authService.updateProfile(filteredPayload);
           set({ session: data, loading: false });
           showNotification({
             message: "Perfil actualizado correctamente",
