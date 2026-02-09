@@ -1,7 +1,0 @@
-export const TIMEOUT_FIRST_WARNING = 60;
-export const TIMEOUT_CLOSE_SESSION = 30;
-export const ALBUM_PROCESS_DELAY = 2000;
-export const TIMEOUT_WORKER_INTERVAL = 10000;
-export const ALBUM_LOCK_MAX_RETRIES = 10;
-export const ALBUM_LOCK_RETRY_DELAY = 100;
-export const ALBUM_LOCK_TTL = 5;
