@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model BusinessData {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  address String?
+  phone String?
+  email String?
+  website String?
+  logo String?
+  favicon String?
+  banner String?
+  socialMedia Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  DELETED
+  BLOCKED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?   @unique
+  name      String?
+  password  String
+  role      Int      @default(1)
+  isVerified Boolean  @default(false)
+  status     UserStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+}
