@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import HomeComponent from "@/Components/Home/Home"
 import { configService } from "@/services/config.service"
 import { createProductSlug } from "@/utils/slugs"
@@ -69,7 +70,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           })
         }}
       />
-      <HomeComponent initialProducts={productsData} initialCategories={categoriesData} business={business} />
+      <Suspense fallback={null}>
+        <HomeComponent initialProducts={productsData} initialCategories={categoriesData} business={business} />
+      </Suspense>
     </>
   )
 }

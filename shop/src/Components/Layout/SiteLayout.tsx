@@ -1,3 +1,5 @@
+"use client";
+
 import { useAuthStore } from "@/stores/useAuthStore";
 import { AppShell, Burger, Group, Stack, Text, Avatar, Button, Box, Paper, Divider, Flex } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";

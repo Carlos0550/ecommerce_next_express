@@ -295,13 +295,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           size="lg"
           onClick={() => document.getElementById('file-input')?.click()}
           leftSection="📱"
-          styles={{
-            root: {
-              '@media (min-width: 768px)': {
-                display: 'none'
-              }
-            }
-          }}
+          hiddenFrom="md"
         >
           Seleccionar imágenes desde galería
         </Button>

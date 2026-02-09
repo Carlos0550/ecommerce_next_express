@@ -155,7 +155,6 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       logout: (options = {}) => {
-        const { isAdmin } = get();
 
         if (typeof document !== "undefined") {
           document.cookie =
@@ -188,7 +187,7 @@ export const useAuthStore = create<AuthState>()(
         }
 
         if (typeof window !== "undefined") {
-          const redirectTo = isAdmin ? "/admin/auth" : "/";
+          const redirectTo = "/";
           window.location.href = redirectTo;
         }
       },
