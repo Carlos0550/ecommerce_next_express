@@ -25,7 +25,7 @@ import { authService } from "@/services/auth.service";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const router = useRouter();
-  const { token, logout, isAuthenticated, validateSession, loading } = useAuthStore();
+  const { token, logout, isAuthenticated, isAdmin, validateSession, loading } = useAuthStore();
   const { business, fetchBusiness } = useAdminStore();
   const { isMobile } = useWindowSize();
   const [changeOpened, setChangeOpened] = useState(false);
@@ -40,6 +40,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       validateSession();
     }
   }, [token, isAuthenticated, validateSession]);
+  useEffect(() => {
+    if (token && isAuthenticated && !loading && !isAdmin) {
+      showNotification({
+        title: "Acceso denegado",
+        message: "Tu cuenta no tiene permisos de administrador",
+        color: "red",
+      });
+      router.replace("/");
+    }
+  }, [token, isAuthenticated, isAdmin, loading, router]);
   useEffect(() => {
     if (!token) {
       document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
@@ -65,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     []
   );
   const sidebarMenuItems = useMemo(() => menuItems.map(item => ({ href: item.to, label: item.label, icon: item.icon })), [menuItems]);
-  if (!token || (token && !isAuthenticated && loading)) {
+  if (!token || (token && !isAuthenticated && loading) || (isAuthenticated && !isAdmin)) {
     return <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />;
   }
   return (

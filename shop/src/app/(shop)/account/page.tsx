@@ -6,14 +6,11 @@ import { PasswordInput } from '@mantine/core';
 import { useEffect, useState, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { showNotification } from '@mantine/notifications';
+import { useMounted } from '@/utils/hooks/useMounted';
 export default function AccountPage() {
-const { session, loading, token } = useAuthStore();
+const { session, token } = useAuthStore();
   const router = useRouter();
-  const [hydrated, setHydrated] = useState(false);
-  
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const hydrated = useMounted();
   
   useEffect(() => {
     if (!hydrated) return;

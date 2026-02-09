@@ -47,6 +47,7 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 });
 router.post(
   "/:id/receipt",
+  requireAuth,
   uploadSingleImage("file"),
   handleImageUploadError,
   async (req: Request, res: Response) => {
@@ -57,6 +58,14 @@ router.post(
       const order = await service.getOrderById(id);
       if (!order)
         return res.status(404).json({ ok: false, error: "order_not_found" });
+      const user = (req as any).user;
+      const isAdmin = Number(user.role || 2) === 1;
+      if (!isAdmin) {
+        const userId = Number(user.sub || user.id);
+        if (!order.userId || Number(order.userId) !== userId) {
+          return res.status(403).json({ ok: false, error: "forbidden" });
+        }
+      }
       if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA") {
         return res
           .status(400)

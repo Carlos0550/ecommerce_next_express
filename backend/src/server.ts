@@ -76,7 +76,13 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf.toString("utf8");
+    },
+  }),
+);
 app.use(
   morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
     stream: {

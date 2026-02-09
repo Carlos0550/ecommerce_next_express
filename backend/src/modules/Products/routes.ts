@@ -8,6 +8,7 @@ const product_service = new ProductServices
 router.post(
     "/save-product",
      requireAuth,
+     requireRole([1]),
      uploadMultipleImages('productImages', 10),
      handleImageUploadError, 
      saveProduct,

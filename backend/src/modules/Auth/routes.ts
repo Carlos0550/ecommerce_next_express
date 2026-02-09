@@ -6,10 +6,11 @@ const router = Router();
 router.get("/validate", requireAuth, (req: Request, res: Response) => {
   const user = (req as any).user as AuthUser;
   res.json({
+    ok: true,
     id: user.sub || (user as any).id,
     email: user.email,
     name: user.name,
-    is_active: true,
+    is_active: user.is_active ?? true,
     role: user.role || (user.subjectType === "admin" ? 1 : 2),
     profileImage: user.profileImage || null,
     subjectType: user.subjectType || (user.role === 1 ? "admin" : "user"),

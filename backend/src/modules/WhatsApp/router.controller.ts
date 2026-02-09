@@ -3,6 +3,7 @@ import { configService } from './services/config.service';
 import { sessionService } from './services/session.service';
 import { messageService } from './services/message.service';
 import { webhookHandler } from './services/webhook.handler';
+import WasenderClient from './services/wasender.client';
 import { WhatsAppError } from './utils/business.utils';
 import {
   WhatsAppConfigSchema,
@@ -140,9 +141,25 @@ class WhatsAppController {
   }
   async handleWebhook(req: Request, res: Response) {
     try {
-      console.log('🔔 Webhook recibido:', JSON.stringify(req.body, null, 2));
       const event = req.body as WebhookEvent;
       const signature = req.headers['x-webhook-signature'] as string | undefined;
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      if (webhookSecret) {
+        if (!signature) {
+          return res.status(401).json({ ok: false, error: 'missing_signature' });
+        }
+        const rawBody = (req as any).rawBody as string | undefined;
+        const payload = rawBody ?? JSON.stringify(req.body ?? {});
+        const isValid = WasenderClient.validateWebhookSignature(
+          payload,
+          signature,
+          webhookSecret,
+        );
+        if (!isValid) {
+          return res.status(401).json({ ok: false, error: 'invalid_signature' });
+        }
+      }
+      console.log('🔔 Webhook recibido:', event?.event, event?.session_id);
       res.status(200).json({ received: true });
       setImmediate(async () => {
         try {

@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/auth.service";
 import { capitalizeTexts } from "@/utils/constants";
 import { useWindowSize } from "@/utils/hooks/useWindowSize";
+import { getSafeRedirectPath } from "@/utils/redirects";
 export default function LoginForm(){
   const [values, setValues] = useState<LoginFormValues>({ email: "", password: "" });
   const [error, setError] = useState<string>("");
@@ -22,7 +23,9 @@ export default function LoginForm(){
   const { loginAdmin, session, isAdmin } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("from") || "/admin";
+  const redirectTo =
+    getSafeRedirectPath(searchParams.get("from"), { allowedPrefixes: ["/admin"] }) ||
+    "/admin";
   const loginMutation = useMutation({
     mutationKey: ["adminLogin"],
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -50,7 +53,7 @@ export default function LoginForm(){
     if (session && isAdmin) {
       router.push(redirectTo);
     }
-  }, [session, isAdmin, router]);
+  }, [session, isAdmin, router, redirectTo]);
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     setError("");

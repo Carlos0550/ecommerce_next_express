@@ -1,5 +1,6 @@
 import { prisma } from "@/config/prisma";
 import { comparePassword, hashPassword } from "@/config/bcrypt";
+import { randomInt } from "crypto";
 import { Request, Response } from "express";
 import { signToken } from "@/config/jwt";
 import { sendEmail } from "@/config/resend";
@@ -13,28 +14,25 @@ class AuthServices {
     const rows: any[] =
       await prisma.$queryRaw`SELECT id, email, password, name, role, profile_image, is_active FROM "Admin" WHERE email = ${email} LIMIT 1`;
     const user = rows[0];
-    if (!user) {
-      return res.status(400).json({
+    const invalidResponse = () =>
+      res.status(401).json({
         ok: false,
-        error: "invalid_email",
-        message: "El correo electrónico no está registrado",
+        error: "invalid_credentials",
+        message: "Credenciales inválidas",
       });
+    if (!user) {
+      return invalidResponse();
     }
     if (!user.is_active) {
       return res.status(403).json({
         ok: false,
-        error: "account_inactive",
-        message:
-          "Tu cuenta de administrador aún no ha sido aprobada o ha sido desactivada.",
+        error: "invalid_credentials",
+        message: "Credenciales inválidas",
       });
     }
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({
-        ok: false,
-        error: "invalid_password",
-        message: "La contraseña es incorrecta",
-      });
+      return invalidResponse();
     }
     const payload = {
       sub: user.id.toString(),
@@ -69,28 +67,25 @@ class AuthServices {
         profile_image: true,
       },
     });
-    if (!user) {
-      return res.status(400).json({
+    const invalidResponse = () =>
+      res.status(401).json({
         ok: false,
-        error: "invalid_email",
-        message: "El correo electrónico no está registrado",
+        error: "invalid_credentials",
+        message: "Credenciales inválidas",
       });
+    if (!user) {
+      return invalidResponse();
     }
     if (!user.is_active) {
       return res.status(403).json({
         ok: false,
-        error: "account_inactive",
-        message:
-          "Tu cuenta ha sido desactivada. Contacta al soporte para más información.",
+        error: "invalid_credentials",
+        message: "Credenciales inválidas",
       });
     }
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({
-        ok: false,
-        error: "invalid_password",
-        message: "La contraseña es incorrecta",
-      });
+      return invalidResponse();
     }
     const payload = {
       sub: user.id.toString(),
@@ -119,6 +114,13 @@ class AuthServices {
           message: "Todos los campos son obligatorios",
         });
       }
+      if (asAdmin) {
+        return res.status(403).json({
+          ok: false,
+          error: "admin_registration_disabled",
+          message: "El registro de administradores no está habilitado.",
+        });
+      }
       var secure_password = Math.random().toString(36).slice(-10);
       const existingUser = await prisma.user.findFirst({
         where: { email, role: 2 },
@@ -133,44 +135,6 @@ class AuthServices {
       }
       const normalized_name = name.trim().toLowerCase();
       const hashed = await hashPassword(secure_password);
-      if (asAdmin) {
-        const adminExists: any[] =
-          await prisma.$queryRaw`SELECT id FROM "Admin" WHERE email = ${email} LIMIT 1`;
-        if (adminExists?.[0]) {
-          return res.status(400).json({
-            ok: false,
-            error: "email_already_registered",
-            message: "El correo ya está registrado como administrador",
-          });
-        }
-        const adminCountRows: any[] =
-          await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "Admin"`;
-        const adminCount = Number(adminCountRows?.[0]?.count || 0);
-        const shouldAutoApprove = adminCount === 0;
-        await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, is_active, role, created_at, updated_at) VALUES (${email}, ${hashed}, ${normalized_name}, ${shouldAutoApprove}, 1, NOW(), NOW())`;
-        const createdAdminRows: any[] =
-          await prisma.$queryRaw`SELECT id, email, name, role, is_active FROM "Admin" WHERE email = ${email} LIMIT 1`;
-        const admin = createdAdminRows[0];
-        if (!shouldAutoApprove) {
-          return res.status(200).json({
-            ok: true,
-            pending: true,
-            message:
-              "Tu solicitud de administrador ha sido enviada. Un administrador existente debe aprobarla.",
-          });
-        }
-        const payload = {
-          sub: admin.id.toString(),
-          email: admin.email,
-          name: admin.name,
-          role: 1,
-          subjectType: "admin",
-        };
-        const token = signToken(payload);
-        return res
-          .status(200)
-          .json({ ok: true, token, user: { ...admin, id: String(admin.id) } });
-      }
       const user = await prisma.user.create({
         data: {
           email,
@@ -241,9 +205,10 @@ class AuthServices {
       if (!email)
         return res.status(400).json({ ok: false, error: "missing_email" });
       const user = await prisma.user.findFirst({ where: { email, role: 2 } });
-      if (!user)
-        return res.status(404).json({ ok: false, error: "user_not_found" });
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+      if (!user) {
+        return res.status(200).json({ ok: true });
+      }
+      const code = String(randomInt(100000, 1000000));
       const hashed = await hashPassword(code);
       await prisma.user.update({
         where: { id: user.id },
@@ -570,9 +535,10 @@ class AuthServices {
       const rows: any[] =
         await prisma.$queryRaw`SELECT id, email FROM "Admin" WHERE email = ${email} LIMIT 1`;
       const admin = rows[0];
-      if (!admin)
-        return res.status(404).json({ ok: false, error: "user_not_found" });
-      const code = String(Math.floor(100000 + Math.random() * 900000));
+      if (!admin) {
+        return res.status(200).json({ ok: true });
+      }
+      const code = String(randomInt(100000, 1000000));
       const hashed = await hashPassword(code);
       await prisma.$executeRaw`UPDATE "Admin" SET password = ${hashed}, updated_at = NOW() WHERE id = ${admin.id}`;
       try {

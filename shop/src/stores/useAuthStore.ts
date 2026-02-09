@@ -97,7 +97,6 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
         try {
           const data = await authService.loginUser(email, password);
-          console.log("raw token", data);
           get().setToken(data.token);
           resetLogoutFlag();
           await get().validateSession();

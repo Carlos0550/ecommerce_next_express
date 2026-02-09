@@ -27,14 +27,12 @@ api.interceptors.request.use(
       return config;
     }
     let token: string | null = null;
-    let isAdmin = false;
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem("auth_storage");
         if (stored) {
           const parsed = JSON.parse(stored);
           token = parsed?.state?.token;
-          isAdmin = parsed?.state?.isAdmin === true;
         }
       } catch {}
       if (!token) {
@@ -45,9 +43,6 @@ api.interceptors.request.use(
         if (cookieToken) {
           token = decodeURIComponent(cookieToken);
         }
-      }
-      if (!token) {
-        token = localStorage.getItem("auth_token");
       }
     }
     if (token) {

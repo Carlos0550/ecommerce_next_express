@@ -3,21 +3,27 @@ import { useState } from "react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/auth.service";
 import { capitalizeTexts } from "@/utils/constants";
-import { Button, Stack, TextInput, Title, Text, Flex, PasswordInput, Group, Checkbox } from "@mantine/core";
+import { Button, Stack, TextInput, Title, Text, Flex, PasswordInput, Group } from "@mantine/core";
 import { Form, useForm } from "@mantine/form";
 import { showNotification } from "@mantine/notifications";
 import { useConfigStore } from "@/stores/useConfigStore";
+import { useRouter } from "next/navigation";
+import { getSafeRedirectPath } from "@/utils/redirects";
 type Props = {
   onClose: () => void;
+  redirectTo?: string | null;
 }
-export default function LoginForm({ onClose }: Props) {
-  const { loginUser, registerUser, registerAdmin } = useAuthStore();
+export default function LoginForm({ onClose, redirectTo }: Props) {
+  const { loginUser, registerUser } = useAuthStore();
   const business = useConfigStore((state) => state.businessInfo);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recoverMode, setRecoverMode] = useState(false);
   const [recoverEmail, setRecoverEmail] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
+  const router = useRouter();
+  const safeRedirect =
+    getSafeRedirectPath(redirectTo, { allowedPrefixes: ["/account", "/orders"] }) || "/";
   const loginForm = useForm({
     initialValues: { email: "", password: "" },
     validate: {
@@ -26,7 +32,7 @@ export default function LoginForm({ onClose }: Props) {
     },
   });
   const registerForm = useForm({
-    initialValues: { name: "", email: "", asAdmin: false },
+    initialValues: { name: "", email: "" },
     validate: {
       name: (value) => (value.length > 2 ? null : "Nombre muy corto"),
       email: (value) => (/^\S+@\S+$/.test(value) ? null : "Email inválido"),
@@ -46,6 +52,7 @@ export default function LoginForm({ onClose }: Props) {
           autoClose: 3000,
         })
         onClose();
+        router.push(safeRedirect);
       }
     } catch (err) {
       const e = err as Error;
@@ -54,15 +61,11 @@ export default function LoginForm({ onClose }: Props) {
       setLoading(false);
     }
   };
-  const onRegisterSubmit = async (values: { name: string; email: string; asAdmin: boolean }) => {
+  const onRegisterSubmit = async (values: { name: string; email: string }) => {
     setError(null);
     setLoading(true);
     try {
-      if (values.asAdmin) {
-          await registerAdmin(values.name, values.email);
-      } else {
-          await registerUser(values.name, values.email);
-      }
+      await registerUser(values.name, values.email);
       const user = useAuthStore.getState().session;
       if (user) {
         showNotification({
@@ -72,6 +75,7 @@ export default function LoginForm({ onClose }: Props) {
           autoClose: 5000,
         })
         onClose();
+        router.push(safeRedirect);
       } else {
          showNotification({
               title: "Registro exitoso",
@@ -80,6 +84,7 @@ export default function LoginForm({ onClose }: Props) {
               autoClose: 10000,
           });
           onClose();
+          router.push(safeRedirect);
       }
     } catch (err) {
       const e = err as Error;
@@ -158,11 +163,6 @@ export default function LoginForm({ onClose }: Props) {
                 label="Correo"
                 placeholder="tu@correo.com"
                 {...registerForm.getInputProps("email")}
-              />
-              <Checkbox
-                mt="xs"
-                label="Registrar como administrador"
-                {...registerForm.getInputProps("asAdmin", { type: 'checkbox' })}
               />
               {error && <Text c="red">{error}</Text>}
               <Button type="submit" loading={loading} mt="sm">

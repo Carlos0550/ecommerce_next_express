@@ -6,14 +6,11 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { showNotification } from '@mantine/notifications';
+import { useMounted } from '@/utils/hooks/useMounted';
 export default function OrdersPage() {
   const { session, loading, token } = useAuthStore();
   const router = useRouter();
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const hydrated = useMounted();
 
   useEffect(() => {
     if (!hydrated || loading) return;

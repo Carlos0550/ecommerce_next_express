@@ -54,6 +54,10 @@ export default function SiteLayout({ children }: Props) {
     { href: "/faq", label: "FAQ", icon: FiHelpCircle },
   ]), [])
   const hasUser = !!user;
+  const redirectParam = searchParams.get("from");
+  const handleCloseAuth = () => {
+    closeAuth();
+  };
   return (
     <AppShell
       header={{ height: 60 }}
@@ -155,8 +159,8 @@ export default function SiteLayout({ children }: Props) {
       <AppShell.Main bg="var(--mantine-color-body)">
         {children}
       </AppShell.Main>
-      <AuthModal opened={authOpened} onClose={closeAuth}>
-        <LoginForm onClose={closeAuth} />
+      <AuthModal opened={authOpened} onClose={handleCloseAuth}>
+        <LoginForm onClose={handleCloseAuth} redirectTo={redirectParam} />
       </AuthModal>
     </AppShell>
   );

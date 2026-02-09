@@ -9,7 +9,13 @@ router.post("/login", login, (req, res) => authServices.loginAdmin(req, res));
 router.post("/register", createUser, (req, res) =>
   authServices.registerShop(req, res),
 );
-router.post("/new", CreateUserController, authServices.newUser);
+router.post(
+  "/new",
+  requireAuth,
+  requireRole([1]),
+  CreateUserController,
+  authServices.newUser,
+);
 router.get("/auth/users", requireAuth, requireRole([1]), (req, res) =>
   authServices.getUsers(req, res),
 );

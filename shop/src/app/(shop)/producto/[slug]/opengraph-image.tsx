@@ -12,9 +12,11 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
   const bizImage = process.env.NEXT_PUBLIC_BUSINESS_IMAGE_URL || ''
   let product: { title?: string; category?: { title?: string }; price?: number; images?: string[] } = {}
   try {
-    const res = await fetch(`${apiUrl}/products/public/${id}`, { next: { revalidate: 600 } })
-    const json = await res.json().catch(() => null)
-    product = json?.data?.product || json?.data || json || {}
+    if (id) {
+      const res = await fetch(`${apiUrl}/products/public/${id}`, { next: { revalidate: 600 } })
+      const json = await res.json().catch(() => null)
+      product = json?.data?.product || json?.data || json || {}
+    }
   } catch {}
   const title = product?.title || 'Producto'
   const cat = product?.category?.title || 'Categoría'

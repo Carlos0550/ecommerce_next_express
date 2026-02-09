@@ -11,9 +11,12 @@ import { extractIdFromSlug } from "@/utils/slugs"
 import ProductDescription from "@/Components/Common/ProductDescription"
 import { PublicProduct } from "@/stores/useConfigStore"
 type Products = PublicProduct;
-export default async function Page({ params }: { params: { slug: string } }) {
-  const { slug } = params
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const id = extractIdFromSlug(slug)
+  if (!id) {
+    return notFound()
+  }
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   const res = await fetch(`${baseUrl}/products/public/${id}`, { next: { revalidate: 60 } })
@@ -136,9 +139,12 @@ export default async function Page({ params }: { params: { slug: string } }) {
     </Container>
   )
 }
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const { slug } = params
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
   const id = extractIdFromSlug(slug)
+  if (!id) {
+    return { title: "Producto", description: "Detalle de producto" }
+  }
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"
   const urlBase = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001"
   try {
