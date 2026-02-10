@@ -6,7 +6,9 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual
 } from "crypto";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { promisify } from "util";
+import { connectRedis } from "../cache/redis";
 import { env } from "./env";
 
 const scrypt = promisify(scryptCallback);
@@ -14,6 +16,14 @@ const scrypt = promisify(scryptCallback);
 const HASH_PREFIX = "scrypt";
 const HASH_KEYLEN = 64;
 const ENCRYPT_PREFIX = "aes-256-gcm";
+const SESSION_PREFIX = "session:";
+const SESSION_TTL_SECONDS = 60 * 60 * 24;
+
+export type SessionUserPayload = {
+  id: string;
+  email: string;
+  role: number;
+};
 
 const getDefaultSecret = (): string => {
   const secret = env.SECURITY_ENCRYPTION_KEY;
@@ -72,4 +82,33 @@ export const decryptString = (payload: string, secret?: string): string => {
   const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
 
   return plaintext.toString("utf8");
+};
+
+export const createSessionToken = async (payload: SessionUserPayload): Promise<string> => {
+  const token = jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: SESSION_TTL_SECONDS
+  });
+  const redis = await connectRedis();
+  await redis.set(`${SESSION_PREFIX}${token}`, "1", { EX: SESSION_TTL_SECONDS });
+  return token;
+};
+
+export const isSessionActive = async (token: string): Promise<boolean> => {
+  if (!token) {
+    return false;
+  }
+  const redis = await connectRedis();
+  const exists = await redis.exists(`${SESSION_PREFIX}${token}`);
+  return exists === 1;
+};
+
+export const verifySessionToken = (token: string): SessionUserPayload => {
+  const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+  const id = typeof payload.id === "string" ? payload.id : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const role = typeof payload.role === "number" ? payload.role : Number(payload.role ?? 0);
+  if (!id || !email || !role) {
+    throw new Error("JWT invalido");
+  }
+  return { id, email, role };
 };

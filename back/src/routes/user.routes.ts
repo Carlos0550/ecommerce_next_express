@@ -2,16 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import { userController } from "../controllers/user.controller";
 import { openApiRegistry } from "../docs/swagger";
-import { publicRegisterUserSchema } from "../services/Users/user.zod";
-
-const registerResponseSchema = z
-  .object({
-    message: z.string(),
-    err: z.string().optional()
-  })
-  .openapi("RegisterResponse");
-
-openApiRegistry.register("RegisterResponse", registerResponseSchema);
+import {
+  loginSchema,
+  publicRegisterUserSchema,
+  updateAvatarSchema,
+  updateUserSchema
+} from "../services/Users/user.zod";
+import { requireRole } from "../middlewares";
+import { uploadAndConvertImageMiddleware } from "../middlewares/upload.middleware";
 
 openApiRegistry.registerPath({
   method: "post",
@@ -30,9 +28,72 @@ openApiRegistry.registerPath({
   responses: {}
 });
 
+openApiRegistry.registerPath({
+  method: "post",
+  path: "/public/login",
+  tags: ["User"],
+  summary: "Inicio de sesion publico",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: loginSchema
+        }
+      }
+    }
+  },
+  responses: {}
+})
+
+openApiRegistry.registerPath({
+  method: "get",
+  path: "/me",
+  tags: ["User"],
+  summary: "Obtener informacion del usuario autenticado",
+  responses: {}
+})
+
+openApiRegistry.registerPath({
+  method: "put",
+  path: "/me",
+  tags: ["User"],
+  summary: "Actualizar informacion del usuario autenticado",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: updateUserSchema
+        }
+      }
+    }
+  },
+  responses: {}
+})
+
+openApiRegistry.registerPath({
+  method: "put",
+  path: "/me/avatar",
+  tags: ["User"],
+  summary: "Actualizar avatar del usuario autenticado",
+  request: {
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: updateAvatarSchema
+        }
+      }
+    }
+  },
+  responses: {}
+})
+
 const router = Router()
 
 router.post("/public/register", userController.publicRegisterUser)
+router.post("/public/login", userController.login)
 router.get("/public/verify", userController.verifyAccount)
+router.get("/me", requireRole([1,2]), userController.getMe)
+router.put("/me", requireRole([1,2]), userController.updateMe)
+router.put("/me/avatar", requireRole([1,2]), uploadAndConvertImageMiddleware, userController.updateAvatar)
 
 export { router as userRouter };

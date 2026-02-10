@@ -31,6 +31,7 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().min(1).default("no-reply@example.com"),
   SECURITY_ENCRYPTION_KEY: z.string().optional(),
+  JWT_SECRET: z.string().min(1, "JWT_SECRET es requerido"),
   FRONTEND_URL: z.string().min(1).default("http://localhost:3000"),
   BACKEND_URL: z.string().optional()
 });

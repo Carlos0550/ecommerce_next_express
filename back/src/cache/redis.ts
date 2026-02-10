@@ -16,12 +16,18 @@ export const getRedisClient = () => {
 };
 
 export const connectRedis = async () => {
-  const redis = getRedisClient();
+  try {
+    const redis = getRedisClient();
   if (!redis.isOpen) {
     await redis.connect();
   }
 
   return redis;
+  } catch (error) {
+    const err = error as Error;
+    logger.error("Error al conectar a Redis", err.message);
+    throw err;
+  }
 };
 
 export const disconnectRedis = async () => {
