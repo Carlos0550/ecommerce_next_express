@@ -15,7 +15,15 @@ export default function Login() {
   }, []);
   useEffect(() => {
     if (session && isAdmin) {
-      router.push("/admin");
+      router.replace("/admin");
+      router.refresh();
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          if (window.location.pathname.startsWith("/admin/auth")) {
+            window.location.assign("/admin");
+          }
+        }, 200);
+      }
     }
   }, [session, isAdmin, router]);
   return (

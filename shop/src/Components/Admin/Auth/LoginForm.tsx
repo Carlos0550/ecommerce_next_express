@@ -31,9 +31,17 @@ export default function LoginForm(){
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
       return loginAdmin(email, password);
     },
-    onSuccess: () => { 
+    onSuccess: () => {
       const user = useAuthStore.getState().session;
-      router.push(redirectTo);
+      router.replace(redirectTo);
+      router.refresh();
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          if (window.location.pathname.startsWith("/admin/auth")) {
+            window.location.assign(redirectTo);
+          }
+        }, 200);
+      }
       showNotification({
         title: "Inicio de sesión exitoso",
         message: `Bienvenido ${capitalizeTexts(user?.name || "usuario")}`,
@@ -51,7 +59,8 @@ export default function LoginForm(){
   });
   useEffect(() => {
     if (session && isAdmin) {
-      router.push(redirectTo);
+      router.replace(redirectTo);
+      router.refresh();
     }
   }, [session, isAdmin, router, redirectTo]);
   const handleSubmit = async(e: React.FormEvent) => {
