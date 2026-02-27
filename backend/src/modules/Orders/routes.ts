@@ -24,6 +24,10 @@ router.post(
       (req as any).payment_method,
       (req as any).customer,
     );
+    if (rs && typeof rs === "object" && "ok" in rs && rs.ok === false) {
+      const status = (rs as any).status || 400;
+      return res.status(status).json(rs);
+    }
     res.json(rs);
   },
 );

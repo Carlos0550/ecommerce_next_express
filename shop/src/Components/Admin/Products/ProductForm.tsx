@@ -80,9 +80,12 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
   };
   const handleSubmit = () => {
     const isAI = !!formValues.fillWithAI;
-    const { stock, ...rest } = formValues;
+    const { stock, category, existingImageUrls, deletedImageUrls, ...rest } = formValues;
     const submitData = {
       ...rest,
+      category_id: category || "",
+      existing_image_urls: existingImageUrls,
+      deleted_image_urls: deletedImageUrls,
       state: isAI ? 'draft' : formValues.state,
       ...(product ? {} : { stock: stock ? Number(stock) : undefined }),
     };
@@ -97,8 +100,8 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
         const formData = new FormData();
         Object.entries(submitData).forEach(([key, value]) => {
             if (key === 'images') {
-                (value as File[]).forEach(file => formData.append('images', file));
-            } else if (key === 'options' || key === 'tags' || key === 'deletedImageUrls' || key === 'existingImageUrls') {
+                (value as File[]).forEach(file => formData.append('productImages', file));
+            } else if (key === 'options' || key === 'tags' || key === 'deleted_image_urls' || key === 'existing_image_urls') {
                 formData.append(key, JSON.stringify(value));
             } else {
                 formData.append(key, String(value));

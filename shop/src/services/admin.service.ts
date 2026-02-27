@@ -42,7 +42,11 @@ export const adminService = {
     additionalContext?: string;
     imageUrls?: string[];
   }) => {
-    const { data } = await api.post("/products/enhance", payload);
+    const { productId, ...body } = payload || {};
+    if (!productId) {
+      throw new Error("productId is required to enhance product content");
+    }
+    const { data } = await api.post(`/products/ai/enhance/${productId}`, body);
     return data;
   },
   getCategories: async () => {

@@ -130,39 +130,45 @@ export default function useCart(onClose: () => void) {
   );
   const submitOrder = useCallback(async () => {
     setProcessingOrder(true);
-    const payload = {
-      items: items,
-      payment_method: formValues.orderMethod,
-      customer: {
-        name: formValues.name,
-        email: formValues.email,
-        phone: formValues.phone,
-        street: formValues.street,
-        postal_code: formValues.postal_code,
-        city: formValues.city,
-        province: formValues.province,
-        pickup: formValues.pickup,
-      },
-    };
-    const rs = await checkout(payload);
-    if (rs.ok) {
-      if (
-        formValues.orderMethod === "TRANSFERENCIA" &&
-        receiptFile &&
-        rs.order_id
-      ) {
-        try {
-          const up = await cartService.uploadReceipt(rs.order_id, receiptFile);
-          if (!up || (up.status !== 200 && up.status !== 201)) {
+    try {
+      const payload = {
+        items: items,
+        payment_method: formValues.orderMethod,
+        customer: {
+          name: formValues.name,
+          email: formValues.email,
+          phone: formValues.phone,
+          street: formValues.street,
+          postal_code: formValues.postal_code,
+          city: formValues.city,
+          province: formValues.province,
+          pickup: formValues.pickup,
+        },
+      };
+      const rs = await checkout(payload);
+      if (rs.ok) {
+        if (
+          formValues.orderMethod === "TRANSFERENCIA" &&
+          receiptFile &&
+          rs.order_id
+        ) {
+          try {
+            const up = await cartService.uploadReceipt(
+              rs.order_id,
+              receiptFile,
+            );
+            if (!up || (up.status !== 200 && up.status !== 201)) {
+            }
+          } catch (err) {
+            console.warn("[Cart] Error uploading receipt", err);
+            alert("La orden fue creada, pero el comprobante no se pudo subir.");
           }
-        } catch (err) {
-          console.warn("[Cart] Error uploading receipt", err);
-          alert("La orden fue creada, pero el comprobante no se pudo subir.");
         }
+        onClose();
       }
-      setProcessingOrder(false);
-      onClose();
-    } else {
+    } catch (err) {
+      console.warn("[Cart] Error creating order", err);
+    } finally {
       setProcessingOrder(false);
     }
   }, [checkout, items, formValues, receiptFile, onClose]);

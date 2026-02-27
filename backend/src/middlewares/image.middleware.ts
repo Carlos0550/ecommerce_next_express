@@ -49,7 +49,7 @@ export const handleImageUploadError = (err: any, req: Request, res: Response, ne
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ 
         error: 'Imagen demasiado grande',
-        message: 'El tamaño de la imagen excede el límite de 5MB'
+        message: 'El tamaño de la imagen excede el límite de 30MB'
       });
     }
     return res.status(400).json({ 
@@ -57,7 +57,7 @@ export const handleImageUploadError = (err: any, req: Request, res: Response, ne
       message: err.message
     });
   }
-  if (err.message.includes('Solo se permiten') || err.message.includes('Formato de imagen')) {
+  if (err.message && (err.message.includes('Solo se permiten') || err.message.includes('Formato de imagen'))) {
     return res.status(400).json({ 
       error: 'Formato inválido',
       message: err.message

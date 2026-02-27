@@ -87,7 +87,9 @@ export const useUpdateProductDetails = () => {
       const formData = new FormData();
       Object.entries(payload).forEach(([key, value]) => {
         if (key === "images") {
-          (value as File[]).forEach((file) => formData.append("images", file));
+          (value as File[]).forEach((file) =>
+            formData.append("productImages", file),
+          );
         } else {
           formData.append(
             key,

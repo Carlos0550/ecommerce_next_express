@@ -49,6 +49,24 @@ export default class OrdersServices {
       quantity: number;
       options: any;
     }[];
+    if (snapshot.length === 0) {
+      return {
+        ok: false,
+        status: 400,
+        error: "invalid_products",
+        missing_product_ids: productIds,
+      };
+    }
+    if (snapshot.length !== items.length) {
+      const snapshotIds = new Set(snapshot.map((it) => it.id));
+      const missing = productIds.filter((id) => !snapshotIds.has(id));
+      return {
+        ok: false,
+        status: 400,
+        error: "invalid_products",
+        missing_product_ids: missing,
+      };
+    }
     const subtotal = snapshot.reduce(
       (acc, it) => acc + Number(it.price) * Number(it.quantity),
       0,

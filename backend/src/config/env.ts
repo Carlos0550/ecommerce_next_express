@@ -9,9 +9,8 @@ function validateEnvVar(
   if (value && value.trim() === "") {
     throw new Error(`❌ Variable de entorno ${name} está vacía`);
   }
-  console.log(
-    `✅ Variable de entorno ${name} validada correctamente: ${value}`,
-  );
+  const hasValue = value !== undefined && value !== null && value !== "";
+  console.log(`✅ Variable de entorno ${name} validada correctamente (${hasValue ? "presente" : "ausente"})`);
   return value!;
 }
 export function validateEnvironmentVariables() {
