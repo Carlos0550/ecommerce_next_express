@@ -293,7 +293,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await adminService.getProducts(params);
-      console.log("data", data);
       set({
         products: data.data.products || data,
         productsPagination: data.data.pagination || null,
@@ -576,7 +575,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isLoading: true });
     try {
       await adminService.createProduct(formData);
-      await get().fetchProducts();
       showNotification({
         title: "Éxito",
         message: "Producto creado correctamente",
@@ -598,7 +596,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isLoading: true });
     try {
       await adminService.updateProduct(id, formData);
-      await get().fetchProducts();
       showNotification({
         title: "Éxito",
         message: "Producto actualizado correctamente",
@@ -620,7 +617,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isLoading: true });
     try {
       await adminService.deleteProduct(id);
-      await get().fetchProducts();
       showNotification({
         title: "Éxito",
         message: "Producto eliminado correctamente",
@@ -641,7 +637,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   updateProductStock: async (id, quantity) => {
     try {
       await adminService.updateProductStock(id, quantity);
-      await get().fetchProducts();
       showNotification({ message: "Stock actualizado", color: "green" });
     } catch (error) {
       showNotification({ message: "Error al actualizar stock", color: "red" });

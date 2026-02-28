@@ -100,6 +100,10 @@ export const useAuthStore = create<AuthState>()(
           get().setToken(data.token);
           resetLogoutFlag();
           await get().validateSession();
+          const state = get();
+          if (!state.isAuthenticated || !state.isUser) {
+            throw new Error("No se pudo validar la sesión de usuario");
+          }
           showNotification({
             title: "Bienvenido",
             message: "Has in ciado sesión correctamente",
@@ -117,6 +121,10 @@ export const useAuthStore = create<AuthState>()(
           get().setToken(data.token);
           resetLogoutFlag();
           await get().validateSession();
+          const state = get();
+          if (!state.isAuthenticated || !state.isAdmin) {
+            throw new Error("No se pudo validar la sesión de administrador");
+          }
           showNotification({
             title: "Bienvenido Admin",
             message: "Has iniciado sesión correctamente",
@@ -275,7 +283,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth_storage",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ token: state.token, isAdmin: state.isAdmin }),
+      partialize: (state) => ({ token: state.token }),
     },
   ),
 );

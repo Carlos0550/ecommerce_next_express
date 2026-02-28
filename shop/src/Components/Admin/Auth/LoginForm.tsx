@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text } from "@mantine/core";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { showNotification } from "@mantine/notifications";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
@@ -21,7 +21,6 @@ export default function LoginForm(){
   const [recoverEmail, setRecoverEmail] = useState<string>("");
   const { isMobile } = useWindowSize();
   const { loginAdmin, session, isAdmin } = useAuthStore();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo =
     getSafeRedirectPath(searchParams.get("from"), { allowedPrefixes: ["/admin"] }) ||
@@ -33,20 +32,12 @@ export default function LoginForm(){
     },
     onSuccess: () => {
       const user = useAuthStore.getState().session;
-      router.replace(redirectTo);
-      router.refresh();
-      if (typeof window !== "undefined") {
-        setTimeout(() => {
-          if (window.location.pathname.startsWith("/admin/auth")) {
-            window.location.assign(redirectTo);
-          }
-        }, 200);
-      }
       showNotification({
         title: "Inicio de sesión exitoso",
         message: `Bienvenido ${capitalizeTexts(user?.name || "usuario")}`,
         color: "green",
       });
+      window.location.href = redirectTo;
     },
     onError: (err: Error) => {
       const errorMessage = err.message || "Error al iniciar sesión";
@@ -59,10 +50,9 @@ export default function LoginForm(){
   });
   useEffect(() => {
     if (session && isAdmin) {
-      router.replace(redirectTo);
-      router.refresh();
+      window.location.href = redirectTo;
     }
-  }, [session, isAdmin, router, redirectTo]);
+  }, [session, isAdmin, redirectTo]);
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     setError("");

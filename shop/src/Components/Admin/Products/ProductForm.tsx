@@ -275,8 +275,8 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
           </Stack>
         </>
       )}
-      <Stack>
-        {}
+      <Stack gap="xs">
+        <Text fw={500} size="sm">Imágenes del producto</Text>
         <input
           id="file-input"
           type="file"
@@ -291,16 +291,15 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
                 images: [...prev.images, ...files],
               }));
             }
+            e.target.value = "";
           }}
         />
         <Button
-          variant="filled"
-          size="lg"
+          variant="light"
           onClick={() => document.getElementById('file-input')?.click()}
-          leftSection="📱"
-          hiddenFrom="md"
+          leftSection="🖼️"
         >
-          Seleccionar imágenes desde galería
+          {formValues.images.length > 0 ? "Añadir más imágenes" : "Seleccionar imágenes"}
         </Button>
       </Stack>
       {formValues.images.length > 0 && (

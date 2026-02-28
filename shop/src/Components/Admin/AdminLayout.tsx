@@ -35,13 +35,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [changing, setChanging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
+  const [sessionChecked, setSessionChecked] = useState(false);
+
   useEffect(() => {
-    if (token && !isAuthenticated) {
-      validateSession();
-    }
+    const checkSession = async () => {
+      if (token && !isAuthenticated) {
+        await validateSession();
+      }
+      setSessionChecked(true);
+    };
+    checkSession();
   }, [token, isAuthenticated, validateSession]);
+
   useEffect(() => {
-    if (token && isAuthenticated && !loading && !isAdmin) {
+    if (!sessionChecked) return;
+    if (token && isAuthenticated && !isAdmin) {
       showNotification({
         title: "Acceso denegado",
         message: "Tu cuenta no tiene permisos de administrador",
@@ -49,13 +57,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
       router.replace("/");
     }
-  }, [token, isAuthenticated, isAdmin, loading, router]);
+  }, [token, isAuthenticated, isAdmin, sessionChecked, router]);
+
   useEffect(() => {
+    if (!sessionChecked) return;
     if (!token) {
       document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       router.replace("/admin/auth");
     }
-  }, [token, router]);
+  }, [token, sessionChecked, router]);
   useEffect(() => {
     if (token && !business) { 
         fetchBusiness();
@@ -75,7 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     []
   );
   const sidebarMenuItems = useMemo(() => menuItems.map(item => ({ href: item.to, label: item.label, icon: item.icon })), [menuItems]);
-  if (!token || (token && !isAuthenticated && loading) || (isAuthenticated && !isAdmin)) {
+  if (!sessionChecked || !token || (token && !isAuthenticated) || (isAuthenticated && !isAdmin)) {
     return <LoadingOverlay visible zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />;
   }
   return (
