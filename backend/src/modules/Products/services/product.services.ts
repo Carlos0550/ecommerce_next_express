@@ -717,7 +717,6 @@ class ProductServices {
           status: CategoryStatus.active,
         },
       });
-      console.log("Categorías públicas:", categories);
       return res.status(200).json({
         ok: true,
         data: categories,
@@ -740,7 +739,18 @@ class ProductServices {
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
       const skip = (page - 1) * limit;
       const where: any = { is_active: true, state: "active" };
-      if (title) where.title = { contains: title, mode: "insensitive" };
+      if (title) {
+        const trimmed = title.trim();
+        if (trimmed.length > 0) {
+          const titleConditions: { contains: string; mode: "insensitive" }[] = [
+            { contains: trimmed, mode: "insensitive" },
+          ];
+          if (trimmed.length > 2) {
+            titleConditions.push({ contains: trimmed.slice(0, -1), mode: "insensitive" });
+          }
+          where.OR = titleConditions.map((c) => ({ title: c }));
+        }
+      }
       if (categoryId) where.categoryId = categoryId;
       const [totalProducts, dbProducts] = await Promise.all([
         prisma.products.count({ where }),

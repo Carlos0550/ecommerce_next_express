@@ -27,12 +27,14 @@ export const useInfiniteProducts = ({
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage: {
-      data?: { page: number; totalPages: number };
+      data?: { pagination?: { page: number; totalPages: number }; page?: number; totalPages?: number };
+      pagination?: { page: number; totalPages: number };
       page?: number;
       totalPages?: number;
     }) => {
-      const page = lastPage.data?.page ?? lastPage.page;
-      const totalPages = lastPage.data?.totalPages ?? lastPage.totalPages;
+      const pagination = lastPage?.data?.pagination ?? lastPage?.pagination;
+      const page = pagination?.page ?? lastPage?.data?.page ?? lastPage?.page;
+      const totalPages = pagination?.totalPages ?? lastPage?.data?.totalPages ?? lastPage?.totalPages;
       if (page === undefined || totalPages === undefined) return undefined;
       return page < totalPages ? page + 1 : undefined;
     },

@@ -19,7 +19,7 @@ import { usePublicCategories } from "@/hooks/usePublicCategories";
 import CategoriesCards from "./sub-components/CategoriesCards";
 import Hero from "./sub-components/Hero";
 import EmptyState from "./sub-components/EmptyState";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useDebouncedValue } from "@mantine/hooks";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import CartWrapper from "../Cart/CartWrapper";
@@ -39,15 +39,23 @@ export default function Home({ initialProducts, initialCategories, business }: P
   const urlTitle = searchParams.get("title") || "";
   const urlCategoryId = searchParams.get("categoryId") || "";
   const [search, setSearch] = useState(urlTitle);
-  const [debouncedSearch] = useDebouncedValue(search, 500);
+  const [debouncedSearch] = useDebouncedValue(search, 200);
   useEffect(() => {
     setSearch(urlTitle);
   }, [urlTitle]);
+  const submitSearch = useCallback(() => {
+    const trimmed = search.trim();
+    setSearch(trimmed);
+    const params = new URLSearchParams(searchParams.toString());
+    if (trimmed) params.set("title", trimmed);
+    else params.delete("title");
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+  }, [search, pathname, router, searchParams]);
   const { data, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
     limit: 30,
     title: debouncedSearch,
     categoryId: urlCategoryId,
-    initialData: initialProducts,
+    initialData: debouncedSearch === urlTitle ? initialProducts : undefined,
   });
   const { data: categoriesData, isLoading: isLoadingCats } = usePublicCategories(initialCategories);
   const categories: PublicCategory[] = (categoriesData as PublicCategory[]) ?? [];
@@ -76,7 +84,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
     } else {
       params.delete("title");
     }
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   }, [debouncedSearch, pathname, router, urlTitle, searchParams]);
   const handleCategoryChange = (catId: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -97,12 +105,15 @@ export default function Home({ initialProducts, initialCategories, business }: P
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver((entries) => {
-      const first = entries[0];
-      if (first.isIntersecting && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    });
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px", threshold: 0 }
+    );
     obs.observe(el);
     return () => {
       obs.disconnect();
@@ -166,6 +177,7 @@ export default function Home({ initialProducts, initialCategories, business }: P
                     leftSection={<FiSearch size={16} />}
                     value={search}
                     onChange={(e) => setSearch(e.currentTarget.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitSearch()}
                     rightSection={isFetchingNextPage ? <Loader size="xs" /> : null}
                   />
                   {categories.length > 0 && (
