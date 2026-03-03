@@ -39,23 +39,53 @@ export default function Home({ initialProducts, initialCategories, business }: P
   const urlTitle = searchParams.get("title") || "";
   const urlCategoryId = searchParams.get("categoryId") || "";
   const [search, setSearch] = useState(urlTitle);
-  const [debouncedSearch] = useDebouncedValue(search, 200);
+  const [debouncedSearch] = useDebouncedValue(search, 500);
+  const isInitialMount = useRef(true);
+  const lastUrlTitle = useRef(urlTitle);
+
   useEffect(() => {
-    setSearch(urlTitle);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (lastUrlTitle.current !== urlTitle) {
+      lastUrlTitle.current = urlTitle;
+      setSearch(urlTitle);
+    }
   }, [urlTitle]);
+
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    const currentUrlTitle = params.get("title") || "";
+    
+    if (debouncedSearch === currentUrlTitle) return;
+    
+    if (debouncedSearch) {
+      params.set("title", debouncedSearch);
+    } else {
+      params.delete("title");
+    }
+    lastUrlTitle.current = debouncedSearch;
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
+  }, [debouncedSearch, pathname, router, searchParams]);
+
   const submitSearch = useCallback(() => {
     const trimmed = search.trim();
     setSearch(trimmed);
     const params = new URLSearchParams(searchParams.toString());
     if (trimmed) params.set("title", trimmed);
     else params.delete("title");
+    lastUrlTitle.current = trimmed;
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
   }, [search, pathname, router, searchParams]);
+
   const { data, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteProducts({
     limit: 30,
     title: debouncedSearch,
     categoryId: urlCategoryId,
-    initialData: debouncedSearch === urlTitle ? initialProducts : undefined,
+    initialData: !debouncedSearch && !urlTitle ? initialProducts : undefined,
   });
   const { data: categoriesData, isLoading: isLoadingCats } = usePublicCategories(initialCategories);
   const categories: PublicCategory[] = (categoriesData as PublicCategory[]) ?? [];
@@ -76,16 +106,6 @@ export default function Home({ initialProducts, initialCategories, business }: P
     if (business?.name) return business.name;
     return "Tienda Online";
   }, [business]);
-  useEffect(() => {
-    if (debouncedSearch === urlTitle) return;
-    const params = new URLSearchParams(searchParams.toString());
-    if (debouncedSearch) {
-      params.set("title", debouncedSearch);
-    } else {
-      params.delete("title");
-    }
-    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ""}`, { scroll: false });
-  }, [debouncedSearch, pathname, router, urlTitle, searchParams]);
   const handleCategoryChange = (catId: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (catId) {
