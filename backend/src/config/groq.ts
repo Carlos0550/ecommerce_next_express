@@ -14,7 +14,7 @@ const groq = new OpenAI({
   apiKey: GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
-const VISION_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 const isDevelopment = process.env.NODE_ENV === "development";
 function detectImageMimeType(buffer: Buffer): string | null {
