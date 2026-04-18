@@ -3,6 +3,8 @@ import { exec } from "child_process";
 import "@/config/dayjs";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { validateEnvironmentVariables } from "@/config/env";
 import { prisma } from "@/config/prisma";
 import UserRouter from "@/modules/User/routes";
@@ -28,6 +30,39 @@ validateEnvironmentVariables();
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
 const isProduction = process.env.NODE_ENV === "production";
+
+app.use(helmet());
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados intentos. Esperá 15 minutos." },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados registros. Esperá 1 hora." },
+});
+
+const checkoutLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados pedidos. Esperá 1 hora." },
+});
+
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : isProduction
@@ -98,6 +133,13 @@ app.get("/api/health", async (_req, res) => {
     res.status(500).json({ ok: false, error: "health_check_failed" });
   }
 });
+app.use("/api/admin/login", authLimiter);
+app.use("/api/admin/password/reset", authLimiter);
+app.use("/api/shop/login", authLimiter);
+app.use("/api/shop/password/reset", authLimiter);
+app.use("/api/shop/register", registerLimiter);
+app.use("/api/orders/create", checkoutLimiter);
+app.use("/api/whatsapp/webhook", webhookLimiter);
 app.use("/api/admin", AdminAuthRouter);
 app.use("/api/shop", ShopAuthRouter);
 app.use("/api/auth", AuthRouter);
@@ -157,8 +199,10 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
     res.status(500).json({ ok: false, error: "server_error" });
   }
 });
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(spec));
-app.get("/docs.json", (_req, res) => res.json(spec));
+if (!isProduction) {
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(spec));
+  app.get("/docs.json", (_req, res) => res.json(spec));
+}
 app.use(
   (
     err: any,

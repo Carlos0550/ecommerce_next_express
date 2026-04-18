@@ -71,6 +71,11 @@ export default class CartServices {
     const match = existingItems.find((item) =>
       areOptionsEqual(item.selected_options, options),
     );
+    const currentQty = match ? Number(match.quantity) : 0;
+    const requestedTotal = currentQty + quantity;
+    if (Number(product.stock) < requestedTotal) {
+      return { ok: false, status: 409, error: "insufficient_stock", available: Number(product.stock) };
+    }
     if (match) {
       const updated = await prisma.orderItems.update({
         where: { id: match.id },
@@ -147,7 +152,8 @@ export default class CartServices {
       const product = await prisma.products.findUnique({
         where: { id: incoming.product_id },
       });
-      if (!product) continue;
+      if (!product || !product.is_active || product.state !== "active") continue;
+      if (Number(incoming.quantity) > 0 && Number(product.stock) < Number(incoming.quantity)) continue;
       const existingItems = await prisma.orderItems.findMany({
         where: { cartId: cart.id, productId: incoming.product_id },
       });

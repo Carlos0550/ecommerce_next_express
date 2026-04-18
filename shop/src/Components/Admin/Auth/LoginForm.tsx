@@ -1,19 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Paper, Stack, TextInput, PasswordInput, Button, Group, Title, Text } from "@mantine/core";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { showNotification } from "@mantine/notifications";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
-export type LoginFormValues = {
-  email: string;
-  password: string;
-};
 import { useAuthStore } from "@/stores/useAuthStore";
 import { authService } from "@/services/auth.service";
 import { capitalizeTexts } from "@/utils/constants";
 import { useWindowSize } from "@/utils/hooks/useWindowSize";
 import { getSafeRedirectPath } from "@/utils/redirects";
+export type LoginFormValues = {
+  email: string;
+  password: string;
+};
 export default function LoginForm(){
   const [values, setValues] = useState<LoginFormValues>({ email: "", password: "" });
   const [error, setError] = useState<string>("");
@@ -22,6 +22,7 @@ export default function LoginForm(){
   const { isMobile } = useWindowSize();
   const { loginAdmin, session, isAdmin } = useAuthStore();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const redirectTo =
     getSafeRedirectPath(searchParams.get("from"), { allowedPrefixes: ["/admin"] }) ||
     "/admin";
@@ -37,7 +38,7 @@ export default function LoginForm(){
         message: `Bienvenido ${capitalizeTexts(user?.name || "usuario")}`,
         color: "green",
       });
-      window.location.href = redirectTo;
+      router.replace(redirectTo);
     },
     onError: (err: Error) => {
       const errorMessage = err.message || "Error al iniciar sesión";
@@ -50,9 +51,9 @@ export default function LoginForm(){
   });
   useEffect(() => {
     if (session && isAdmin) {
-      window.location.href = redirectTo;
+      router.replace(redirectTo);
     }
-  }, [session, isAdmin, redirectTo]);
+  }, [session, isAdmin, redirectTo, router]);
   const handleSubmit = async(e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -62,12 +63,12 @@ export default function LoginForm(){
     }
     loginMutation.mutate(values);
   };
-  const [reseting, isReseting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const handleRecover = async () => {
     setError("");
     if (!recoverEmail) { setError("Ingresa tu email"); return; }
     try {
-      isReseting(true);
+      setIsResetting(true);
       await authService.resetAdminPassword(recoverEmail);
       showNotification({ title: 'Correo enviado', message: 'Te enviamos una contraseña temporal de 6 dígitos.', color: 'green' });
       setRecoverMode(false);
@@ -76,8 +77,8 @@ export default function LoginForm(){
       const err = error as { response?: { data?: { error?: string } }; message?: string };
       const msg = err.response?.data?.error || err.message || 'Error al recuperar contraseña';
       setError(msg);
-    }finally{
-      isReseting(false);
+    } finally {
+      setIsResetting(false);
     }
   }
   return (
@@ -106,7 +107,7 @@ export default function LoginForm(){
             {error && <Text c="red" size="sm">{error}</Text>}
             <Group justify="space-between">
               <Button variant="light" onClick={() => setRecoverMode(false)}>Volver</Button>
-              <Button onClick={handleRecover} disabled={reseting} loading={reseting}>Enviar código</Button>
+              <Button onClick={handleRecover} disabled={isResetting} loading={isResetting}>Enviar código</Button>
             </Group>
           </Stack>
         )}

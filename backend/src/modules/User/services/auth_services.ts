@@ -121,7 +121,8 @@ class AuthServices {
           message: "El registro de administradores no está habilitado.",
         });
       }
-      var secure_password = Math.random().toString(36).slice(-10);
+      const { randomBytes } = await import("crypto");
+      const secure_password = randomBytes(12).toString("base64url");
       const existingUser = await prisma.user.findFirst({
         where: { email, role: 2 },
         select: { id: true },
@@ -270,7 +271,8 @@ class AuthServices {
         .json({ ok: false, error: "email_already_registered" });
     }
     const normalized_name = name.trim().toLowerCase();
-    const secure_password = Math.random().toString(36).slice(-10);
+    const { randomBytes: _rb2 } = await import("crypto");
+    const secure_password = _rb2(12).toString("base64url");
     const hashed = await hashPassword(secure_password);
     await prisma.$executeRaw`INSERT INTO "Admin" (email, password, name, is_active, role, created_at, updated_at) VALUES (${email}, ${hashed}, ${normalized_name}, true, 1, NOW(), NOW())`;
     const createdRows: any[] =
@@ -325,8 +327,9 @@ class AuthServices {
           .json({ ok: false, error: "email_already_registered" });
       }
     }
-    var secure_password = Math.random().toString(36).slice(-8);
-    var hashedPassword = await hashPassword(secure_password);
+    const { randomBytes: _rb3 } = await import("crypto");
+    const secure_password = _rb3(12).toString("base64url");
+    const hashedPassword = await hashPassword(secure_password);
     const normalized_name = name.trim().toLowerCase();
     let user: any;
     if (Number(role_id) === 1) {

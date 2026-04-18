@@ -66,11 +66,9 @@ export default function OrdersPage() {
           </Group>
           {String(o.payment_method).toUpperCase() === 'TRANSFERENCIA' && (
             <Group mt="xs">
-              <div>
-                <div>Alias: <strong>Roo.recalde</strong></div>
-                <div>Nombre: <strong>Recalde Rocio Candelaria</strong></div>
-                <div>Banco: <strong>Mercado Pago</strong></div>
-              </div>
+              <Text size="sm" c="dimmed">
+                Revisá tu email para ver los datos de transferencia, o contactá al negocio.
+              </Text>
             </Group>
           )}
           <Text>Total: ${o.total.toFixed(2)}</Text>
@@ -98,7 +96,7 @@ export default function OrdersPage() {
       ))}
       {items.length === 0 && <Text c="dimmed">No tienes órdenes aún.</Text>}
       <Group justify="center">
-        <Pagination total={Math.max(1, Number(data?.total || 1))} value={page} onChange={setPage} />
+        <Pagination total={Math.max(1, Number(data?.totalPages || data?.total || 1))} value={page} onChange={setPage} />
       </Group>
     </Stack>
   );

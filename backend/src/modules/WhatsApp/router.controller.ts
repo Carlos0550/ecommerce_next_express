@@ -144,20 +144,21 @@ class WhatsAppController {
       const event = req.body as WebhookEvent;
       const signature = req.headers['x-webhook-signature'] as string | undefined;
       const webhookSecret = process.env.WEBHOOK_SECRET;
-      if (webhookSecret) {
-        if (!signature) {
-          return res.status(401).json({ ok: false, error: 'missing_signature' });
-        }
-        const rawBody = (req as any).rawBody as string | undefined;
-        const payload = rawBody ?? JSON.stringify(req.body ?? {});
-        const isValid = WasenderClient.validateWebhookSignature(
-          payload,
-          signature,
-          webhookSecret,
-        );
-        if (!isValid) {
-          return res.status(401).json({ ok: false, error: 'invalid_signature' });
-        }
+      if (!webhookSecret) {
+        return res.status(503).json({ ok: false, error: 'webhook_not_configured' });
+      }
+      if (!signature) {
+        return res.status(401).json({ ok: false, error: 'missing_signature' });
+      }
+      const rawBody = (req as any).rawBody as string | undefined;
+      const payload = rawBody ?? JSON.stringify(req.body ?? {});
+      const isValid = WasenderClient.validateWebhookSignature(
+        payload,
+        signature,
+        webhookSecret,
+      );
+      if (!isValid) {
+        return res.status(401).json({ ok: false, error: 'invalid_signature' });
       }
       console.log('🔔 Webhook recibido:', event?.event, event?.session_id);
       res.status(200).json({ received: true });

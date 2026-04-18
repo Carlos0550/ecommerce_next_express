@@ -16,6 +16,7 @@ export type SaleRequest = {
     payment_methods?: { method: PaymentMethods; amount: number }[]
     items?: { product_id: string; quantity: number; options?: any }[]
     sale_date?: string
+    skipStockDecrement?: boolean
 }
 export type SalesSummaryRequest = {
     page: number,

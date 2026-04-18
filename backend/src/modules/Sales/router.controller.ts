@@ -45,8 +45,7 @@ export const getSales = async (req: Request, res: Response) => {
         const start_date = (req.query.start_date as string | undefined) || undefined;
         const end_date = (req.query.end_date as string | undefined) || undefined;
         const pending = String(req.query.pending || '').trim().toLowerCase() === 'true';
-        (global as any).__pendingFilter = pending;
-        const response = await SalesServices.getSales({ page, per_page, start_date, end_date });
+        const response = await SalesServices.getSales({ page, per_page, start_date, end_date, pending });
         if (Array.isArray(response?.sales)) {
             res.set('Cache-Control', 'no-store');
             res.status(200).json({

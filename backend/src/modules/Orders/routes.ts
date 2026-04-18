@@ -86,7 +86,6 @@ router.post(
     }
   },
 );
-export default router;
 router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
   try {
     const id = String((req.params as any)?.id || "");
@@ -99,7 +98,7 @@ router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
     const order = await service.getOrderById(id);
     if (!order?.transfer_receipt_path)
       return res.status(404).json({ ok: false, error: "receipt_not_found" });
-    const { createSignedUrl } = await import("@/config/supabase");
+    const { createSignedUrl } = await import("@/config/minio");
     const signed = await createSignedUrl(
       "comprobantes",
       order.transfer_receipt_path,
@@ -112,3 +111,4 @@ router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
     res.status(500).json({ ok: false, error: "receipt_fetch_failed" });
   }
 });
+export default router;

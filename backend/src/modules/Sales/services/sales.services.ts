@@ -181,7 +181,7 @@ class SalesServices {
           } else {
             console.warn("No recipient configured for sale email");
           }
-          if (!isManual) {
+          if (!isManual && !request.skipStockDecrement) {
             const counts = new Map<string, number>();
             if (Array.isArray(items) && items.length > 0) {
               items.forEach((i) =>
@@ -307,6 +307,7 @@ class SalesServices {
     try {
       const existing = await prisma.sales.findUnique({ where: { id } });
       if (!existing) return { success: false, message: "sale_not_found" };
+      await prisma.orders.updateMany({ where: { saleId: id }, data: { saleId: null } });
       await prisma.sales.delete({ where: { id } });
       return { success: true };
     } catch (error) {
@@ -320,11 +321,13 @@ class SalesServices {
     per_page = 5,
     start_date,
     end_date,
+    pending = false,
   }: {
     page?: number;
     per_page?: number;
     start_date?: string;
     end_date?: string;
+    pending?: boolean;
   }) {
     try {
       const take = Math.max(1, Number(per_page) || 5);
@@ -346,7 +349,6 @@ class SalesServices {
           lte: end.toDate(),
         },
       };
-      const pending = (global as any)?.__pendingFilter || false;
       if (pending) {
         where.source = "WEB" as any;
         where.processed = false;
@@ -704,10 +706,9 @@ class SalesServices {
       if (!sale) return { success: false, message: "sale_not_found" };
       if ((sale as any).processed) return { success: true };
       await prisma.sales.update({ where: { id }, data: { processed: true } });
-      const buyer_email = sale.orders[0].buyer_email || sale.user?.email;
-      const buyerName =
-        sale.orders[0].buyer_name || sale.user?.name || undefined;
-      console.log("buyer_email", buyer_email);
+      const firstOrder = sale.orders[0];
+      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
+      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
         const palette = await PaletteServices.getActiveFor("shop");
@@ -743,9 +744,9 @@ class SalesServices {
         where: { id },
         data: { declined: true, decline_reason: reason, processed: false },
       });
-      const buyer_email = sale.orders[0].buyer_email || sale.user?.email;
-      const buyerName =
-        sale.orders[0].buyer_name || sale.user?.name || undefined;
+      const firstOrder = sale.orders[0];
+      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
+      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
         const palette = await PaletteServices.getActiveFor("shop");

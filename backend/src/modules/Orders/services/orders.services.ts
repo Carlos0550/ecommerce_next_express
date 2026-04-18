@@ -40,6 +40,7 @@ export default class OrdersServices {
           price: Number(product.price),
           quantity: Math.max(1, Number(item.quantity) || 1),
           options: item.options || [],
+          stock: Number(product.stock),
         };
       })
       .filter((i) => i !== null) as {
@@ -48,6 +49,7 @@ export default class OrdersServices {
       price: number;
       quantity: number;
       options: any;
+      stock: number;
     }[];
     if (snapshot.length === 0) {
       return {
@@ -65,6 +67,20 @@ export default class OrdersServices {
         status: 400,
         error: "invalid_products",
         missing_product_ids: missing,
+      };
+    }
+    const outOfStock = snapshot.filter((it) => it.stock < it.quantity);
+    if (outOfStock.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        error: "insufficient_stock",
+        out_of_stock: outOfStock.map((it) => ({
+          product_id: it.id,
+          title: it.title,
+          available: it.stock,
+          requested: it.quantity,
+        })),
       };
     }
     const subtotal = snapshot.reduce(
@@ -135,6 +151,7 @@ export default class OrdersServices {
           quantity: i.quantity,
           options: (i as any).options,
         })),
+        skipStockDecrement: true,
       })) as any;
       if (typeof saleId === "string") {
         await prisma.orders.update({
