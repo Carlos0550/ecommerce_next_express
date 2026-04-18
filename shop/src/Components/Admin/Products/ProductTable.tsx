@@ -1,6 +1,5 @@
 import { Box, Flex, Loader, Text, Pagination, Modal } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { theme } from '@/theme';
 import { useProductTable } from './hooks/useProductTable';
 import { ProductTableFilters } from './components/ProductTableFilters';
 import { ProductTableMobile } from './components/ProductTableMobile';
@@ -15,7 +14,7 @@ interface ProductTableProps {
   setAddOpened: (opened: boolean) => void;
 }
 function ProductTable({ setAddOpened }: ProductTableProps) {
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`);
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const mounted = useMounted();
   const {
     search,

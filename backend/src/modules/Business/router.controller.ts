@@ -145,5 +145,24 @@ class BusinessController {
         .json({ error: "Error al obtener la información del negocio" });
     }
   }
+  async getActivePalette(req: Request, res: Response) {
+    const palette = await businessServices.getActivePalette();
+    return res.status(200).json({ palette });
+  }
+  async setActivePalette(req: Request, res: Response) {
+    try {
+      const { palette } = req.body as { palette?: string };
+      if (!palette || !["kuromi", "mono", "blush"].includes(palette)) {
+        return res
+          .status(400)
+          .json({ error: "Paleta inválida. Valores: kuromi | mono | blush" });
+      }
+      await businessServices.setActivePalette(palette);
+      return res.status(200).json({ palette });
+    } catch (error) {
+      logger.error("setActivePalette_error", error);
+      return res.status(500).json({ error: "Error al actualizar la paleta" });
+    }
+  }
 }
 export default new BusinessController();

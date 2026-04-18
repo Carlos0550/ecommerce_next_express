@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { configService } from "@/services/config.service";
+import {
+  DEFAULT_PALETTE,
+  isValidPaletteName,
+  type PaletteName,
+} from "@/theme/palettes";
+
 export interface PublicProduct {
   id: string;
   title: string;
@@ -11,16 +17,19 @@ export interface PublicProduct {
   category?: { id: string; title: string };
   stock?: number;
 }
+
 export interface PublicCategory {
   id: string;
   title: string;
   image: string | null;
 }
+
 export interface PublicProductsResponse {
   products: PublicProduct[];
   page: number;
   totalPages: number;
 }
+
 export interface PublicBusinessInfo {
   name: string;
   description: string;
@@ -30,6 +39,7 @@ export interface PublicBusinessInfo {
   phone?: string;
   hero_image?: string;
 }
+
 export interface PublicBankInfo {
   bankData: {
     bank_name: string;
@@ -37,14 +47,13 @@ export interface PublicBankInfo {
     account_holder: string;
   }[];
 }
+
 interface ConfigState {
   businessInfo: PublicBusinessInfo | null;
-  theme: Record<string, unknown> | null;
   bankInfo: PublicBankInfo | null;
   publicProducts: PublicProduct[];
   publicCategories: PublicCategory[];
-  paletteName: string;
-  colors: string[];
+  activePalette: PaletteName;
   isLoading: boolean;
   fetchConfig: () => Promise<void>;
   fetchPublicProducts: (
@@ -52,53 +61,29 @@ interface ConfigState {
   ) => Promise<PublicProductsResponse>;
   fetchPublicCategories: () => Promise<void>;
   fetchBankInfo: () => Promise<void>;
-  updateTheme: (name: string, colors: string[]) => void;
+  setPalette: (palette: PaletteName) => void;
 }
+
 export const useConfigStore = create<ConfigState>()(
   persist(
     (set) => ({
       businessInfo: null,
-      theme: null,
       bankInfo: null,
       publicProducts: [],
       publicCategories: [],
-      paletteName: "mono",
-      colors: [
-        "#ffffff",
-        "#f2f2f2",
-        "#e6e6e6",
-        "#cccccc",
-        "#b3b3b3",
-        "#999999",
-        "#7f7f7f",
-        "#666666",
-        "#4d4d4d",
-        "#1a1a1a",
-      ],
+      activePalette: DEFAULT_PALETTE,
       isLoading: false,
       fetchConfig: async () => {
         set({ isLoading: true });
         try {
           const [businessInfo, themeRes] = await Promise.all([
             configService.getPublicBusinessInfo().catch(() => null),
-            configService.getThemePalette("shop").catch(() => null),
+            configService.getActivePalette().catch(() => null),
           ]);
           set({ businessInfo });
-          if (
-            themeRes?.name &&
-            Array.isArray(themeRes.colors) &&
-            themeRes.colors.length === 10
-          ) {
-            const slug =
-              String(themeRes.name)
-                .toLowerCase()
-                .replace(/\s+/g, "-")
-                .replace(/[^a-z0-9-9]/g, "") || "brand";
-            set({
-              paletteName: slug,
-              colors: themeRes.colors as string[],
-              theme: themeRes,
-            });
+          const nextPalette = themeRes?.palette;
+          if (isValidPaletteName(nextPalette)) {
+            set({ activePalette: nextPalette });
           }
         } catch (error) {
           console.error("Failed to fetch config", error);
@@ -135,16 +120,11 @@ export const useConfigStore = create<ConfigState>()(
           console.error("Failed to fetch bank info", error);
         }
       },
-      updateTheme: (name, colors) => {
-        set({ paletteName: name, colors });
-      },
+      setPalette: (palette) => set({ activePalette: palette }),
     }),
     {
       name: "shop_config",
-      partialize: (state) => ({
-        paletteName: state.paletteName,
-        colors: state.colors,
-      }),
+      partialize: (state) => ({ activePalette: state.activePalette }),
     },
   ),
 );

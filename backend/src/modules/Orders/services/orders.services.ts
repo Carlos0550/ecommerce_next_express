@@ -3,7 +3,7 @@ import { sendEmail } from "@/config/resend";
 import { purchase_email_html } from "@/templates/purchase_email";
 import salesServices from "@/modules/Sales/services/sales.services";
 import BusinessServices from "@/modules/Business/business.services";
-import PaletteServices from "@/modules/Palettes/services/palette.services";
+import { getActivePalette } from "@/utils/getActivePalette";
 import { PaymentMethod } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
@@ -256,7 +256,7 @@ export default class OrdersServices {
     }));
     if (customer.email && customer.email.trim()) {
       const business = await BusinessServices.getBusiness();
-      const palette = await PaletteServices.getActiveFor("shop");
+      const palette = await getActivePalette();
       const buyerHtml = purchase_email_html({
         payment_method: paymentMethod,
         products: productRows,

@@ -2,7 +2,6 @@ import { Box, Paper, Table, Text, Loader, Group, Button, Badge, Stack, ScrollAre
 import { DatePickerInput } from "@mantine/dates"
 import { LineChart } from "@mui/x-charts"
 import { useMediaQuery } from "@mantine/hooks"
-import { theme } from "@/theme"
 import { useGetSales, useProcessSale, useGetSaleReceipt, useDeclineSale, useDeleteSale, useGetSalesAnalytics } from "@/hooks/useAdminSales"
 import type { PaymentMethods, SaleSource, ManualProductItem } from "./SalesForm"
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper"
@@ -115,7 +114,7 @@ export default function SalesTable() {
     hasNextPage: boolean,
     hasPrevPage: boolean,
   } | undefined;
-  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints?.sm || '768px'})`)
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const currency = useMemo(() => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }), [])
   const [viewProductsOpen, setViewProductsOpen] = useState<boolean>(false)
   const [selectedSale, setSelectedSale] = useState<Sales | null>(null)

@@ -1,7 +1,6 @@
 import { Stack, Paper, Group, Image, Box, Text, ActionIcon, Button } from '@mantine/core';
 import { FiEdit, FiEye, FiTrash, FiBox, FiTrendingUp } from 'react-icons/fi';
 import { ProductBadge } from './ProductBadge';
-import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
 import type { AdminProduct } from "@/stores/useAdminStore";
 
@@ -34,8 +33,8 @@ export const ProductTableMobile = ({
   return (
     <Stack gap="md">
       {state === "draft" && (
-        <Paper p="xs" bg="rose.0" style={{ border: `1px solid ${theme.colors?.rose?.[2] || '#eee'}` }}>
-          <Text size="sm" c="rose.9" fw={500}>
+        <Paper p="xs" style={{ background: 'var(--color-accent-soft)', border: '1px solid var(--color-border)' }}>
+          <Text size="sm" c="var(--color-text)" fw={500}>
             Recuerde editar precio y activar el producto para que esté a la venta.
           </Text>
         </Paper>

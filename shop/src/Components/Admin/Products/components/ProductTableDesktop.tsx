@@ -1,7 +1,6 @@
 import { Paper, ScrollArea, Table, Group, ActionIcon, Button, Image, Text, Tooltip } from '@mantine/core';
 import { FiEdit, FiEye, FiTrash, FiTrendingUp, FiBox } from 'react-icons/fi';
 import { ProductBadge } from './ProductBadge';
-import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
 import type { AdminProduct } from "@/stores/useAdminStore";
 
@@ -34,8 +33,8 @@ export const ProductTableDesktop = ({
   return (
     <Paper withBorder radius="md" shadow="sm">
       {state === "draft" && (
-        <Paper p="xs" bg="rose.0" m="md" style={{ border: `1px solid ${theme.colors?.rose?.[2] || '#eee'}` }}>
-          <Text size="sm" c="rose.9" fw={500}>
+        <Paper p="xs" m="md" style={{ background: 'var(--color-accent-soft)', border: '1px solid var(--color-border)' }}>
+          <Text size="sm" c="var(--color-text)" fw={500}>
             Recuerde editar precio y activar el producto para que esté a la venta.
           </Text>
         </Paper>

@@ -7,7 +7,7 @@ import { sendEmail } from "@/config/resend";
 import { welcomeKuromiHTML } from "@/templates/welcome_kuromi";
 import { new_user_html } from "@/templates/new_user";
 import BusinessServices from "@/modules/Business/business.services";
-import PaletteServices from "@/modules/Palettes/services/palette.services";
+import { getActivePalette } from "@/utils/getActivePalette";
 
 class AuthServices {
   async loginAdmin(req: Request, res: Response) {
@@ -82,7 +82,7 @@ class AuthServices {
       try {
         const business = await BusinessServices.getBusiness();
         const businessName = business?.name || "Tienda online";
-        const palette = await PaletteServices.getActiveFor("shop");
+        const palette = await getActivePalette();
         const text_message = `
           <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_main}};">
           Desde hoy, estás listo/a para explorar todo nuestro catálogo de productos,
@@ -177,7 +177,7 @@ class AuthServices {
     try {
       const business = await BusinessServices.getBusiness();
       const businessName = business?.name || "Tienda online";
-      const palette = await PaletteServices.getActiveFor("shop");
+      const palette = await getActivePalette();
       const text_message = `
         <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_muted}};">
           Tu contraseña de acceso es: <strong>${secure_password}</strong>
@@ -228,7 +228,7 @@ class AuthServices {
     try {
       const business = await BusinessServices.getBusiness();
       const businessName = business?.name || "Tienda online";
-      const palette = await PaletteServices.getActiveFor("shop");
+      const palette = await getActivePalette();
       const html = new_user_html(capitalized_name, text_message, business as any, palette as any);
       await sendEmail({
         to: user.email,

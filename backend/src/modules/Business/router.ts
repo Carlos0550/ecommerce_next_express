@@ -41,4 +41,14 @@ router.get("/public", (req: Request, res: Response) =>
 router.get("/public/bank-info", (req: Request, res: Response) =>
   businessController.getBusiness(req, res),
 );
+router.get("/theme", (req: Request, res: Response) =>
+  businessController.getActivePalette(req, res),
+);
+router.patch(
+  "/palette",
+  requireAuth,
+  requireRole([1]),
+  (req: Request, res: Response) =>
+    businessController.setActivePalette(req, res),
+);
 export default router;

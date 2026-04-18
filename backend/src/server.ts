@@ -18,7 +18,6 @@ import OrdersRouter from "@/modules/Orders/routes";
 import ProfileRouter from "@/modules/Profile/routes";
 import BusinessRouter from "@/modules/Business/router";
 import FaqRouter from "@/modules/FAQ/routes";
-import PaletteRouter from "@/modules/Palettes/routes";
 import WhatsAppRouter from "@/modules/WhatsApp/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import swaggerUi from "swagger-ui-express";
@@ -152,7 +151,6 @@ app.use("/api/sales", SalesRouter);
 app.use("/api/cart", CartRouter);
 app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
-app.use("/api", PaletteRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
 app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
   try {

@@ -89,38 +89,12 @@ export const adminService = {
     });
     return data;
   },
-  getPalettes: async () => {
-    const { data } = await api.get("/palettes");
+  getActivePalette: async (): Promise<{ palette: string }> => {
+    const { data } = await api.get("/business/theme");
     return data;
   },
-  createPalette: async (palette: Record<string, unknown>) => {
-    const { data } = await api.post("/palettes", palette);
-    return data;
-  },
-  updatePalette: async (id: string, palette: Record<string, unknown>) => {
-    const { data } = await api.put(`/palettes/${id}`, palette);
-    return data;
-  },
-  deletePalette: async (id: string) => {
-    const { data } = await api.delete(`/palettes/${id}`);
-    return data;
-  },
-  usePalette: async (id: string, target: "admin" | "shop") => {
-    const { data } = await api.patch("/palettes/use", { id, target });
-    return data;
-  },
-  activatePalette: async (id: string, active: boolean) => {
-    const { data } = await api.patch(`/palettes/activate/${id}`, {
-      active,
-    });
-    return data;
-  },
-  generatePalette: async (prompt: string) => {
-    const { data } = await api.post("/palettes/generate", { prompt });
-    return data;
-  },
-  randomPalette: async (name: string) => {
-    const { data } = await api.post("/palettes/random", { name });
+  setActivePalette: async (palette: string): Promise<{ palette: string }> => {
+    const { data } = await api.patch("/business/palette", { palette });
     return data;
   },
   getSales: async (params?: GetSalesParams) => {

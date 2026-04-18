@@ -6,7 +6,7 @@ import { order_ready_email_html } from "@/templates/order_ready_email";
 import { order_declined_email_html } from "@/templates/order_declined_email";
 import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
-import PaletteServices from "@/modules/Palettes/services/palette.services";
+import { getActivePalette } from "@/utils/getActivePalette";
 class SalesServices {
   async saveSale(request: SaleRequest) {
     const { payment_method, source, product_ids, user_sale, items } = request;
@@ -128,7 +128,7 @@ class SalesServices {
             : null;
           console.log(user);
           const business = await BusinessServices.getBusiness();
-          const palette = await PaletteServices.getActiveFor("shop");
+          const palette = await getActivePalette();
           const html = sale_email_html({
             source,
             payment_method: primaryPaymentMethod,
@@ -712,7 +712,7 @@ class SalesServices {
       const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
-        const palette = await PaletteServices.getActiveFor("shop");
+        const palette = await getActivePalette();
         const html = order_ready_email_html({
           saleId: sale.id,
           buyerName,
@@ -750,7 +750,7 @@ class SalesServices {
       const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
-        const palette = await PaletteServices.getActiveFor("shop");
+        const palette = await getActivePalette();
         const html = order_declined_email_html({
           saleId: sale.id,
           buyerName,

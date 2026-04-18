@@ -95,6 +95,31 @@ class BusinessServices {
       hero_image: toPublic(hero!),
     } as any;
   }
+  async getActivePalette(): Promise<string> {
+    try {
+      const business = await prisma.businessData.findFirst({
+        select: { active_palette: true },
+        orderBy: { id: "asc" },
+      });
+      const raw = business?.active_palette;
+      return raw === "kuromi" || raw === "mono" || raw === "blush"
+        ? raw
+        : "kuromi";
+    } catch {
+      return "kuromi";
+    }
+  }
+  async setActivePalette(palette: string) {
+    const business = await prisma.businessData.findFirst({
+      select: { id: true },
+      orderBy: { id: "asc" },
+    });
+    if (!business) throw new Error("BUSINESS_NOT_FOUND");
+    await prisma.businessData.update({
+      where: { id: business.id },
+      data: { active_palette: palette },
+    });
+  }
   async updateImageField(
     id: string,
     field: "business_image" | "favicon" | "hero_image",

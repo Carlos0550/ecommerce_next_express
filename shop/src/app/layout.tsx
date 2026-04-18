@@ -1,9 +1,24 @@
 import "./globals.css";
 import AppProvider from "../providers/AppProvider";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { configService } from "@/services/config.service";
-const inter = Inter({ subsets: ["latin"], variable: "--font-stack" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+const grotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-grotesk",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 export const revalidate = 60;
 export async function generateMetadata(): Promise<Metadata> {
   const business = await configService.getPublicBusinessInfo();
@@ -50,7 +65,7 @@ export default async function RootLayout({
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const businessImage = business?.business_image || "/image_fallback.webp";
   return (
-    <html lang="es" className={inter.variable}>
+    <html lang="es" className={`${inter.variable} ${grotesk.variable} ${mono.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#ffffff" />

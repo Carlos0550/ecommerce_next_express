@@ -147,14 +147,6 @@ export interface AdminAnalytics {
   previous?: { sales_count: number; revenue_total: number };
 }
 
-export interface Palette {
-  id: string;
-  name: string;
-  colors: string[];
-  is_active: boolean;
-  target?: "admin" | "shop";
-}
-
 export interface WhatsAppStatus {
   status: "connected" | "disconnected" | "connecting";
   phone_number?: string;
@@ -259,18 +251,6 @@ interface AdminState {
     id: string,
     payload: Record<string, unknown>,
   ) => Promise<void>;
-  palettes: Palette[];
-  fetchPalettes: () => Promise<void>;
-  createPalette: (payload: { name: string; colors: string[] }) => Promise<void>;
-  updatePalette: (
-    id: string,
-    payload: Partial<{ name: string; colors: string[] }>,
-  ) => Promise<void>;
-  deletePalette: (id: string) => Promise<void>;
-  activatePalette: (id: string, active: boolean) => Promise<void>;
-  applyPalette: (paletteId: string, target: "admin" | "shop") => Promise<void>;
-  generatePalette: (prompt: string) => Promise<void>;
-  randomPalette: (name: string) => Promise<void>;
   users: AdminUser[];
   faqs: AdminFaq[];
   analytics: AdminAnalytics | null;
@@ -288,7 +268,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   analytics: null,
   whatsappStatus: null,
   productsPagination: null,
-  palettes: [],
   fetchProducts: async (params?: GetProductsParams) => {
     set({ isLoading: true });
     try {
@@ -730,81 +709,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         message: "Error al actualizar estado",
         color: "red",
       });
-      throw error;
-    }
-  },
-  fetchPalettes: async () => {
-    try {
-      const data = await adminService.getPalettes();
-      set({ palettes: data?.palettes || data });
-    } catch (error) {
-      console.error(error);
-    }
-  },
-  createPalette: async (payload: { name: string; colors: string[] }) => {
-    try {
-      await adminService.createPalette(payload);
-      get().fetchPalettes();
-      showNotification({ message: "Paleta creada", color: "green" });
-    } catch (error) {
-      throw error;
-    }
-  },
-  updatePalette: async (
-    id: string,
-    payload: Partial<{ name: string; colors: string[] }>,
-  ) => {
-    try {
-      await adminService.updatePalette(id, payload);
-      get().fetchPalettes();
-      showNotification({ message: "Paleta actualizada", color: "green" });
-    } catch (error) {
-      throw error;
-    }
-  },
-  deletePalette: async (id) => {
-    try {
-      await adminService.deletePalette(id);
-      get().fetchPalettes();
-      showNotification({ message: "Paleta eliminada", color: "green" });
-    } catch (error) {
-      throw error;
-    }
-  },
-  activatePalette: async (id, active) => {
-    try {
-      await adminService.activatePalette(id, active);
-      get().fetchPalettes();
-      showNotification({ message: "Paleta activada", color: "green" });
-    } catch (error) {
-      throw error;
-    }
-  },
-  applyPalette: async (paletteId, target) => {
-    try {
-      await adminService.usePalette(paletteId, target);
-      get().fetchPalettes();
-      showNotification({
-        message: `Paleta aplicada a ${target}`,
-        color: "green",
-      });
-    } catch (error) {
-      throw error;
-    }
-  },
-  generatePalette: async (prompt) => {
-    try {
-      await adminService.generatePalette(prompt);
-      get().fetchPalettes();
-    } catch (error) {
-      throw error;
-    }
-  },
-  randomPalette: async (name) => {
-    try {
-      await adminService.randomPalette(name);
-      get().fetchPalettes();
-    } catch (error) {
       throw error;
     }
   },
