@@ -56,8 +56,8 @@ class WhatsAppServices {
   async deleteConversationSession(phone: string): Promise<void> {
     return sessionManager.deleteSession(phone);
   }
-  createNewConversationSession(adminId: number, phone: string): WhatsAppConversationSession {
-    return sessionManager.createNewSession(adminId, phone);
+  createNewConversationSession(userId: number, phone: string): WhatsAppConversationSession {
+    return sessionManager.createNewSession(userId, phone);
   }
   async updateLastUserMessage(phone: string): Promise<void> {
     return sessionManager.updateLastUserMessage(phone);

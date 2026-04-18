@@ -154,8 +154,9 @@ class SalesServices {
             business: business as any,
             palette: palette as any,
           });
-          const admins: any[] = await prisma.admin.findMany({
-            where: { is_active: true },
+          const admins: any[] = await prisma.user.findMany({
+            where: { role: "ADMIN", is_active: true },
+            select: { email: true },
           });
           const adminEmails = admins
             .map((u: { email: string }) => u.email)

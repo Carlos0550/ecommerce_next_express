@@ -10,7 +10,7 @@ class SessionManager {
         return null;
       }
       return {
-        adminId: session.adminId,
+        userId: session.userId,
         phone: session.phone,
         state: session.state as any,
         productData: session.productData as any,
@@ -27,7 +27,7 @@ class SessionManager {
       await prisma.whatsAppSession.upsert({
         where: { phone: session.phone },
         update: {
-          adminId: session.adminId,
+          userId: session.userId,
           state: session.state,
           productData: session.productData as any,
           messageHistory: session.messageHistory as any,
@@ -35,7 +35,7 @@ class SessionManager {
         },
         create: {
           phone: session.phone,
-          adminId: session.adminId,
+          userId: session.userId,
           state: session.state,
           productData: session.productData as any,
           messageHistory: session.messageHistory as any,
@@ -58,11 +58,11 @@ class SessionManager {
     }
   }
   createNewSession(
-    adminId: number,
+    userId: number,
     phone: string,
   ): WhatsAppConversationSession {
     return {
-      adminId,
+      userId,
       phone,
       state: "idle",
       productData: {

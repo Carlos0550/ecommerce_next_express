@@ -28,7 +28,7 @@ export default class FaqServices {
     return { ok: true, item };
   }
   async softDelete(id: string) {
-    await prisma.fAQ.delete({ where: { id } });
+    await prisma.fAQ.update({ where: { id }, data: { deleted_at: new Date(), is_active: false } });
     return { ok: true };
   }
 }

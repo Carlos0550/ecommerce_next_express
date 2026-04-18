@@ -36,18 +36,10 @@ router.delete("/auth/users/:id", requireAuth, requireRole([1]), (req, res) =>
 );
 router.get("/validate-token", requireAuth, async (req, res) => {
   const userClaim = (req as any).user;
-  const is_admin = userClaim.subjectType === "admin";
-  let userRecord: any;
-  if (is_admin) {
-    const rows: any[] =
-      await prisma.$queryRaw`SELECT is_active FROM "Admin" WHERE id = ${Number(userClaim.sub || userClaim.id)} LIMIT 1`;
-    userRecord = rows[0];
-  } else {
-    userRecord = await prisma.user.findUnique({
-      where: { id: Number(userClaim.sub || userClaim.id) },
-      select: { is_active: true },
-    });
-  }
+  const userRecord = await prisma.user.findUnique({
+    where: { id: Number(userClaim.sub || userClaim.id) },
+    select: { is_active: true },
+  });
   res.json({
     ok: true,
     id: userClaim.sub || userClaim.id,

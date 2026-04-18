@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, JwtPayload } from "@/config/jwt";
 import { prisma } from "@/config/prisma";
+
 export type AuthUser = JwtPayload & {
   email?: string;
   name?: string;
@@ -9,6 +10,7 @@ export type AuthUser = JwtPayload & {
   subjectType?: "admin" | "user";
   is_active?: boolean;
 };
+
 function getBearerToken(req: Request): string | null {
   const header =
     req.headers["authorization"] ||
@@ -20,6 +22,7 @@ function getBearerToken(req: Request): string | null {
   if (!/^Bearer$/i.test(scheme)) return null;
   return token;
 }
+
 export async function requireAuth(
   req: Request,
   res: Response,
@@ -33,39 +36,24 @@ export async function requireAuth(
     let payload: AuthUser;
     try {
       payload = verifyToken<AuthUser>(token);
-    } catch (err) {
+    } catch {
       return res.status(401).json({ ok: false, error: "invalid_token" });
     }
     const userId = Number(payload.sub || payload.id);
     if (!Number.isFinite(userId)) {
       return res.status(401).json({ ok: false, error: "invalid_token" });
     }
-    const isAdmin =
-      payload.subjectType === "admin" || Number(payload.role || 2) === 1;
-    if (isAdmin) {
-      const rows: any[] =
-        await prisma.$queryRaw`SELECT id, is_active FROM "Admin" WHERE id = ${userId} LIMIT 1`;
-      const admin = rows[0];
-      if (!admin) {
-        return res.status(401).json({ ok: false, error: "user_not_found" });
-      }
-      if (!admin.is_active) {
-        return res.status(403).json({ ok: false, error: "account_inactive" });
-      }
-      payload.is_active = true;
-    } else {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, is_active: true },
-      });
-      if (!user) {
-        return res.status(401).json({ ok: false, error: "user_not_found" });
-      }
-      if (!user.is_active) {
-        return res.status(403).json({ ok: false, error: "account_inactive" });
-      }
-      payload.is_active = true;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, is_active: true, role: true },
+    });
+    if (!user) {
+      return res.status(401).json({ ok: false, error: "user_not_found" });
     }
+    if (!user.is_active) {
+      return res.status(403).json({ ok: false, error: "account_inactive" });
+    }
+    payload.is_active = true;
     (req as any).user = payload;
     next();
   } catch (error) {
@@ -73,6 +61,7 @@ export async function requireAuth(
     return res.status(500).json({ ok: false, error: "auth_internal_error" });
   }
 }
+
 export function requireRole(roles: number[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user as AuthUser | undefined;
@@ -86,6 +75,7 @@ export function requireRole(roles: number[]) {
     next();
   };
 }
+
 export async function attachAuthIfPresent(
   req: Request,
   _res: Response,
@@ -98,23 +88,15 @@ export async function attachAuthIfPresent(
       const payload = verifyToken<AuthUser>(token);
       const userId = Number(payload.sub || payload.id);
       if (!Number.isFinite(userId)) return next();
-      const isAdmin =
-        payload.subjectType === "admin" || Number(payload.role || 2) === 1;
-      if (isAdmin) {
-        const rows: any[] =
-          await prisma.$queryRaw`SELECT id, is_active FROM "Admin" WHERE id = ${userId} LIMIT 1`;
-        const admin = rows[0];
-        if (!admin?.is_active) return next();
-      } else {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, is_active: true },
-        });
-        if (!user?.is_active) return next();
-      }
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, is_active: true },
+      });
+      if (!user?.is_active) return next();
       payload.is_active = true;
       (req as any).user = payload;
     } catch {
+      // token inválido o expirado — continuar sin auth
     }
     return next();
   } catch {

@@ -8,7 +8,7 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
         fillWithAI,
     } = req.body
     try {
-        console.log("fillWithAI:", fillWithAI)
+        
         if (fillWithAI === true || fillWithAI === 'true') {
             if (!category_id) {
                 return res.status(400).json({
@@ -33,7 +33,7 @@ export const saveProduct = async (req: Request, res: Response, next: NextFunctio
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar la subida del producto, por favor intente nuevamente."
@@ -53,7 +53,7 @@ export const saveCategory = async(req:Request, res:Response, next:NextFunction) 
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar esta solicitud, por favor intente nuevamente."
@@ -99,7 +99,7 @@ export const getAllProducts = async (req:Request, res: Response, next: NextFunct
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar esta solicitud, por favor intente nuevamente."
@@ -119,7 +119,6 @@ export const updateProductController = async (req: Request, res: Response, next:
     const {
         product_id,
     } = req.params;
-    console.log(deleted_image_urls)
     try {
         if (!title || !price || !category_id){
             return res.status(400).json({
@@ -141,7 +140,7 @@ export const updateProductController = async (req: Request, res: Response, next:
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar la actualización del producto, por favor intente nuevamente."
@@ -169,7 +168,7 @@ export const changeCategoryStatus = async (req: Request, res: Response, next: Ne
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar esta solicitud, por favor intente nuevamente."
@@ -194,7 +193,7 @@ export const changeProductStatus = async (req: Request, res: Response, next: Nex
         }
         next()
     } catch (error) {
-        console.log(error)
+        console.error(error)
         return res.status(500).json({
             ok: false,
             error: "Error interno del servidor al validar esta solicitud, por favor intente nuevamente."

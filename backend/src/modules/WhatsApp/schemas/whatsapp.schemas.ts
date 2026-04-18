@@ -39,7 +39,7 @@ export interface ProductData {
   };
 }
 export interface WhatsAppConversationSession {
-  adminId: number;
+  userId: number;
   phone: string;
   state: ConversationState;
   productData: ProductData;

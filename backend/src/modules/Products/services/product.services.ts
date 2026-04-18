@@ -202,7 +202,7 @@ class ProductServices {
         if (result.url) {
           image_url = result.url;
         } else {
-          console.log("Error subiendo imagen a Supabase", result.error);
+          console.error("Error subiendo imagen", result.error);
         }
       }
       await prisma.categories.create({
@@ -216,7 +216,7 @@ class ProductServices {
         message: "Categoría creada exitosamente",
       });
     } catch (error) {
-      console.log("Error al guardar categoría", error);
+      console.error("Error al guardar categoría", error);
       return res.status(500).json({
         ok: false,
         error: "Error al guardar categoría",
@@ -257,7 +257,7 @@ class ProductServices {
         categories: categories_with_status,
       });
     } catch (error) {
-      console.log("Error al obtener categorías", error);
+      console.error("Error al obtener categorías", error);
       return res.status(500).json({
         ok: false,
         error: "Error al obtener categorías",
@@ -266,8 +266,8 @@ class ProductServices {
   }
   async getAllProducts(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
       const skip = (page - 1) * limit;
       const title = req.query.title as string;
       const categoryId = req.query.categoryId as string;
@@ -293,11 +293,9 @@ class ProductServices {
       if (isActive !== undefined) {
         where.is_active = isActive;
       }
-      console.log(state);
       if (state) {
         where.state = state;
       }
-      console.log("Filtros:", where);
       const [totalProducts, products] = await Promise.all([
         prisma.products.count({ where }),
         prisma.products.findMany({
@@ -406,7 +404,6 @@ class ProductServices {
         stock,
         options,
       } = req.body as UpdateProductRequest;
-      console.log("Estatus actual:", state);
       const rawExisting =
         existingImageUrls ?? (req.body as any).existing_image_urls;
       const rawDeleted =
@@ -543,7 +540,7 @@ class ProductServices {
         message: "Estado del producto actualizado exitosamente",
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al actualizar el estado del producto",
@@ -644,7 +641,7 @@ class ProductServices {
         if (result.url) {
           image_url = result.url;
         } else {
-          console.log("Error subiendo imagen a Supabase", result.error);
+          console.error("Error subiendo imagen", result.error);
           return res.status(500).json({
             ok: false,
             error: "Error al subir la imagen",
@@ -663,7 +660,7 @@ class ProductServices {
         message: "Categoría actualizada exitosamente",
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al actualizar la categoría",
@@ -703,7 +700,7 @@ class ProductServices {
         message: `Categoría ${statusMessages[statusNumber as keyof typeof statusMessages]} exitosamente`,
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al cambiar el estado de la categoría",
@@ -722,7 +719,7 @@ class ProductServices {
         data: categories,
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al obtener las categorías públicas",
@@ -731,8 +728,8 @@ class ProductServices {
   }
   async getPublicProducts(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 12;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 12));
       const title = (req.query.title as string) || undefined;
       const categoryId = (req.query.categoryId as string) || undefined;
       const sortBy = (req.query.sortBy as string) || undefined;
