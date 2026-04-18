@@ -16,7 +16,22 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
+const ALLOWED_MIME_TYPES: Record<string, string[]> = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+  'image/gif': ['.gif'],
+  'application/pdf': ['.pdf'],
+};
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedExts = ALLOWED_MIME_TYPES[file.mimetype];
+  if (!allowedExts) {
+    return cb(new Error('Tipo de archivo no permitido'));
+  }
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowedExts.includes(ext)) {
+    return cb(new Error('La extensión del archivo no coincide con su tipo'));
+  }
   cb(null, true);
 };
 export const upload = multer({

@@ -47,11 +47,7 @@ export default class CartServices {
       (acc, it) => acc + Number(it.product.price) * Number(it.quantity),
       0,
     );
-    if (Number(cart.total) !== total) {
-      await prisma.cart.update({ where: { id: cart.id }, data: { total } });
-      return { ...cart, total };
-    }
-    return cart;
+    return { ...cart, total };
   }
   async addItem(
     userId: number,
