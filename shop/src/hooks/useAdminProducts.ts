@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAdminStore, GetProductsParams } from "@/stores/useAdminStore";
+import type { GetProductsParams } from "@/stores/useAdminStore";
+import { useAdminStore } from "@/stores/useAdminStore";
 export const useGetAllProducts = (params?: GetProductsParams) => {
   const fetchProducts = useAdminStore((state) => state.fetchProducts);
   return useQuery({

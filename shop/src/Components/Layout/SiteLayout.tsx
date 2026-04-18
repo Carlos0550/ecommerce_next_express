@@ -55,7 +55,7 @@ export default function SiteLayout({ children }: Props) {
     { href: "/orders", label: "Mis ordenes", icon: FiBox },
     { href: "/faq", label: "FAQ", icon: FiHelpCircle },
   ]), [])
-  const hasUser = !!user;
+  const hasUser = Boolean(user);
   const redirectParam = searchParams.get("from");
   const handleCloseAuth = () => {
     closeAuth();

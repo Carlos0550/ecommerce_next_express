@@ -9,7 +9,7 @@ export const useGetProfile = () => {
       await fetchProfile();
       return useAuthStore.getState().session;
     },
-    enabled: !!session,
+    enabled: Boolean(session),
     staleTime: 0,
   });
 };

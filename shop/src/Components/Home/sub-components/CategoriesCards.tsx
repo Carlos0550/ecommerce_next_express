@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import classes from "./CategoriesCards.module.css";
 import { FiChevronRight } from "react-icons/fi";
 import { capitalizeTexts } from "@/utils/constants";
-import { PublicCategory } from "@/stores/useConfigStore";
+import type { PublicCategory } from "@/stores/useConfigStore";
 export default function CategoriesCards({ categories }: { categories: PublicCategory[] }) {
   const router = useRouter();
   const goToCategory = (id: string) => {

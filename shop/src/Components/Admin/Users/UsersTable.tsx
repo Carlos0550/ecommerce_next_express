@@ -3,7 +3,7 @@ import { useGetUsers, useDisableUser, useEnableUser, useDeleteUser } from "@/hoo
 import { Box, Table, Flex, Text, Group, Button, Badge, Card, Stack, useMantineTheme, SegmentedControl, Tooltip } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { FaWhatsapp } from "react-icons/fa";
-import { AdminUser } from "@/stores/useAdminStore";
+import type { AdminUser } from "@/stores/useAdminStore";
 type User = AdminUser & {
     role: number
 }
@@ -46,7 +46,7 @@ export function UsersTable({
         return names.split(' ').map((name) => name.charAt(0).toUpperCase() + name.slice(1)).join(' ');
     }
     const renderBadgeByRole = (role: number) => {
-        if(role == 1){
+        if(role === 1){
             return <Badge color="green">Administrador</Badge>
         }else{
             return <Badge color="blue">Usuario</Badge>

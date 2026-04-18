@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useConfigStore } from "@/stores/useConfigStore";
-import { CheckoutFormValues, useCartStore } from "@/stores/useCartStore";
+import type { CheckoutFormValues} from "@/stores/useCartStore";
+import { useCartStore } from "@/stores/useCartStore";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { locationService } from "@/services/location.service";
 import { cartService } from "@/services/cart.service";
@@ -18,8 +19,7 @@ export default function useCart(onClose: () => void) {
   const cart = { items, total };
   const shippingInfoCompleted = (() => {
     if (!formValues.pickup) {
-      return !!(
-        formValues.name &&
+      return Boolean(formValues.name &&
         formValues.email &&
         formValues.phone &&
         formValues.street &&
@@ -27,10 +27,9 @@ export default function useCart(onClose: () => void) {
         formValues.city &&
         formValues.province &&
         formValues.selectedProvinceId &&
-        formValues.selectedLocalityId
-      );
+        formValues.selectedLocalityId);
     }
-    return !!(formValues.name && formValues.email && formValues.phone);
+    return Boolean(formValues.name && formValues.email && formValues.phone);
   })();
   const [provinces, setProvinces] = useState<{ id: string; nombre: string }[]>(
     [],
@@ -54,7 +53,7 @@ export default function useCart(onClose: () => void) {
     const prev = useCartStore.getState().formValues;
     let nextValues: CheckoutFormValues = {
       ...prev,
-      pickup: !!s.pickup,
+      pickup: Boolean(s.pickup),
       name: s.name || "",
       email: s.email || "",
       phone: s.phone || "",

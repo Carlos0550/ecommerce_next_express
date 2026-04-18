@@ -1,5 +1,5 @@
 import { api } from "@/config/api";
-import {
+import type {
   GetProductsParams,
   GetSalesParams,
   WhatsAppConfig,

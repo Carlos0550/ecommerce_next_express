@@ -3,7 +3,7 @@ import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
 import { notifications } from "@mantine/notifications";
 import { useCreateCategory, useUpdateCategory } from "@/hooks/useAdminCategories";
 import { useState, useEffect } from "react";
-import { AdminCategory } from "@/stores/useAdminStore";
+import type { AdminCategory } from "@/stores/useAdminStore";
 type FormValues = {
     title: string,
     images: File | null
@@ -20,7 +20,7 @@ function CategoriesForm({
     closeForm,
     initialValues
 }: CategoryFormProps) {
-    const isEditMode = !!initialValues?.id;
+    const isEditMode = Boolean(initialValues?.id);
     const { mutate: createCategory, isPending: isCreating } = useCreateCategory()
     const { mutate: updateCategory, isPending: isUpdating } = useUpdateCategory()
     const [formValues, setFormValues] = useState<FormValues>(() => getInitialFormValues(initialValues))

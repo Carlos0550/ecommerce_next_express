@@ -28,7 +28,7 @@ export const useGetSalesAnalytics = (
   const fetchSalesAnalytics = useAdminStore(
     (state) => state.fetchSalesAnalytics,
   );
-  const isAuthenticated = useAdminStore((state) => !!state.business);
+  const isAuthenticated = useAdminStore((state) => Boolean(state.business));
   return useQuery({
     queryKey: ["admin-sales-analytics", start_date, end_date],
     queryFn: async () => {
@@ -37,7 +37,7 @@ export const useGetSalesAnalytics = (
         end_date: end_date!,
       });
     },
-    enabled: !!start_date && !!end_date && isAuthenticated,
+    enabled: Boolean(start_date) && Boolean(end_date) && isAuthenticated,
   });
 };
 export const useProcessSale = () => {

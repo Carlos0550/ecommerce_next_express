@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Button, Group, Stack, TextInput, Textarea, Badge, Image, TagsInput, Select, Switch, Text, Modal } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { AdminCategory, AdminProduct, ProductState } from "@/stores/useAdminStore";
+import type { AdminCategory, AdminProduct, ProductState } from "@/stores/useAdminStore";
 import { useGetAllCategories } from "@/hooks/useAdminCategories";
 import { useCreateProduct, useUpdateProductDetails, useEnhanceProductContent } from "@/hooks/useAdminProducts";
 export type Product = AdminProduct;
@@ -79,7 +79,7 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
     }));
   };
   const handleSubmit = () => {
-    const isAI = !!formValues.fillWithAI;
+    const isAI = Boolean(formValues.fillWithAI);
     const { stock, category, existingImageUrls, deletedImageUrls, ...rest } = formValues;
     const submitData = {
       ...rest,
@@ -161,7 +161,10 @@ export default function ProductForm({ product, onSuccess, onCancel }: ProductFor
             label="Completar con IA"
             description="La IA analizará las imágenes para generar título y descripción automáticamente"
             checked={fillWithAI}
-            onChange={(event) => setFormValues(prev => ({ ...prev, fillWithAI: event.currentTarget.checked }))}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              setFormValues(prev => ({ ...prev, fillWithAI: checked }));
+            }}
           />
         </Group>
       )}

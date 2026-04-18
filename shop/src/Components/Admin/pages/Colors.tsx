@@ -1,6 +1,6 @@
 "use client";
 import { useListPalettes, useCreatePalette, useActivatePalette, useGeneratePalette, useRandomPalette, useDeletePalette } from "@/hooks/useAdminPalettes";
-import { Palette } from "@/stores/useAdminStore";
+import type { Palette } from "@/stores/useAdminStore";
 import { Button, Container, Group, Stack, Table, TextInput, Title, Switch, ColorInput } from "@mantine/core";
 import ModalWrapper from "@/Components/Admin/Common/ModalWrapper";
 import { useEffect, useState } from "react";

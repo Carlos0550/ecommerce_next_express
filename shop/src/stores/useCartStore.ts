@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import {
-  cartService,
+import type {
   CartItem,
   SelectedOption,
-  CheckoutData,
+  CheckoutData} from "@/services/cart.service";
+import {
+  cartService
 } from "@/services/cart.service";
 import { useAuthStore } from "./useAuthStore";
 export type OrderMethod = "EN_LOCAL" | "TRANSFERENCIA";
@@ -219,7 +220,7 @@ export const useCartStore = create<CartState>()(
                 image_url: Array.isArray(it.product?.images)
                   ? it.product?.images?.[0] || ""
                   : "",
-                price_changed: !!it.price_has_changed,
+                price_changed: Boolean(it.price_has_changed),
                 options: it.selected_options || [],
               }),
             );

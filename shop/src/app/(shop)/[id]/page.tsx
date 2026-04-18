@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation"
 import { createProductSlug } from "@/utils/slugs"
-import { PublicProduct } from "@/stores/useConfigStore"
+import type { PublicProduct } from "@/stores/useConfigStore"
 export default async function Page({ params }: { params: { id: string } }) {
   const { id } = params
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"

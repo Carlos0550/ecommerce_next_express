@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
       "@mantine/dates",
       "@mantine/charts",
       "@mantine/dropzone",
-      "@mantine/tiptap",
       "react-icons",
       "recharts",
     ],

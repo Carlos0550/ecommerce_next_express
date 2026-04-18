@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useConfigStore, PublicCategory } from "@/stores/useConfigStore";
+import type { PublicCategory } from "@/stores/useConfigStore";
+import { useConfigStore } from "@/stores/useConfigStore";
 export const usePublicCategories = (initialData?: unknown) => {
   const fetchPublicCategories = useConfigStore(
     (state) => state.fetchPublicCategories,

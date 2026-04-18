@@ -1,5 +1,5 @@
 import { Box, Grid, Text, Select, Card, Group, Stack, Badge, ActionIcon, Divider, Paper, Loader, Button, TextInput, Textarea, SegmentedControl, Title, rem } from "@mantine/core";
-import { GetProductsParams } from "@/stores/useAdminStore";
+import type { GetProductsParams } from "@/stores/useAdminStore";
 import { DateInput } from "@mantine/dates";
 import { showNotification } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -55,7 +55,7 @@ const getInitialFormValue = (sale?: Sales): SaleRequest => {
             source: sale.source,
             product_ids: (sale.products || []).map(p => p.id),
             tax: Number(sale.tax) || 0,
-            loadedManually: !!sale.loadedManually,
+            loadedManually: Boolean(sale.loadedManually),
             manualProducts: (sale.manualProducts || []) as ManualProductItem[],
             payment_methods: pm,
             sale_date: formatDateOnly(dayjs(sale.created_at).toDate()),

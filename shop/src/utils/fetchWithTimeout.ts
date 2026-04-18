@@ -6,8 +6,8 @@ export interface FetchOptions extends RequestInit {
 const DEFAULT_TIMEOUT = 10000; 
 const DEFAULT_RETRIES = 2;
 const DEFAULT_RETRY_DELAY = 1000; 
-async function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => { setTimeout(resolve, ms); });
 }
 export async function fetchWithTimeout(
   url: string,

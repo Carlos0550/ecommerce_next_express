@@ -7,7 +7,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import { FiEdit, FiPlus, FiSearch } from "react-icons/fi";
 import { useChangeCategoryStatus, useGetAllCategories } from "@/hooks/useAdminCategories";
 import { useMounted } from "@/utils/hooks/useMounted";
-import { AdminCategory } from "@/stores/useAdminStore";
+import type { AdminCategory } from "@/stores/useAdminStore";
 
 const NoImage = "/image_fallback.webp";
 

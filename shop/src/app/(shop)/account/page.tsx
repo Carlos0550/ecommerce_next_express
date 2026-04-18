@@ -3,7 +3,8 @@ import { useGetProfile, useUpdateProfile, useUploadAvatar, useChangePassword } f
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Avatar, Button, Grid, Group, Stack, Text, TextInput, Title, Tabs, Paper, Divider, FileButton, Loader, Select, Center, LoadingOverlay } from '@mantine/core';
 import { PasswordInput } from '@mantine/core';
-import { useEffect, useState, ChangeEvent } from 'react';
+import type { ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { showNotification } from '@mantine/notifications';
 import { useMounted } from '@/utils/hooks/useMounted';

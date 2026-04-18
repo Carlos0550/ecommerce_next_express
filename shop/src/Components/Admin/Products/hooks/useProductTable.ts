@@ -6,7 +6,7 @@ import {
   useEnhanceProductContent,
   useUpdateProductDetails,
 } from "@/hooks/useAdminProducts";
-import {
+import type {
   AdminProduct,
   GetProductsParams,
   ProductState,

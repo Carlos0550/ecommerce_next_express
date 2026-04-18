@@ -2,7 +2,7 @@
 import { Button, Group, Modal, Stack, Table, TextInput, Title, Checkbox, NumberInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useCreateFaq, useDeleteFaq, useListFaqsAdmin, useUpdateFaq } from '@/hooks/useAdminFAQ';
-import { AdminFaq } from '@/stores/useAdminStore';
+import type { AdminFaq } from '@/stores/useAdminStore';
 import { useState } from 'react';
 export default function FAQ() {
   const { data } = useListFaqsAdmin();

@@ -6,7 +6,7 @@ import { configService } from "@/services/config.service";
 import { showNotification } from "@mantine/notifications";
 
 import { useCartStore } from "@/stores/useCartStore";
-import { SelectedOption } from "@/services/cart.service";
+import type { SelectedOption } from "@/services/cart.service";
 export default function AddToCartButton({ productId, options = [], fullWidth = false }: { productId: string; options?: { name: string; values: string[] }[]; fullWidth?: boolean }) {
   const [isPending, startTransition] = useTransition()
   const [loading, setLoading] = useState(false)

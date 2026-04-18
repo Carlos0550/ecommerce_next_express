@@ -3,7 +3,7 @@ import { FiEdit, FiEye, FiTrash, FiBox, FiTrendingUp } from 'react-icons/fi';
 import { ProductBadge } from './ProductBadge';
 import { theme } from '@/theme';
 const dummyImage = "/image_fallback.webp";
-import { AdminProduct } from "@/stores/useAdminStore";
+import type { AdminProduct } from "@/stores/useAdminStore";
 
 interface ProductTableMobileProps {
   products: AdminProduct[];

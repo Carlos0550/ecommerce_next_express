@@ -11,7 +11,7 @@ import { SalesForm } from "./SalesForm"
 import { FiEdit, FiTrash, FiShoppingCart, FiInfo, FiTrash2, FiUsers, FiDollarSign, FiTrendingUp, FiArrowLeft, FiArrowRight } from "react-icons/fi"
 import dayjs from "dayjs"
 import { capitalizeTexts } from "@/utils/constants"
-import { AdminProduct } from "@/stores/useAdminStore";
+import type { AdminProduct } from "@/stores/useAdminStore";
 export type SaleItemOption = { name: string; value?: string; values?: string[] }
 export type SaleItem = { id: string; title: string; price: number; quantity: number; options?: SaleItemOption[] }
 export type Sales = {

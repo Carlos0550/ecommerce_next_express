@@ -1,6 +1,6 @@
 import { Flex, TextInput, Button, Select, Paper } from '@mantine/core';
 import { FiPlus, FiSearch } from 'react-icons/fi';
-import { ProductState } from '@/stores/useAdminStore';
+import type { ProductState } from '@/stores/useAdminStore';
 interface ProductTableFiltersProps {
   search: string;
   limit: number;

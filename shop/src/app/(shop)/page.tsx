@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import HomeComponent from "@/Components/Home/Home"
 import { configService } from "@/services/config.service"
 import { createProductSlug } from "@/utils/slugs"
-import { PublicProduct, PublicProductsResponse, PublicCategory } from "@/stores/useConfigStore"
+import type { PublicProduct, PublicProductsResponse, PublicCategory } from "@/stores/useConfigStore"
 export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api"

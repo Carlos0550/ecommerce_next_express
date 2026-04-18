@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { authService, UserSession } from "@/services/auth.service";
+import type { UserSession } from "@/services/auth.service";
+import { authService } from "@/services/auth.service";
 import { queryClient } from "@/config/queryClient";
 import { resetLogoutFlag } from "@/config/api";
 import { showNotification } from "@mantine/notifications";

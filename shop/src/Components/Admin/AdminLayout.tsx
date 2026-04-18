@@ -25,7 +25,7 @@ import { authService } from "@/services/auth.service";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure(false);
   const router = useRouter();
-  const { token, logout, isAuthenticated, isAdmin, validateSession, loading } = useAuthStore();
+  const { token, logout, isAuthenticated, isAdmin, validateSession } = useAuthStore();
   const { business, fetchBusiness } = useAdminStore();
   const { isMobile } = useWindowSize();
   const [changeOpened, setChangeOpened] = useState(false);

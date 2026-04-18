@@ -26,7 +26,7 @@ import CartWrapper from "../Cart/CartWrapper";
 import Onboarding from "./sub-components/Onboarding";
 import { FiSearch, FiPackage } from "react-icons/fi";
 import { capitalizeTexts } from "@/utils/constants";
-import { PublicProduct, PublicCategory, PublicBusinessInfo, PublicProductsResponse } from "@/stores/useConfigStore"
+import type { PublicProduct, PublicCategory, PublicBusinessInfo, PublicProductsResponse } from "@/stores/useConfigStore"
 type Props = {
   initialProducts?: PublicProductsResponse;
   initialCategories?: PublicCategory[] | { data: PublicCategory[] };
@@ -50,6 +50,9 @@ export default function Home({ initialProducts, initialCategories, business }: P
     }
     if (lastUrlTitle.current !== urlTitle) {
       lastUrlTitle.current = urlTitle;
+      // Sync local input desde URL (back/forward, share link). Es un caso válido de
+      // setState en effect: la fuente de verdad externa cambió.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearch(urlTitle);
     }
   }, [urlTitle]);
