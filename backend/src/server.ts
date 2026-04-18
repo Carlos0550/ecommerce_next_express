@@ -26,6 +26,7 @@ import spec from "./docs/openapi";
 import morgan from "morgan";
 import path from "path";
 import fs from "fs";
+import { logger } from "@/utils/logger";
 validateEnvironmentVariables();
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -73,8 +74,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         "http://localhost:5173",
         "http://localhost:5174",
       ];
-console.log(
-  `🔒 CORS configurado - Producción: ${isProduction}, Orígenes permitidos: ${allowedOrigins.length > 0 ? allowedOrigins.join(", ") : "(ninguno configurado)"}`,
+logger.info(
+  `CORS configurado - Producción: ${isProduction}, Orígenes permitidos: ${allowedOrigins.length > 0 ? allowedOrigins.join(", ") : "(ninguno configurado)"}`,
 );
 app.use(
   cors({
@@ -83,8 +84,8 @@ app.use(
         return callback(null, true);
       }
       if (isProduction && allowedOrigins.length === 0) {
-        console.warn(
-          `⚠️ CORS: Rechazando origen ${origin} - ALLOWED_ORIGINS no configurado`,
+        logger.warn(
+          `CORS: Rechazando origen ${origin} - ALLOWED_ORIGINS no configurado`,
         );
         return callback(
           new Error("CORS: ALLOWED_ORIGINS debe configurarse en producción"),
@@ -96,12 +97,12 @@ app.use(
         if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
           callback(null, true);
         } else {
-          console.warn(`⚠️ CORS: Origen no permitido en desarrollo: ${origin}`);
+          logger.warn(`CORS: Origen no permitido en desarrollo: ${origin}`);
           callback(new Error("CORS: Origen no permitido"));
         }
       } else {
-        console.warn(
-          `⚠️ CORS: Origen no permitido: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`,
+        logger.warn(
+          `CORS: Origen no permitido: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`,
         );
         callback(new Error("CORS: Origen no permitido"));
       }
@@ -121,7 +122,7 @@ app.use(
 app.use(
   morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
     stream: {
-      write: (msg) => console.log(msg.trim()),
+      write: (msg) => logger.http(msg.trim()),
     },
   }),
 );
@@ -195,7 +196,7 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
     const fileStream = fs.createReadStream(fullPath);
     fileStream.pipe(res);
   } catch (error) {
-    console.error("Error sirviendo archivo local:", error);
+    logger.error("Error sirviendo archivo local:", error);
     res.status(500).json({ ok: false, error: "server_error" });
   }
 });
@@ -210,7 +211,7 @@ app.use(
     res: express.Response,
     next: express.NextFunction,
   ) => {
-    console.error("Error no manejado:", err);
+    logger.error("Error no manejado:", err);
     if (err.message && err.message.includes("CORS")) {
       return res
         .status(403)
@@ -239,17 +240,17 @@ app.use(
   },
 );
 app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+  logger.info(`API listening on http://localhost:${PORT}`);
   if (process.env.NODE_ENV === "production") {
     exec("npx prisma migrate deploy", (error, stdout, stderr) => {
       if (error) {
-        console.error(`Migration error: ${error.message}`);
+        logger.error(`Migration error: ${error.message}`);
         return;
       }
       if (stderr) {
-        console.log(`Migration info: ${stderr}`);
+        logger.info(`Migration info: ${stderr}`);
       }
-      console.log(`Migration result: ${stdout}`);
+      logger.info(`Migration result: ${stdout}`);
     });
   }
   initUploadsCleanupJob();
@@ -258,6 +259,6 @@ app.listen(PORT, () => {
       whatsAppServices.startTimeoutWorker();
     })
     .catch((err) => {
-      console.error("Error iniciando worker de timeout de WhatsApp:", err);
+      logger.error("Error iniciando worker de timeout de WhatsApp:", err);
     });
 });

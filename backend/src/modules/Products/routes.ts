@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { saveProduct, saveCategory, getAllProducts, updateProductController, changeCategoryStatus, changeProductStatus } from "./router.controller";
-import { uploadMultipleImages, handleImageUploadError, uploadSingleImage } from "../../middlewares/image.middleware";
+import { uploadMultipleImages, handleImageUploadError, uploadSingleImage, validateImageMagicBytes } from "../../middlewares/image.middleware";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import ProductServices from "./services/product.services";
 const router = Router();
@@ -10,12 +10,13 @@ router.post(
      requireAuth,
      requireRole([1]),
      uploadMultipleImages('productImages', 10),
-     handleImageUploadError, 
+     handleImageUploadError,
+     validateImageMagicBytes,
      saveProduct,
      (req: any, res: any) => product_service.saveProduct(req, res)
 )
-router.post("/categories", requireAuth, requireRole([1]), uploadSingleImage("image"), saveCategory, (req, res) => product_service.saveCategory(req, res))
-router.put("/categories/:category_id", requireAuth, requireRole([1]), uploadSingleImage("image"), (req, res) => product_service.updateCategory(req, res))
+router.post("/categories", requireAuth, requireRole([1]), uploadSingleImage("image"), validateImageMagicBytes, saveCategory, (req, res) => product_service.saveCategory(req, res))
+router.put("/categories/:category_id", requireAuth, requireRole([1]), uploadSingleImage("image"), validateImageMagicBytes, (req, res) => product_service.updateCategory(req, res))
 router.get("/categories", requireAuth, requireRole([1]), (req, res) => product_service.getAllCategories(req, res))
 router.get("/", requireAuth, getAllProducts, requireRole([1]),(req, res) => product_service.getAllProducts(req, res))
 router.delete("/:product_id", requireAuth,requireRole([1]), (req, res) => product_service.deleteProduct(req, res))
@@ -25,6 +26,7 @@ router.put(
     requireRole([1]),
     uploadMultipleImages('productImages', 10),
     handleImageUploadError,
+    validateImageMagicBytes,
     updateProductController,
     (req: any, res: any) => product_service.updateProduct(req, res)
 )

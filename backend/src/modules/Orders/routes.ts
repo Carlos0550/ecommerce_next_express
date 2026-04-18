@@ -6,6 +6,7 @@ import {
 import {
   uploadSingleImage,
   handleImageUploadError,
+  validateImageMagicBytes,
 } from "@/middlewares/image.middleware";
 import OrdersServices from "./services/orders.services";
 import { ensureCreatePayload } from "./router.controller";
@@ -44,6 +45,7 @@ router.post(
   requireAuth,
   uploadSingleImage("file"),
   handleImageUploadError,
+  validateImageMagicBytes,
   async (req: Request, res: Response) => {
     try {
       const id = String((req.params as any)?.id || "");

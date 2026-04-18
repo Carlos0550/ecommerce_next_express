@@ -2,6 +2,30 @@ import multer from 'multer';
 import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
+import { fromFile } from 'file-type';
+
+const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+
+async function unlinkSafe(p: string) {
+  try { await fs.promises.unlink(p); } catch {}
+}
+
+export const validateImageMagicBytes = async (req: Request, res: Response, next: NextFunction) => {
+  const files: Express.Multer.File[] = req.file
+    ? [req.file]
+    : Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : Object.values((req.files as Record<string, Express.Multer.File[]>) || {}).flat();
+  for (const f of files) {
+    if (!f?.path) continue;
+    const detected = await fromFile(f.path).catch(() => null);
+    if (!detected || !ALLOWED_IMAGE_MIME.has(detected.mime)) {
+      await Promise.all(files.map((x) => unlinkSafe(x.path)));
+      return res.status(400).json({ ok: false, error: 'invalid_file_type', message: 'El contenido del archivo no coincide con un formato de imagen permitido' });
+    }
+  }
+  next();
+};
 const imageUploadDir = path.join(__dirname, '../../uploads/images');
 if (!fs.existsSync(imageUploadDir)) {
   fs.mkdirSync(imageUploadDir, { recursive: true });

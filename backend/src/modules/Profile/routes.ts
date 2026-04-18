@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '@/middlewares/auth.middleware';
-import { uploadSingleImage, handleImageUploadError } from '@/middlewares/image.middleware';
+import { uploadSingleImage, handleImageUploadError, validateImageMagicBytes } from '@/middlewares/image.middleware';
 import ProfileServices from './services/profile.services';
 import { validateUpdatePayload } from './router.controller';
 import fs from 'fs';
@@ -20,7 +20,7 @@ router.put('/profile/me', requireAuth, validateUpdatePayload, async (req: Reques
   const rs = await service.updateMe(userId, data);
   res.json(rs);
 });
-router.post('/profile/avatar', requireAuth, uploadSingleImage('image'), handleImageUploadError, async (req: Request, res: Response) => {
+router.post('/profile/avatar', requireAuth, uploadSingleImage('image'), handleImageUploadError, validateImageMagicBytes, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userId = Number(user.sub || user.id);
   const file = (req as any).file as Express.Multer.File | undefined;

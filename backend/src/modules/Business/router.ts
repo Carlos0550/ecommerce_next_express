@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import {
   uploadSingleImage,
   handleImageUploadError,
+  validateImageMagicBytes,
 } from "@/middlewares/image.middleware";
 const router = Router();
 router.post("/", requireAuth, requireRole([1]), (req: Request, res: Response) =>
@@ -15,6 +16,7 @@ router.post(
   requireRole([1]),
   uploadSingleImage("file"),
   handleImageUploadError,
+  validateImageMagicBytes,
   (req: Request, res: Response) => businessController.uploadImage(req, res),
 );
 router.post(
