@@ -1,0 +1,162 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is([data-palette="kuromi"], [data-palette="kuromi"] *));
+
+/* ─────────────────────────────────────────────────────────────
+   Cinnamon — 3 paletas como CSS vars en :root + data-palette.
+   Tomadas 1:1 del mockup (entry_21_asset.js).
+   ───────────────────────────────────────────────────────────── */
+
+:root,
+[data-palette="kuromi"] {
+  --color-bg: #0b0a0d;
+  --color-bg-elev: #141118;
+  --color-bg-card: #1a1620;
+  --color-bg-input: #201b28;
+  --color-border: rgba(214, 180, 255, 0.12);
+  --color-border-strong: rgba(214, 180, 255, 0.22);
+  --color-text: #f4eefb;
+  --color-text-dim: #a99bbe;
+  --color-text-muted: #6e6380;
+  --color-accent: #c9a4ff;
+  --color-accent-strong: #b488ff;
+  --color-accent-soft: rgba(201, 164, 255, 0.14);
+  --color-pink: #ff9dd6;
+  --color-pink-soft: rgba(255, 157, 214, 0.16);
+  --color-success: #7ee6b8;
+  --color-warn: #ffd37a;
+  --color-danger: #ff8b9e;
+  --color-button-text: #0b0a0d;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(201, 164, 255, 0.25), transparent 60%),
+    radial-gradient(80% 60% at 90% 100%, rgba(255, 157, 214, 0.18), transparent 60%),
+    #0b0a0d;
+  color-scheme: dark;
+}
+
+[data-palette="mono"] {
+  --color-bg: #fafafa;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f4f4f5;
+  --color-border: rgba(15, 15, 16, 0.09);
+  --color-border-strong: rgba(15, 15, 16, 0.18);
+  --color-text: #0b0a0d;
+  --color-text-dim: #5c5862;
+  --color-text-muted: #9a969f;
+  --color-accent: #0b0a0d;
+  --color-accent-strong: #000000;
+  --color-accent-soft: rgba(11, 10, 13, 0.06);
+  --color-pink: #0b0a0d;
+  --color-pink-soft: rgba(11, 10, 13, 0.06);
+  --color-success: #116a42;
+  --color-warn: #7a5a0b;
+  --color-danger: #9b1c1c;
+  --color-button-text: #fafafa;
+  --hero-gradient: linear-gradient(180deg, #f4f4f5 0%, #fafafa 100%);
+  color-scheme: light;
+}
+
+[data-palette="blush"] {
+  --color-bg: #fdf7f5;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f7edea;
+  --color-border: rgba(194, 88, 120, 0.14);
+  --color-border-strong: rgba(194, 88, 120, 0.28);
+  --color-text: #2a1a1f;
+  --color-text-dim: #7a5a63;
+  --color-text-muted: #b09098;
+  --color-accent: #d16b86;
+  --color-accent-strong: #b9526f;
+  --color-accent-soft: rgba(209, 107, 134, 0.12);
+  --color-pink: #e88ba4;
+  --color-pink-soft: rgba(232, 139, 164, 0.18);
+  --color-success: #4a8f6b;
+  --color-warn: #b78a3e;
+  --color-danger: #b94b62;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 10% 0%, rgba(232, 139, 164, 0.22), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(209, 107, 134, 0.14), transparent 60%),
+    #fdf7f5;
+  color-scheme: light;
+}
+
+/* Tailwind v4 theme: exponer tokens como utilidades */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-elev: var(--color-bg-elev);
+  --color-bg-card: var(--color-bg-card);
+  --color-bg-input: var(--color-bg-input);
+  --color-border-token: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-fg: var(--color-text);
+  --color-fg-dim: var(--color-text-dim);
+  --color-fg-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-pink: var(--color-pink);
+  --color-pink-soft: var(--color-pink-soft);
+  --color-success: var(--color-success);
+  --color-warn: var(--color-warn);
+  --color-danger: var(--color-danger);
+  --color-button-text: var(--color-button-text);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-grotesk: var(--font-grotesk), var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+}
+
+/* shadcn compat: mapeamos tokens nuestros a las vars que shadcn espera. */
+:root {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-bg-card);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg-elev);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-button-text);
+  --secondary: var(--color-bg-elev);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-bg-input);
+  --muted-foreground: var(--color-text-dim);
+  --accent: var(--color-accent-soft);
+  --accent-foreground: var(--color-accent);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-bg-input);
+  --ring: var(--color-accent);
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--color-border);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
