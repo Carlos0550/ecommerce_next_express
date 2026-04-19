@@ -5,6 +5,7 @@ import salesServices from "@/modules/Sales/services/sales.services";
 import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
 import { logger } from "@/utils/logger";
+import { decrementStock } from "@/utils/stock";
 import type { PaymentMethod } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
@@ -114,32 +115,37 @@ export default class OrdersServices {
     if (userId && Number.isInteger(userId)) {
       orderData.user = { connect: { id: userId } };
     }
-    const order = await prisma.orders.create({
-      data: orderData,
-    });
-    if (userId && Number.isInteger(userId)) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          phone: customer.phone || undefined,
-          shipping_street: customer.street || undefined,
-          shipping_postal_code: customer.postal_code || undefined,
-          shipping_city: customer.city || undefined,
-          shipping_province: customer.province || undefined,
-        },
-      });
-      const cart = await prisma.cart.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-      if (cart?.id) {
-        await prisma.orderItems.deleteMany({ where: { cartId: cart.id } });
-        await prisma.cart.update({
-          where: { id: cart.id },
-          data: { total: 0 },
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.orders.create({ data: orderData });
+      await decrementStock(
+        tx,
+        snapshot.map((it) => ({ id: it.id, quantity: it.quantity })),
+      );
+      if (userId && Number.isInteger(userId)) {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            phone: customer.phone || undefined,
+            shipping_street: customer.street || undefined,
+            shipping_postal_code: customer.postal_code || undefined,
+            shipping_city: customer.city || undefined,
+            shipping_province: customer.province || undefined,
+          },
         });
+        const cart = await tx.cart.findUnique({
+          where: { userId },
+          select: { id: true },
+        });
+        if (cart?.id) {
+          await tx.orderItems.deleteMany({ where: { cartId: cart.id } });
+          await tx.cart.update({
+            where: { id: cart.id },
+            data: { total: 0 },
+          });
+        }
       }
-    }
+      return created;
+    });
     const parsed_payment_method = paymentNormalized;
     try {
       const saleId = (await salesServices.saveSale({
@@ -165,16 +171,10 @@ export default class OrdersServices {
     }
     setImmediate(() => {
       void (async () => {
-        await this.notify(order.id, snapshot, total, paymentMethod, customer);
         try {
-          for (const it of snapshot) {
-            await prisma.$executeRaw`UPDATE "Products"
-              SET stock = GREATEST(stock - ${it.quantity}, 0),
-                  state = CASE WHEN GREATEST(stock - ${it.quantity}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
-              WHERE id = ${it.id}`;
-          }
+          await this.notify(order.id, snapshot, total, paymentMethod, customer);
         } catch (err) {
-          logger.error("order_stock_decrement_failed", { err });
+          logger.error("order_notify_failed", { err });
         }
       })();
     });

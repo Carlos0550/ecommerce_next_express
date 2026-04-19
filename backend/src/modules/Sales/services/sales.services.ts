@@ -8,6 +8,7 @@ import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
 import { logger } from "@/utils/logger";
+import { decrementStock } from "@/utils/stock";
 class SalesServices {
   async saveSale(request: SaleRequest) {
     const { payment_method, source, product_ids, user_sale, items } = request;
@@ -101,26 +102,52 @@ class SalesServices {
           userToConnect = { connect: { id: parsedUserId } };
         }
       }
-      const sale = await prisma.sales.create({
-        data: {
-          payment_method: primaryPaymentMethod,
-          source,
-          user: userToConnect,
-          total: Number(finalTotal),
-          tax: taxPercent,
-          ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
-          products: !isManual
-            ? {
-                connect: Array.from(
-                  new Set(product_data.map((p) => p.id).filter(Boolean)),
-                ).map((id) => ({ id })),
-              }
-            : undefined,
-          manualProducts: isManual ? (manualItems as any) : undefined,
-          loadedManually: isManual,
-          paymentMethods: paymentBreakdown as any,
-          items: product_data as any,
-        },
+      const shouldDecrementStock = !isManual && !request.skipStockDecrement;
+      const stockCounts = new Map<string, number>();
+      if (shouldDecrementStock) {
+        if (Array.isArray(items) && items.length > 0) {
+          items.forEach((i) =>
+            stockCounts.set(
+              String(i.product_id),
+              (stockCounts.get(String(i.product_id)) || 0) +
+                Math.max(1, Number(i.quantity) || 1),
+            ),
+          );
+        } else {
+          (product_ids || []).forEach((id) =>
+            stockCounts.set(String(id), (stockCounts.get(String(id)) || 0) + 1),
+          );
+        }
+      }
+      const sale = await prisma.$transaction(async (tx) => {
+        const created = await tx.sales.create({
+          data: {
+            payment_method: primaryPaymentMethod,
+            source,
+            user: userToConnect,
+            total: Number(finalTotal),
+            tax: taxPercent,
+            ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
+            products: !isManual
+              ? {
+                  connect: Array.from(
+                    new Set(product_data.map((p) => p.id).filter(Boolean)),
+                  ).map((id) => ({ id })),
+                }
+              : undefined,
+            manualProducts: isManual ? (manualItems as any) : undefined,
+            loadedManually: isManual,
+            paymentMethods: paymentBreakdown as any,
+            items: product_data as any,
+          },
+        });
+        if (shouldDecrementStock && stockCounts.size > 0) {
+          await decrementStock(
+            tx,
+            Array.from(stockCounts.entries()).map(([id, quantity]) => ({ id, quantity })),
+          );
+        }
+        return created;
       });
       setImmediate(() => {
         void (async () => {
@@ -182,28 +209,6 @@ class SalesServices {
             });
           } else {
             console.warn("No recipient configured for sale email");
-          }
-          if (!isManual && !request.skipStockDecrement) {
-            const counts = new Map<string, number>();
-            if (Array.isArray(items) && items.length > 0) {
-              items.forEach((i) =>
-                counts.set(
-                  String(i.product_id),
-                  (counts.get(String(i.product_id)) || 0) +
-                    Math.max(1, Number(i.quantity) || 1),
-                ),
-              );
-            } else {
-              (product_ids || []).forEach((id) =>
-                counts.set(String(id), (counts.get(String(id)) || 0) + 1),
-              );
-            }
-            for (const [id, qty] of counts.entries()) {
-              await prisma.$executeRaw`UPDATE "Products"
-                              SET stock = GREATEST(stock - ${qty}, 0),
-                                  state = CASE WHEN GREATEST(stock - ${qty}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
-                              WHERE id = ${id}`;
-            }
           }
         } catch (err) {
           logger.error("Error sending sale email", { err });

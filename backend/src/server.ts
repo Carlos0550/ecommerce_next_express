@@ -69,6 +69,14 @@ const webhookLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+const productUploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiadas subidas. Esperá un minuto." },
+});
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : isProduction
@@ -144,6 +152,7 @@ app.use("/api/shop/login", authLimiter);
 app.use("/api/shop/password/reset", authLimiter);
 app.use("/api/shop/register", registerLimiter);
 app.use("/api/orders/create", checkoutLimiter);
+app.use("/api/products/save-product", productUploadLimiter);
 app.use("/api/whatsapp/webhook", webhookLimiter);
 app.use("/api/admin", AdminAuthRouter);
 app.use("/api/shop", ShopAuthRouter);

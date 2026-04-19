@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { getSales, saveSale, getSalesAnalytics, processSale, declineSale, getSaleReceipt, updateSale, deleteSale } from './router.controller';
 import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
+import { validate } from '@/middlewares/validate';
+import { SalesSchema } from './services/schemas/sales.zod';
 const router = Router();
-router.post("/save", requireAuth,requireRole(["ADMIN"]),saveSale);
+router.post("/save", requireAuth,requireRole(["ADMIN"]), validate(SalesSchema), saveSale);
 router.get("/", requireAuth,requireRole(["ADMIN"]), getSales);
 router.get("/analytics", requireAuth,requireRole(["ADMIN"]), getSalesAnalytics);
 router.patch("/:id/process", requireAuth,requireRole(["ADMIN"]), ...processSale);

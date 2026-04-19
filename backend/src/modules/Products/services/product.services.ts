@@ -9,6 +9,8 @@ import type {
   UpdateProductStatusSchema,
 } from "./product.zod";
 import { analyzeProductImages } from "@/config/groq";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/errors";
 class ProductServices {
   async enhanceProductContent(req: Request, res: Response) {
     try {
@@ -69,26 +71,36 @@ class ProductServices {
   async saveProduct(req: Request, res: Response) {
     const { title, price, stock, category_id } = req.body;
     const productImages = req.files;
+    const uploadedPaths: string[] = [];
     const imageUrls: string[] = [];
+    const rollbackImages = async () => {
+      await Promise.all(
+        uploadedPaths.map((p) =>
+          deleteImage(p).catch((err) =>
+            logger.warn("product_image_rollback_failed", { err, path: p }),
+          ),
+        ),
+      );
+    };
     if (productImages && Array.isArray(productImages)) {
       for (const image of productImages as any[]) {
-        try {
-          const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
-          const result = await uploadImage(
-            buffer,
-            fileName,
-            "products",
-            image.mimetype,
-          );
-          if (result.url) {
-            imageUrls.push(result.url);
-          } else {
-            console.error("Error al subir imagen:", result.error);
-          }
-        } catch (error) {
-          console.error("Error al procesar imagen:", error);
+        const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
+        const result = await uploadImage(
+          buffer,
+          fileName,
+          "products",
+          image.mimetype,
+        );
+        if (!result.url) {
+          await rollbackImages();
+          throw new AppError("image_upload_failed", {
+            status: 500,
+            code: "image_upload_failed",
+          });
         }
+        uploadedPaths.push(`products/${fileName}`);
+        imageUrls.push(result.url);
       }
     }
     const finalTitle = String(title).trim();
@@ -107,29 +119,34 @@ class ProductServices {
         finalDescription = aiResult.description || "";
         finalOptions = Array.isArray(aiResult.options) ? aiResult.options : [];
       } catch (error) {
-        console.error("Error al generar descripción con IA:", error);
+        logger.warn("ai_description_failed", { error });
       }
     }
     const productState: ProductState =
       finalStock > 0 ? ProductState.active : ProductState.out_stock;
-    const product = await prisma.products.create({
-      data: {
-        title: finalTitle,
-        description: finalDescription,
-        price: finalPrice,
-        tags: [],
-        ...(category_id ? { category: { connect: { id: category_id } } } : {}),
-        images: imageUrls,
-        state: productState,
-        stock: finalStock,
-        options: finalOptions,
-      },
-    });
-    return res.status(201).json({
-      ok: true,
-      message: "Producto creado exitosamente",
-      product,
-    });
+    try {
+      const product = await prisma.products.create({
+        data: {
+          title: finalTitle,
+          description: finalDescription,
+          price: finalPrice,
+          tags: [],
+          ...(category_id ? { category: { connect: { id: category_id } } } : {}),
+          images: imageUrls,
+          state: productState,
+          stock: finalStock,
+          options: finalOptions,
+        },
+      });
+      return res.status(201).json({
+        ok: true,
+        message: "Producto creado exitosamente",
+        product,
+      });
+    } catch (error) {
+      await rollbackImages();
+      throw error;
+    }
   }
   async saveCategory(req: Request, res: Response) {
     const { title } = req.body;
@@ -397,25 +414,35 @@ class ProductServices {
           }
         }
       }
+      const newImagePaths: string[] = [];
+      const rollbackNewImages = async () => {
+        await Promise.all(
+          newImagePaths.map((p) =>
+            deleteImage(p).catch((err) =>
+              logger.warn("product_image_rollback_failed", { err, path: p }),
+            ),
+          ),
+        );
+      };
       if (productImages && Array.isArray(productImages)) {
         for (const image of productImages as any[]) {
-          try {
-            const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-            const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
-            const result = await uploadImage(
-              buffer,
-              fileName,
-              "products",
-              image.mimetype,
-            );
-            if (result.url) {
-              newImageUrls.push(result.url);
-            } else {
-              console.error("Error al subir imagen:", result.error);
-            }
-          } catch (error) {
-            console.error("Error al procesar imagen:", error);
+          const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
+          const result = await uploadImage(
+            buffer,
+            fileName,
+            "products",
+            image.mimetype,
+          );
+          if (!result.url) {
+            await rollbackNewImages();
+            throw new AppError("image_upload_failed", {
+              status: 500,
+              code: "image_upload_failed",
+            });
           }
+          newImagePaths.push(`products/${fileName}`);
+          newImageUrls.push(result.url);
         }
       }
       const updatedImages = [...normalizedExisting, ...newImageUrls];
@@ -440,7 +467,7 @@ class ProductServices {
             ? aiResult.options
             : [];
         } catch (error) {
-          console.error("Error al regenerar descripción con IA:", error);
+          logger.warn("ai_description_failed", { error });
         }
       }
       const resolvedState: ProductState = state
@@ -448,24 +475,29 @@ class ProductServices {
         : finalStock > 0
           ? ProductState.active
           : ProductState.out_stock;
-      await prisma.products.update({
-        where: { id: product_id },
-        data: {
-          title: finalTitle,
-          price: finalPrice,
-          stock: finalStock,
-          tags: [],
-          ...(category_id
-            ? { category: { connect: { id: category_id } } }
-            : { category: { disconnect: true } }),
-          images: updatedImages,
-          state: resolvedState,
-          ...(finalDescription !== undefined
-            ? { description: finalDescription }
-            : {}),
-          ...(finalOptions !== undefined ? { options: finalOptions } : {}),
-        },
-      });
+      try {
+        await prisma.products.update({
+          where: { id: product_id },
+          data: {
+            title: finalTitle,
+            price: finalPrice,
+            stock: finalStock,
+            tags: [],
+            ...(category_id
+              ? { category: { connect: { id: category_id } } }
+              : { category: { disconnect: true } }),
+            images: updatedImages,
+            state: resolvedState,
+            ...(finalDescription !== undefined
+              ? { description: finalDescription }
+              : {}),
+            ...(finalOptions !== undefined ? { options: finalOptions } : {}),
+          },
+        });
+      } catch (error) {
+        await rollbackNewImages();
+        throw error;
+      }
       return res.status(200).json({
         ok: true,
         message: "Producto actualizado exitosamente",
