@@ -67,18 +67,7 @@ class ProductServices {
     }
   }
   async saveProduct(req: Request, res: Response) {
-    const {
-      title,
-      description,
-      price,
-      tags,
-      category_id,
-      fillWithAI,
-      publishAutomatically,
-      stock,
-      additionalContext,
-      options,
-    } = req.body;
+    const { title, price, stock, category_id } = req.body;
     const productImages = req.files;
     let imageUrls: string[] = [];
     if (productImages && Array.isArray(productImages)) {
@@ -102,61 +91,33 @@ class ProductServices {
         }
       }
     }
-    let finalTitle = title;
-    let finalDescription = description ?? "";
-    let finalPrice = price ? parseFloat(price) : 0;
-    let finalTags = Array.isArray(tags) ? tags : [];
-    let productState: ProductState = ProductState.active;
-    const parsedStock =
-      typeof stock === "string"
-        ? parseInt(stock, 10)
-        : typeof stock === "number"
-          ? stock
-          : 1;
+    const finalTitle = String(title).trim();
+    const finalPrice = parseFloat(String(price));
+    const parsedStock = parseInt(String(stock), 10);
     const finalStock =
-      Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 1;
-    let finalOptions =
-      typeof options === "string"
-        ? JSON.parse(options)
-        : Array.isArray(options)
-          ? options
-          : [];
-    if (fillWithAI === true || fillWithAI === "true") {
-      if (imageUrls.length === 0) {
-        return res.status(400).json({
-          ok: false,
-          error: "Se requieren imágenes para completar con IA",
-        });
-      }
+      Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+    let finalDescription = "";
+    let finalOptions: { name: string; values: string[] }[] = [];
+    if (imageUrls.length > 0) {
       try {
         const aiResult = await analyzeProductImages(
           imageUrls,
-          additionalContext,
+          `Título del producto: ${finalTitle}`,
         );
-        finalTitle = aiResult.title;
-        finalDescription = aiResult.description;
-        finalTags = [];
-        if (aiResult.options && aiResult.options.length > 0) {
-          finalOptions = aiResult.options;
-        }
-        productState =
-          publishAutomatically === "true" || publishAutomatically === true
-            ? ProductState.active
-            : ProductState.draft;
+        finalDescription = aiResult.description || "";
+        finalOptions = Array.isArray(aiResult.options) ? aiResult.options : [];
       } catch (error) {
-        console.error("Error al procesar con IA:", error);
-        return res.status(500).json({
-          ok: false,
-          error: "Error al procesar las imágenes con IA",
-        });
+        console.error("Error al generar descripción con IA:", error);
       }
     }
+    const productState: ProductState =
+      finalStock > 0 ? ProductState.active : ProductState.out_stock;
     const product = await prisma.products.create({
       data: {
         title: finalTitle,
         description: finalDescription,
         price: finalPrice,
-        tags: finalTags,
+        tags: [],
         ...(category_id ? { category: { connect: { id: category_id } } } : {}),
         images: imageUrls,
         state: productState,
@@ -166,9 +127,7 @@ class ProductServices {
     });
     return res.status(201).json({
       ok: true,
-      message: fillWithAI
-        ? "Producto generado con IA exitosamente"
-        : "Producto creado exitosamente",
+      message: "Producto creado exitosamente",
       product,
     });
   }
@@ -392,22 +351,14 @@ class ProductServices {
   }
   async updateProduct(req: Request, res: Response) {
     try {
-      const {
-        title,
-        description,
-        price,
-        tags,
-        category_id,
-        existingImageUrls,
-        deletedImageUrls,
-        state,
-        stock,
-        options,
-      } = req.body as UpdateProductRequest;
+      const { title, price, stock, category_id, state } =
+        req.body as UpdateProductRequest;
       const rawExisting =
-        existingImageUrls ?? (req.body as any).existing_image_urls;
+        (req.body as any).existingImageUrls ??
+        (req.body as any).existing_image_urls;
       const rawDeleted =
-        deletedImageUrls ?? (req.body as any).deleted_image_urls;
+        (req.body as any).deletedImageUrls ??
+        (req.body as any).deleted_image_urls;
       const normalizedExisting: string[] = Array.isArray(rawExisting)
         ? rawExisting
         : typeof rawExisting === "string" && rawExisting.trim().length
@@ -420,7 +371,7 @@ class ProductServices {
           : [];
       const { product_id } = req.params;
       const productImages = req.files;
-      let imageUrls: string[] = [];
+      let newImageUrls: string[] = [];
       const existentProduct = await prisma.products.findFirst({
         where: { id: product_id },
       });
@@ -458,7 +409,7 @@ class ProductServices {
               image.mimetype,
             );
             if (result.url) {
-              imageUrls.push(result.url);
+              newImageUrls.push(result.url);
             } else {
               console.error("Error al subir imagen:", result.error);
             }
@@ -467,41 +418,51 @@ class ProductServices {
           }
         }
       }
-      const updatedImages = [...normalizedExisting, ...imageUrls];
-      const parsedStock =
-        typeof stock === "string"
-          ? parseInt(stock, 10)
-          : typeof stock === "number"
-            ? stock
-            : undefined;
+      const updatedImages = [...normalizedExisting, ...newImageUrls];
+      const imagesChanged =
+        newImageUrls.length > 0 || normalizedDeleted.length > 0;
+      const finalTitle = String(title).trim();
+      const finalPrice = parseFloat(String(price));
+      const parsedStock = parseInt(String(stock), 10);
       const finalStock =
-        parsedStock !== undefined &&
-        Number.isFinite(parsedStock) &&
-        parsedStock >= 0
-          ? parsedStock
-          : undefined;
-      const finalOptions = options
-        ? typeof options === "string"
-          ? JSON.parse(options)
-          : options
-        : undefined;
+        Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+      let finalDescription: string | undefined = undefined;
+      let finalOptions: { name: string; values: string[] }[] | undefined =
+        undefined;
+      if (imagesChanged && updatedImages.length > 0) {
+        try {
+          const aiResult = await analyzeProductImages(
+            updatedImages,
+            `Título del producto: ${finalTitle}`,
+          );
+          finalDescription = aiResult.description || "";
+          finalOptions = Array.isArray(aiResult.options)
+            ? aiResult.options
+            : [];
+        } catch (error) {
+          console.error("Error al regenerar descripción con IA:", error);
+        }
+      }
+      const resolvedState: ProductState = state
+        ? (state as ProductState)
+        : finalStock > 0
+          ? ProductState.active
+          : ProductState.out_stock;
       await prisma.products.update({
         where: { id: product_id },
         data: {
-          title,
-          description,
-          price: typeof price === "string" ? parseFloat(price) : price,
-          tags: Array.isArray(tags)
-            ? tags
-            : typeof tags === "string"
-              ? JSON.parse(tags)
-              : [],
+          title: finalTitle,
+          price: finalPrice,
+          stock: finalStock,
+          tags: [],
           ...(category_id
             ? { category: { connect: { id: category_id } } }
             : { category: { disconnect: true } }),
           images: updatedImages,
-          state: state || ProductState.active,
-          ...(finalStock !== undefined ? { stock: finalStock } : {}),
+          state: resolvedState,
+          ...(finalDescription !== undefined
+            ? { description: finalDescription }
+            : {}),
           ...(finalOptions !== undefined ? { options: finalOptions } : {}),
         },
       });

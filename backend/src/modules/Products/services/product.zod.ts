@@ -11,25 +11,15 @@ export const BinaryFileSchema = z
 export const SaveProductRequestSchema = z
   .object({
     title: z.string().min(1),
-    description: z.string().optional(),
     price: z.union([z.number(), z.string()]),
-    tags: z.array(z.string()).optional(),
+    stock: z.union([z.number().int().min(0), z.string()]),
     category_id: z.string().optional(),
     productImages: z.array(BinaryFileSchema).optional(),
-    fillWithAI: z.boolean().optional(),
-    state: z
-      .enum(["active", "inactive", "draft", "out_stock", "deleted"])
-      .optional(),
-    stock: z.union([z.number().int().min(0), z.string()]).optional(),
-    additionalContext: z.string().optional(),
-    options: z
-      .union([
-        z.array(z.object({ name: z.string(), values: z.array(z.string()) })),
-        z.string(),
-      ])
-      .optional(),
   })
-  .openapi({ description: "Body multipart para crear producto" });
+  .openapi({
+    description:
+      "Body multipart para crear producto. Descripción y opciones se generan automáticamente a partir de la imagen y el título.",
+  });
 export const SaveCategoryRequestSchema = z
   .object({
     title: z.string().min(1),
@@ -53,26 +43,22 @@ export const GetProductsQuerySchema = z
 export const UpdateProductRequestSchema = z
   .object({
     title: z.string().min(1),
-    description: z.string().optional(),
     price: z.union([z.number(), z.string()]),
-    tags: z.array(z.string()).optional(),
+    stock: z.union([z.number().int().min(0), z.string()]),
     category_id: z.string().optional(),
-    existingImageUrls: z.array(z.string()).optional(),
-    deletedImageUrls: z.array(z.string()).optional(),
+    existingImageUrls: z
+      .union([z.array(z.string()), z.string()])
+      .optional(),
+    deletedImageUrls: z.union([z.array(z.string()), z.string()]).optional(),
     productImages: z.array(BinaryFileSchema).optional(),
-    fillWithAI: z.boolean().optional(),
     state: z
       .enum(["active", "inactive", "draft", "out_stock", "deleted"])
       .optional(),
-    stock: z.union([z.number().int().min(0), z.string()]).optional(),
-    options: z
-      .union([
-        z.array(z.object({ name: z.string(), values: z.array(z.string()) })),
-        z.string(),
-      ])
-      .optional(),
   })
-  .openapi({ description: "Body multipart para actualizar producto" });
+  .openapi({
+    description:
+      "Body multipart para actualizar producto. Descripción se regenera automáticamente cuando cambian las imágenes.",
+  });
 export const UpdateCategoryStatusSchema = z.object({
   status: z.string(),
   category_id: z.string(),
