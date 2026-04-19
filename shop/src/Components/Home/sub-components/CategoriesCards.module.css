@@ -3,12 +3,14 @@
   cursor: pointer;
   overflow: hidden;
   border: none;
-  background-color: #f8f9fa;
-  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  transition: transform 0.3s ease, border-color 0.3s ease;
 }
 .card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
 }
 .imageSection {
   position: relative;
@@ -22,8 +24,8 @@
 }
 .placeholder {
   height: 280px;
-  background-color: #f1f3f5;
-  color: #adb5bd;
+  background-color: var(--color-bg-input);
+  color: var(--color-text-dim);
 }
 .content {
   position: absolute;

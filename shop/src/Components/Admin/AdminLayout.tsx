@@ -13,7 +13,7 @@ import {
   LoadingOverlay,
 } from "@mantine/core";
 import Link from "next/link";
-import { FiHome, FiUser, FiBox, FiHelpCircle, FiExternalLink } from "react-icons/fi";
+import { FiHome, FiUser, FiBox, FiHelpCircle, FiExternalLink, FiShoppingCart, FiTrendingUp, FiTag, FiBriefcase } from "react-icons/fi";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAdminStore } from "@/stores/useAdminStore";
 import { useMemo, useState, useEffect } from "react";
@@ -73,14 +73,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [token, business, fetchBusiness]);
   const menuItems = useMemo(
     () => [
-      { to: "/admin", label: "Inicio", icon: FiHome },
+      { to: "/admin", label: "Dashboard", icon: FiHome },
+      { to: "/admin/pos", label: "Caja / POS", icon: FiShoppingCart },
+      { to: "/admin/sales", label: "Ventas", icon: FiTrendingUp },
       { to: "/admin/products", label: "Productos", icon: FiBox },
-      { to: "/admin/categories", label: "Categorias", icon: FiBox },
-      { to: "/admin/sales", label: "Ventas", icon: FiBox },
-      { to: "/admin/users", label: "Usuarios", icon: FiUser },
+      { to: "/admin/categories", label: "Categorías", icon: FiTag },
+      { to: "/admin/users", label: "Clientes", icon: FiUser },
+      { to: "/admin/business", label: "Negocio", icon: FiBriefcase },
       { to: "/admin/faq", label: "FAQ", icon: FiHelpCircle },
-      { to: "/admin/business", label: "Negocio", icon: FiUser },
-      { to: "/admin/colors", label: "Colores", icon: FiBox },
     ],
     []
   );

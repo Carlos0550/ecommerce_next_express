@@ -39,7 +39,7 @@ export default function Onboarding() {
         title: "Personaliza el Diseño",
         description:
           "Elige una paleta de colores y el estilo que mejor se adapte a tu marca.",
-        link: "/admin/colors",
+        link: "/admin/business",
         color: "grape",
       },
       {
