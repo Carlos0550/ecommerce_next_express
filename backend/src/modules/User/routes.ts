@@ -12,26 +12,26 @@ router.post("/register", createUser, (req, res) =>
 router.post(
   "/new",
   requireAuth,
-  requireRole([1]),
+  requireRole(["ADMIN"]),
   CreateUserController,
   authServices.newUser,
 );
-router.get("/auth/users", requireAuth, requireRole([1]), (req, res) =>
+router.get("/auth/users", requireAuth, requireRole(["ADMIN"]), (req, res) =>
   authServices.getUsers(req, res),
 );
 router.put(
   "/auth/users/:id/disable",
   requireAuth,
-  requireRole([1]),
+  requireRole(["ADMIN"]),
   (req, res) => authServices.disableUser(req, res),
 );
 router.put(
   "/auth/users/:id/enable",
   requireAuth,
-  requireRole([1]),
+  requireRole(["ADMIN"]),
   (req, res) => authServices.enableUser(req, res),
 );
-router.delete("/auth/users/:id", requireAuth, requireRole([1]), (req, res) =>
+router.delete("/auth/users/:id", requireAuth, requireRole(["ADMIN"]), (req, res) =>
   authServices.deleteUser(req, res),
 );
 router.get("/validate-token", requireAuth, async (req, res) => {

@@ -1,5 +1,4 @@
 import { Client } from "minio";
-import { Readable } from "stream";
 const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || "localhost";
 const MINIO_PORT = parseInt(process.env.MINIO_PORT || "9000");
 const MINIO_USE_SSL = process.env.MINIO_USE_SSL === "true";
@@ -54,7 +53,7 @@ async function ensureBucketExists(bucketName: string): Promise<void> {
 export async function uploadImage(
   file: Buffer,
   fileName: string,
-  folder: string = "",
+  folder = "",
   contentType?: string,
 ): Promise<{ url: string | null; error: any }> {
   try {
@@ -85,7 +84,7 @@ export async function uploadToBucket(
   file: Buffer,
   fileName: string,
   bucket: string,
-  folder: string = "",
+  folder = "",
   contentType?: string,
 ): Promise<{ path: string | null; error: any }> {
   try {
@@ -104,7 +103,7 @@ export async function uploadToBucket(
 export async function createSignedUrl(
   bucket: string,
   filePath: string,
-  expiresInSec: number = 3600,
+  expiresInSec = 3600,
 ): Promise<{ url: string | null; error: any }> {
   try {
     const url = await minioClient.presignedGetObject(
@@ -172,7 +171,7 @@ export async function downloadFile(
 }
 export async function listObjects(
   bucket: string,
-  prefix: string = "",
+  prefix = "",
 ): Promise<{ objects: string[]; error: any }> {
   try {
     const objects: string[] = [];

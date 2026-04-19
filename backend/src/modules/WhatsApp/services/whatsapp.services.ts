@@ -3,7 +3,7 @@ import { sessionService } from './session.service';
 import { messageService } from './message.service';
 import { webhookHandler } from './webhook.handler';
 import { sessionManager, timeoutWorker } from './conversation';
-import {
+import type {
   WhatsAppConfig,
   WhatsAppConfigResponse,
   SessionCreateResponse,

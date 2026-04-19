@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import { BusinessDataRequest } from "./schemas/business.schemas";
+import type { Request, Response } from "express";
+import type { BusinessDataRequest } from "./schemas/business.schemas";
 import businessServices from "./business.services";
 import { generateBusinessDescription } from "@/config/groq";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
@@ -16,12 +16,12 @@ class BusinessController {
       }
       const fieldRaw =
         (req.query.field as string) ||
-        (req.body as any)?.field ||
+        (req.body)?.field ||
         "business_image";
       let field: "business_image" | "favicon" | "hero_image" = "business_image";
       if (fieldRaw === "favicon") field = "favicon";
       if (fieldRaw === "hero_image") field = "hero_image";
-      const idParam = (req.query.id as string) || (req.body as any)?.id;
+      const idParam = (req.query.id as string) || (req.body)?.id;
       const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
       const timestamp = Date.now();
       const uniqueName = `business-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
@@ -67,7 +67,7 @@ class BusinessController {
       let finalType: string | undefined = type;
       if (!finalType) {
         const current = await businessServices.getBusiness();
-        finalType = (current as any)?.type || undefined;
+        finalType = (current)?.type || undefined;
       }
       const description = await generateBusinessDescription(
         name,
@@ -132,7 +132,7 @@ class BusinessController {
         .json({ error: "Error al actualizar los datos del negocio" });
     }
   }
-  async getBusiness(req: Request, res: Response) {
+  async getBusiness(_req: Request, res: Response) {
     try {
       const data = await businessServices.getBusiness();
       if (!data) {
@@ -145,7 +145,7 @@ class BusinessController {
         .json({ error: "Error al obtener la información del negocio" });
     }
   }
-  async getActivePalette(req: Request, res: Response) {
+  async getActivePalette(_req: Request, res: Response) {
     const palette = await businessServices.getActivePalette();
     return res.status(200).json({ palette });
   }

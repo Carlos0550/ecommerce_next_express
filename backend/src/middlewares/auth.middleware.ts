@@ -1,24 +1,34 @@
-import { Request, Response, NextFunction } from "express";
-import { verifyToken, JwtPayload } from "@/config/jwt";
+import type { Request, Response, NextFunction } from "express";
+import type { JwtPayload } from "@/config/jwt";
+import { verifyToken } from "@/config/jwt";
 import { prisma } from "@/config/prisma";
+
+export type AuthRole = "ADMIN" | "CUSTOMER";
 
 export type AuthUser = JwtPayload & {
   email?: string;
   name?: string;
-  role?: number;
+  role?: AuthRole | number;
   profileImage?: string;
   subjectType?: "admin" | "user";
   is_active?: boolean;
 };
 
+function normalizeRole(role: AuthRole | number | undefined): AuthRole {
+  if (role === "ADMIN" || role === 1) return "ADMIN";
+  return "CUSTOMER";
+}
+
 function getBearerToken(req: Request): string | null {
   const header =
-    req.headers["authorization"] ||
-    (req.headers["Authorization"] as string | undefined);
+    req.headers.authorization ||
+    (req.headers.Authorization as string | undefined);
   if (!header) return null;
   const parts = header.split(" ");
   if (parts.length !== 2) return null;
-  const [scheme, token] = parts;
+  const scheme = parts[0];
+  const token = parts[1];
+  if (!scheme || !token) return null;
   if (!/^Bearer$/i.test(scheme)) return null;
   return token;
 }
@@ -27,50 +37,58 @@ export async function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction,
-) {
+): Promise<void> {
   try {
     const token = getBearerToken(req);
     if (!token) {
-      return res.status(401).json({ ok: false, error: "missing_bearer_token" });
+      res.status(401).json({ ok: false, error: "missing_bearer_token" });
+      return;
     }
     let payload: AuthUser;
     try {
       payload = verifyToken<AuthUser>(token);
     } catch {
-      return res.status(401).json({ ok: false, error: "invalid_token" });
+      res.status(401).json({ ok: false, error: "invalid_token" });
+      return;
     }
     const userId = Number(payload.sub || payload.id);
     if (!Number.isFinite(userId)) {
-      return res.status(401).json({ ok: false, error: "invalid_token" });
+      res.status(401).json({ ok: false, error: "invalid_token" });
+      return;
     }
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, is_active: true, role: true },
     });
     if (!user) {
-      return res.status(401).json({ ok: false, error: "user_not_found" });
+      res.status(401).json({ ok: false, error: "user_not_found" });
+      return;
     }
     if (!user.is_active) {
-      return res.status(403).json({ ok: false, error: "account_inactive" });
+      res.status(403).json({ ok: false, error: "account_inactive" });
+      return;
     }
     payload.is_active = true;
     (req as any).user = payload;
     next();
   } catch (error) {
     console.error("auth_middleware_error", error);
-    return res.status(500).json({ ok: false, error: "auth_internal_error" });
+    res.status(500).json({ ok: false, error: "auth_internal_error" });
   }
 }
 
-export function requireRole(roles: number[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+export function requireRole(roles: (AuthRole | number)[]) {
+  const allowed = new Set<AuthRole>(roles.map((r) => normalizeRole(r)));
+  return (req: Request, res: Response, next: NextFunction): void => {
     const user = (req as any).user as AuthUser | undefined;
     if (!user) {
-      return res.status(401).json({ ok: false, error: "unauthenticated" });
+      res.status(401).json({ ok: false, error: "unauthenticated" });
+      return;
     }
-    const role = user.role ?? 2;
-    if (!roles.includes(role)) {
-      return res.status(403).json({ ok: false, error: "forbidden" });
+    const role = normalizeRole(user.role);
+    if (!allowed.has(role)) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
     }
     next();
   };

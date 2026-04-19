@@ -78,11 +78,12 @@ function isWhatsAppUrl(url: string): boolean {
 }
 async function convertLocalUrlToBase64(url: string): Promise<string | null> {
   try {
-    const urlMatch = url.match(/\/api\/storage\/(.+)$/);
+    const urlMatch = /\/api\/storage\/(.+)$/.exec(url);
     if (!urlMatch) {
       return null;
     }
     const filePath = urlMatch[1];
+    if (!filePath) return null;
     const fullPath = path.join(process.cwd(), "uploads", "storage", filePath);
     const fileBuffer = await fs.readFile(fullPath);
     const ext = path.extname(fullPath).toLowerCase();
@@ -114,7 +115,7 @@ function isLocalhostUrl(url: string): boolean {
     return false;
   }
 }
-export type ProductAnalysisResult = {
+export interface ProductAnalysisResult {
   title: string;
   description: string;
   options: { name: string; values: string[] }[];
@@ -122,7 +123,7 @@ export type ProductAnalysisResult = {
     name: string;
     confidence: "high" | "medium" | "low";
   };
-};
+}
 export const analyzeProductImages = async (
   imageUrls: string[],
   additionalContext?: string,
@@ -260,13 +261,13 @@ export const analyzeProductImages = async (
       },
     ];
     const selectedIntro =
-      introStyles[Math.floor(Math.random() * introStyles.length)];
+      introStyles[Math.floor(Math.random() * introStyles.length)]!;
     const selectedTone =
-      toneStyles[Math.floor(Math.random() * toneStyles.length)];
+      toneStyles[Math.floor(Math.random() * toneStyles.length)]!;
     const selectedClosing =
-      closingStyles[Math.floor(Math.random() * closingStyles.length)];
+      closingStyles[Math.floor(Math.random() * closingStyles.length)]!;
     const selectedStructure =
-      structureFormats[Math.floor(Math.random() * structureFormats.length)];
+      structureFormats[Math.floor(Math.random() * structureFormats.length)]!;
     console.log(
       `🎨 Estilos: Apertura=${selectedIntro.name}, Tono=${selectedTone.name}, Cierre=${selectedClosing.name}, Estructura=${selectedStructure.name}`,
     );
@@ -366,8 +367,7 @@ ${categoriesSection}
             {
               type: "text",
               text: `${
-                additionalContext &&
-                additionalContext.includes("CORRECCIONES DEL USUARIO")
+                additionalContext?.includes("CORRECCIONES DEL USUARIO")
                   ? `
 🚨🚨🚨 CORRECCIÓN OBLIGATORIA - LEE ANTES DE VER LAS IMÁGENES 🚨🚨🚨
 ${additionalContext}
@@ -404,8 +404,7 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
         IMPORTANTE: Si el contexto menciona opciones de compra, variables, variantes, colores, tallas, etc., DEBES incluirlas en el campo "options" del JSON.`
             : ""
         }${
-          additionalContext &&
-          additionalContext.includes("CORRECCIONES DEL USUARIO")
+          additionalContext?.includes("CORRECCIONES DEL USUARIO")
             ? `
 🚨 RECORDATORIO FINAL: El usuario dijo que el producto ${additionalContext.replace(/.*CORRECCIONES DEL USUARIO.*\n/i, "").replace(/\n/g, " ")} - RESPETA ESTO.`
             : ""
@@ -432,7 +431,7 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
     } else if (jsonContent.startsWith("```")) {
       jsonContent = jsonContent.replace(/^```\s*/, "").replace(/\s*```$/, "");
     }
-    const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+    const jsonMatch = /\{[\s\S]*\}/.exec(jsonContent);
     if (jsonMatch) {
       jsonContent = jsonMatch[0];
     }
@@ -448,6 +447,7 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
       let escapeNext = false;
       for (let i = 0; i < str.length; i++) {
         const char = str[i];
+        if (char === undefined) continue;
         if (escapeNext) {
           result += char;
           escapeNext = false;
@@ -501,22 +501,18 @@ Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
           "Error persistente, intentando extracción manual:",
           secondError,
         );
-        const titleMatch = jsonContent.match(
-          /"title"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/,
-        );
-        const descMatch = jsonContent.match(
-          /"description"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/,
-        );
-        const optionsMatch = jsonContent.match(/"options"\s*:\s*(\[[^\]]*\])/);
+        const titleMatch = /"title"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/.exec(jsonContent);
+        const descMatch = /"description"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/.exec(jsonContent);
+        const optionsMatch = /"options"\s*:\s*(\[[^\]]*\])/.exec(jsonContent);
         if (titleMatch || descMatch) {
           parsed = {
-            title: titleMatch
+            title: titleMatch?.[1]
               ? titleMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "\t")
               : "Producto Generado por IA",
-            description: descMatch
+            description: descMatch?.[1]
               ? descMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "\t")
               : "Descripción generada automáticamente por IA.",
-            options: optionsMatch ? JSON.parse(optionsMatch[1]) : [],
+            options: optionsMatch?.[1] ? JSON.parse(optionsMatch[1]) : [],
           };
         } else {
           console.error(
@@ -695,8 +691,8 @@ export const generateBusinessDescription = async (
   name: string,
   city: string,
   province: string,
-  type: string = "e-commerce",
-  description: string = "",
+  type = "e-commerce",
+  description = "",
 ): Promise<string> => {
   const systemPrompt = `
     Eres un especialista senior en SEO local y redacción comercial para negocios digitales.

@@ -1,5 +1,5 @@
 import { prisma } from "@/config/prisma";
-import { WhatsAppConversationSession } from "../../schemas/whatsapp.schemas";
+import type { WhatsAppConversationSession } from "../../schemas/whatsapp.schemas";
 class SessionManager {
   async getSession(phone: string): Promise<WhatsAppConversationSession | null> {
     try {

@@ -10,7 +10,7 @@ import {
 } from './tone.detector';
 import { isPhoneAllowed } from '../../utils/phone.utils';
 import { getBusiness } from '../../utils/business.utils';
-import {
+import type {
   WhatsAppConversationSession,
   WebhookMessageReceived,
 } from '../../schemas/whatsapp.schemas';
@@ -292,7 +292,7 @@ class ConversationProcessor {
     for (const pattern of stockPatterns) {
       const match = normalized.match(pattern);
       if (match) {
-        stock = parseInt(match[1], 10);
+        stock = parseInt(match[1] ?? "0", 10);
         break;
       }
     }
@@ -316,7 +316,7 @@ class ConversationProcessor {
         }
       }
     }
-    let contextText = normalized
+    const contextText = normalized
       .replace(/\d+\s*(?:en\s*stock|unidades?|uni\.?|u\b)/gi, '')
       .replace(/stock[:\s]*\d+/gi, '')
       .replace(/x\d+\b/gi, '')

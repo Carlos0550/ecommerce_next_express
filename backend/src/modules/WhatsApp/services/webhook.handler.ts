@@ -6,7 +6,7 @@ import {
 } from "../utils/business.utils";
 import { sessionService } from "./session.service";
 import { albumService } from "./album.service";
-import {
+import type {
   WebhookEvent,
   WebhookMessageUpsert,
   WebhookSessionStatus,
@@ -22,10 +22,10 @@ class WebhookHandler {
     const eventType = event.event;
     switch (eventType) {
       case "session.status":
-        await this.handleSessionStatusEvent(event as WebhookSessionStatus);
+        await this.handleSessionStatusEvent(event);
         break;
       case "messages.upsert":
-        await this.handleMessageUpsertEvent(event as WebhookMessageUpsert);
+        await this.handleMessageUpsertEvent(event);
         break;
       case "qr.updated":
         console.log("QR actualizado para sesión:", event.session_id);

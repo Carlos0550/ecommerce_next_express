@@ -1,10 +1,10 @@
 import { prisma } from "@/config/prisma";
-type MergeItem = {
+interface MergeItem {
   product_id: string;
   quantity: number;
   price?: number;
   options?: any;
-};
+}
 function areOptionsEqual(a: any, b: any) {
   if (!a && !b) return true;
   if (!a || !b) return false;
@@ -52,7 +52,7 @@ export default class CartServices {
   async addItem(
     userId: number,
     productId: string,
-    quantity: number = 1,
+    quantity = 1,
     options: any = [],
   ) {
     const cart = await this.getOrCreateUserCart(userId);
@@ -104,11 +104,11 @@ export default class CartServices {
     });
     if (existingItems.length === 0)
       return { ok: false, status: 404, error: "item_not_found" };
-    const target = Array.isArray(options)
+    const target = (Array.isArray(options)
       ? existingItems.find((item) =>
           areOptionsEqual(item.selected_options, options),
         ) || existingItems[0]
-      : existingItems[0];
+      : existingItems[0])!;
     if (quantity <= 0) {
       await prisma.orderItems.delete({ where: { id: target.id } });
     } else {
@@ -127,11 +127,11 @@ export default class CartServices {
     });
     if (existingItems.length === 0)
       return { ok: false, status: 404, error: "item_not_found" };
-    const target = Array.isArray(options)
+    const target = (Array.isArray(options)
       ? existingItems.find((item) =>
           areOptionsEqual(item.selected_options, options),
         ) || existingItems[0]
-      : existingItems[0];
+      : existingItems[0])!;
     await prisma.orderItems.delete({ where: { id: target.id } });
     const total = await this.recomputeTotal(cart.id);
     return { ok: true, total };

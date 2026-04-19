@@ -1,6 +1,6 @@
 import { prisma } from '@/config/prisma';
 import { messageService } from '../../message.service';
-import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
+import type { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
 const STORE_URL = process.env.STORE_URL || '';
 const STATE_LABELS: Record<string, string> = {
   active: '✅ Activo',
@@ -209,7 +209,7 @@ class SearchActions {
       );
       return;
     }
-    const selected = session.searchResults[index - 1];
+    const selected = session.searchResults[index - 1]!;
     session.selectedProductId = selected.id;
     session.state = 'editing';
     if (session.pendingAction) {

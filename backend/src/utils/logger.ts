@@ -25,7 +25,10 @@ const logFormat = combine(
     const argsStr = Object.keys(args).length
       ? JSON.stringify(args, null, 2)
       : "";
-    return `[${timestamp}] ${level}: ${message} ${stack || ""} ${argsStr}`;
+    const ts = typeof timestamp === "string" ? timestamp : JSON.stringify(timestamp ?? "");
+    const msg = typeof message === "string" ? message : JSON.stringify(message);
+    const stk = typeof stack === "string" ? stack : stack ? JSON.stringify(stack) : "";
+    return `[${ts}] ${level}: ${msg} ${stk} ${argsStr}`;
   }),
 );
 export const logger = winston.createLogger({
@@ -54,10 +57,23 @@ if (process.env.NODE_ENV !== "production") {
       format: combine(
         colorize({ all: true }),
         timestamp({ format: "HH:mm:ss" }),
-        printf(
-          (info) =>
-            `[${info.timestamp}] ${info.level}: ${info.message} ${info.stack || ""}`,
-        ),
+        printf((info) => {
+          const ts =
+            typeof info.timestamp === "string"
+              ? info.timestamp
+              : JSON.stringify(info.timestamp ?? "");
+          const msg =
+            typeof info.message === "string"
+              ? info.message
+              : JSON.stringify(info.message);
+          const stk =
+            typeof info.stack === "string"
+              ? info.stack
+              : info.stack
+                ? JSON.stringify(info.stack)
+                : "";
+          return `[${ts}] ${info.level}: ${msg} ${stk}`;
+        }),
       ),
     }),
   );

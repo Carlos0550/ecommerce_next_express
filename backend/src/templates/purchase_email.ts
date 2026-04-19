@@ -1,7 +1,8 @@
 import fs from 'fs'
 import path from 'path'
-import { applyTheme, BusinessData, PaletteData } from './theme'
-type PurchaseEmailParams = {
+import type { BusinessData, PaletteData } from './theme';
+import { applyTheme } from './theme'
+interface PurchaseEmailParams {
   payment_method: string
   products: { title: string; price: number }[]
   subtotal: number
@@ -16,8 +17,8 @@ type PurchaseEmailParams = {
 export function purchase_email_html(params: PurchaseEmailParams) {
   const tplPath = path.join(__dirname, './files/purchase_email.hbs')
   let html = fs.readFileSync(tplPath, 'utf-8')
-  const safeBuyerName = params.buyerName && params.buyerName.trim() ? params.buyerName : 'N/A'
-  const safeBuyerEmail = params.buyerEmail && params.buyerEmail.trim() ? params.buyerEmail : 'N/A'
+  const safeBuyerName = params.buyerName?.trim() ? params.buyerName : 'N/A'
+  const safeBuyerEmail = params.buyerEmail?.trim() ? params.buyerEmail : 'N/A'
   const saleDateStr = params.saleDate ? new Intl.DateTimeFormat('es-AR', { dateStyle: 'medium', timeStyle: 'short' }).format(params.saleDate) : new Date().toLocaleString('es-AR')
   const currency = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' })
   const productsRows = (Array.isArray(params.products) ? params.products : [])

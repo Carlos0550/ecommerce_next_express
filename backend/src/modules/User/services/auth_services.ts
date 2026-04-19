@@ -1,7 +1,7 @@
 import { prisma } from "@/config/prisma";
 import { comparePassword, hashPassword } from "@/config/bcrypt";
 import { randomBytes } from "crypto";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { signToken } from "@/config/jwt";
 import { sendEmail } from "@/config/resend";
 import { welcomeKuromiHTML } from "@/templates/welcome_kuromi";
@@ -26,7 +26,7 @@ class AuthServices {
       sub: user.id.toString(),
       email: user.email,
       name: user.name,
-      role: 1,
+      role: "ADMIN",
       subjectType: "admin",
     };
     const token = signToken(payload);
@@ -51,7 +51,7 @@ class AuthServices {
       email: user.email,
       name: user.name,
       profile_image: user.profile_image,
-      role: 2,
+      role: "CUSTOMER",
       subjectType: "user",
     };
     const token = signToken(payload);
@@ -95,7 +95,7 @@ class AuthServices {
         const html = welcomeKuromiHTML(
           capitalized_name,
           text_message + text_message_pass,
-          business as any,
+          business,
           palette as any,
         );
         await sendEmail({
@@ -111,7 +111,7 @@ class AuthServices {
         sub: user.id.toString(),
         email: user.email,
         name: user.name,
-        role: 2,
+        role: "CUSTOMER",
         subjectType: "user",
       };
       const token = signToken(payload);
@@ -182,7 +182,7 @@ class AuthServices {
         <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_muted}};">
           Tu contraseña de acceso es: <strong>${secure_password}</strong>
         </p>`;
-      const html = welcomeKuromiHTML(capitalized_name, text_message, business as any, palette as any);
+      const html = welcomeKuromiHTML(capitalized_name, text_message, business, palette as any);
       await sendEmail({
         to: user.email,
         subject: `Bienvenido/a a ${businessName}`,
@@ -229,7 +229,7 @@ class AuthServices {
       const business = await BusinessServices.getBusiness();
       const businessName = business?.name || "Tienda online";
       const palette = await getActivePalette();
-      const html = new_user_html(capitalized_name, text_message, business as any, palette as any);
+      const html = new_user_html(capitalized_name, text_message, business, palette as any);
       await sendEmail({
         to: user.email,
         subject: `Bienvenido/a a ${businessName}`,

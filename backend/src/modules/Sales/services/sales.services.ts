@@ -1,5 +1,5 @@
 import { prisma } from "@/config/prisma";
-import { SaleRequest, SalesSummaryRequest } from "./schemas/sales.schemas";
+import type { SaleRequest } from "./schemas/sales.schemas";
 import { sendEmail } from "@/config/resend";
 import { sale_email_html } from "@/templates/sale_email";
 import { order_ready_email_html } from "@/templates/order_ready_email";
@@ -7,6 +7,7 @@ import { order_declined_email_html } from "@/templates/order_declined_email";
 import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
+import { logger } from "@/utils/logger";
 class SalesServices {
   async saveSale(request: SaleRequest) {
     const { payment_method, source, product_ids, user_sale, items } = request;
@@ -72,7 +73,7 @@ class SalesServices {
       }
       const parsedUserId = user_id !== undefined ? Number(user_id) : undefined;
       const primaryPaymentMethod =
-        (request.payment_methods && request.payment_methods[0]?.method) ||
+        (request.payment_methods?.[0]?.method) ||
         payment_method;
       const paymentBreakdown = Array.isArray(request.payment_methods)
         ? request.payment_methods
@@ -121,12 +122,12 @@ class SalesServices {
           items: product_data as any,
         },
       });
-      setImmediate(async () => {
+      setImmediate(() => {
+        void (async () => {
         try {
           const user = parsedUserId
             ? await prisma.user.findUnique({ where: { id: parsedUserId } })
             : null;
-          console.log(user);
           const business = await BusinessServices.getBusiness();
           const palette = await getActivePalette();
           const html = sale_email_html({
@@ -146,12 +147,12 @@ class SalesServices {
             finalTotal,
             saleId: (sale as any)?.id ?? undefined,
             saleDate:
-              (createdAtOverride as Date) ||
+              (createdAtOverride) ||
               ((sale as any)?.created_at as Date) ||
               new Date(),
             buyerName: user?.name ?? undefined,
             buyerEmail: user?.email ?? undefined,
-            business: business as any,
+            business: business,
             palette: palette as any,
           });
           const admins: any[] = await prisma.user.findMany({
@@ -205,13 +206,14 @@ class SalesServices {
             }
           }
         } catch (err) {
-          console.error("Error sending sale email", err);
+          logger.error("Error sending sale email", { err });
         }
+        })();
       });
       return (sale as any)?.id || true;
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -263,7 +265,7 @@ class SalesServices {
       const taxAmount = subtotal * (taxPercent / 100);
       const finalTotal = subtotal + taxAmount;
       const primaryPaymentMethod =
-        (request.payment_methods && request.payment_methods[0]?.method) ||
+        (request.payment_methods?.[0]?.method) ||
         request.payment_method ||
         (existing.payment_method as any);
       const paymentBreakdown = Array.isArray(request.payment_methods)
@@ -300,7 +302,7 @@ class SalesServices {
       return { success: true, sale: updated };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -313,7 +315,7 @@ class SalesServices {
       return { success: true };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -336,7 +338,7 @@ class SalesServices {
       const skip = (currentPage - 1) * take;
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.startOf("day");
-      const parseDateTz = (value?: string, endOfDay: boolean = false) => {
+      const parseDateTz = (value?: string, endOfDay = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
@@ -392,7 +394,7 @@ class SalesServices {
       return { sales, pagination, totalSalesByDate: parsed_totalSalesByDate };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -409,7 +411,7 @@ class SalesServices {
     try {
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.subtract(30, "day");
-      const parseDate = (value?: string, endOfDay: boolean = false) => {
+      const parseDate = (value?: string, endOfDay = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
@@ -506,7 +508,7 @@ class SalesServices {
           revenue: 0,
         };
       });
-      categoryMap["sin_categoria"] = {
+      categoryMap.sin_categoria = {
         category_id: "sin_categoria",
         name: "Sin categoría",
         count: 0,
@@ -520,8 +522,11 @@ class SalesServices {
           totalTaxCollected += taxAmount;
         }
         const hour = dayjs.tz(sale.created_at).hour();
-        hourMap[hour].count += 1;
-        hourMap[hour].revenue += saleTotal;
+        const bucket = hourMap[hour];
+        if (bucket) {
+          bucket.count += 1;
+          bucket.revenue += saleTotal;
+        }
         const items = (sale.items as any[]) || [];
         items.forEach((item: any) => {
           const qty = Number(item.quantity) || 1;
@@ -547,7 +552,8 @@ class SalesServices {
           }
         });
         if (sale.loadedManually) {
-          categoryMap["sin_categoria"].count += items.length;
+          const unc = categoryMap.sin_categoria;
+          if (unc) unc.count += items.length;
         }
       });
       Object.keys(categoryMap).forEach((catId) => {
@@ -558,10 +564,13 @@ class SalesServices {
             ) ||
             (catId === "sin_categoria" && s.loadedManually),
         );
-        categoryMap[catId].revenue = catSales.reduce(
-          (acc, s) => acc + Number(s.total || 0),
-          0,
-        );
+        const cat = categoryMap[catId];
+        if (cat) {
+          cat.revenue = catSales.reduce(
+            (acc, s) => acc + Number(s.total || 0),
+            0,
+          );
+        }
       });
       const prevCount = previousSales.length;
       const prevRevenue = previousSales.reduce(
@@ -691,7 +700,7 @@ class SalesServices {
       };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -717,7 +726,7 @@ class SalesServices {
           saleId: sale.id,
           buyerName,
           payment_method: String(sale.payment_method),
-          business: business as any,
+          business: business,
           palette: palette as any,
         });
         await sendEmail({
@@ -730,7 +739,7 @@ class SalesServices {
       return { success: false, message: "email_not_found" };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -755,7 +764,7 @@ class SalesServices {
           saleId: sale.id,
           buyerName,
           reason,
-          business: business as any,
+          business: business,
           palette: palette as any,
         });
         await sendEmail({
@@ -767,7 +776,7 @@ class SalesServices {
       return { success: true };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }

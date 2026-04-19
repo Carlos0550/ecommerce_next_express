@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { prisma } from '@/config/prisma';
-import {
+import type {
   WhatsAppConversationSession,
   AIConversationResponse,
 } from '../../schemas/whatsapp.schemas';
@@ -115,7 +115,7 @@ class AIProcessor {
     categoryList: { id: string; title: string }[]
   ): AIConversationResponse {
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const jsonMatch = /\{[\s\S]*\}/.exec(content);
       if (!jsonMatch) {
         throw new Error('No se encontró JSON en la respuesta');
       }

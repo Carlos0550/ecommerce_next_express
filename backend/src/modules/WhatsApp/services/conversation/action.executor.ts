@@ -3,7 +3,7 @@ import { sessionManager } from './session.manager';
 import { productActions } from './actions/product.actions';
 import { searchActions } from './actions/search.actions';
 import { messageService } from '../message.service';
-import {
+import type {
   WhatsAppConversationSession,
   AIConversationResponse,
 } from '../../schemas/whatsapp.schemas';
@@ -197,7 +197,7 @@ class ActionExecutor {
     if (data.selected_index && session.searchResults && session.searchResults.length > 0) {
       const index = data.selected_index;
       if (index >= 1 && index <= session.searchResults.length) {
-        const selected = session.searchResults[index - 1];
+        const selected = session.searchResults[index - 1]!;
         session.selectedProductId = selected.id;
         session.state = 'editing';
         console.log(`✅ Producto seleccionado desde update_product: ${selected.title} (índice ${index})`);
@@ -265,15 +265,16 @@ class ActionExecutor {
       return false;
     }
     if (products.length === 1) {
-      session.selectedProductId = products[0].id;
+      const only = products[0]!;
+      session.selectedProductId = only.id;
       session.searchResults = [{
-        id: products[0].id,
-        title: products[0].title,
-        price: Number(products[0].price),
-        stock: products[0].stock,
-        state: products[0].state,
+        id: only.id,
+        title: only.title,
+        price: Number(only.price),
+        stock: only.stock,
+        state: only.state,
       }];
-      console.log(`✅ Producto encontrado y seleccionado: ${products[0].title} (ID: ${products[0].id})`);
+      console.log(`✅ Producto encontrado y seleccionado: ${only.title} (ID: ${only.id})`);
       return true;
     }
     session.searchResults = products.map(p => ({

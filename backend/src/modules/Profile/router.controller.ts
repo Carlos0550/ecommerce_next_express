@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { ProfileUpdateSchema } from './services/profile.zod';
 export function validateUpdatePayload(req: Request, res: Response, next: NextFunction) {
   try {

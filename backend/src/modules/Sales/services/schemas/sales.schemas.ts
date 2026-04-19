@@ -2,10 +2,10 @@ export const SaleSource = ["WEB", "CAJA"] as const;
 export type SaleSource = typeof SaleSource[number];
 export const PaymentMethods = ["TARJETA", "EFECTIVO", "QR", "NINGUNO", "TRANSFERENCIA"] as const;
 export type PaymentMethods = typeof PaymentMethods[number];
-export type UserSale = {
+export interface UserSale {
     user_id?: string
 }
-export type SaleRequest = {
+export interface SaleRequest {
     payment_method: PaymentMethods
     source: SaleSource
     product_ids: string[]
@@ -18,7 +18,7 @@ export type SaleRequest = {
     sale_date?: string
     skipStockDecrement?: boolean
 }
-export type SalesSummaryRequest = {
+export interface SalesSummaryRequest {
     page: number,
     limit: number,
     start: string,

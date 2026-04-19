@@ -1,13 +1,13 @@
 import { getPalette, type PaletteTokens } from "./palettes";
 
-export type BusinessData = {
+export interface BusinessData {
   name: string;
   address: string;
   city: string;
   state: string;
   email: string;
   phone: string;
-};
+}
 
 /**
  * Compat: antes recibíamos un array de 10 colores. Ahora usamos nombre de paleta
@@ -23,7 +23,7 @@ export type PaletteData =
 function resolveTokens(palette?: PaletteData): PaletteTokens {
   if (!palette) return getPalette(undefined);
   if ("paletteName" in palette) return getPalette(palette.paletteName);
-  if ("name" in palette && "accent" in palette) return palette as PaletteTokens;
+  if ("name" in palette && "accent" in palette) return palette;
   return getPalette(undefined);
 }
 

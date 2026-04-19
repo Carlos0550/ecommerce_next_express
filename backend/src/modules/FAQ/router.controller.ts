@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { FaqCreateSchema, FaqUpdateSchema, FaqListQuery } from './services/faq.zod';
 export function ensureFaqCreate(req: Request, res: Response, next: NextFunction) {
   try {

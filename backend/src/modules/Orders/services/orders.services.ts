@@ -4,11 +4,12 @@ import { purchase_email_html } from "@/templates/purchase_email";
 import salesServices from "@/modules/Sales/services/sales.services";
 import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
-import { PaymentMethod } from "@prisma/client";
+import { logger } from "@/utils/logger";
+import type { PaymentMethod } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
-type OrderItemInput = { product_id: string; quantity: number; options?: any };
-type CustomerInput = {
+interface OrderItemInput { product_id: string; quantity: number; options?: any }
+interface CustomerInput {
   name: string;
   email: string;
   phone?: string;
@@ -17,7 +18,7 @@ type CustomerInput = {
   city?: string;
   province?: string;
   pickup?: boolean;
-};
+}
 export default class OrdersServices {
   async createOrder(
     userId: number | undefined,
@@ -152,7 +153,7 @@ export default class OrdersServices {
           options: (i as any).options,
         })),
         skipStockDecrement: true,
-      })) as any;
+      }));
       if (typeof saleId === "string") {
         await prisma.orders.update({
           where: { id: order.id },
@@ -162,18 +163,20 @@ export default class OrdersServices {
     } catch (err) {
       console.error("order_sale_link_failed", err);
     }
-    setImmediate(async () => {
-      await this.notify(order.id, snapshot, total, paymentMethod, customer);
-      try {
-        for (const it of snapshot) {
-          await prisma.$executeRaw`UPDATE "Products" 
-            SET stock = GREATEST(stock - ${it.quantity}, 0),
-                state = CASE WHEN GREATEST(stock - ${it.quantity}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
-            WHERE id = ${it.id}`;
+    setImmediate(() => {
+      void (async () => {
+        await this.notify(order.id, snapshot, total, paymentMethod, customer);
+        try {
+          for (const it of snapshot) {
+            await prisma.$executeRaw`UPDATE "Products"
+              SET stock = GREATEST(stock - ${it.quantity}, 0),
+                  state = CASE WHEN GREATEST(stock - ${it.quantity}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
+              WHERE id = ${it.id}`;
+          }
+        } catch (err) {
+          logger.error("order_stock_decrement_failed", { err });
         }
-      } catch (err) {
-        console.error("order_stock_decrement_failed", err);
-      }
+      })();
     });
     return { ok: true, order_id: order.id, total };
   }
@@ -214,7 +217,7 @@ export default class OrdersServices {
       return { ok: false, status: 500, error: "internal_error" };
     }
   }
-  async listUserOrders(userId: number, page: number = 1, limit: number = 10) {
+  async listUserOrders(userId: number, page = 1, limit = 10) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const [items, total] = await Promise.all([
       prisma.orders.findMany({
@@ -266,7 +269,7 @@ export default class OrdersServices {
         saleDate: new Date(),
         buyerName: customer.name,
         buyerEmail: customer.email,
-        business: business as any,
+        business: business,
         palette: palette as any,
       });
       await sendEmail({

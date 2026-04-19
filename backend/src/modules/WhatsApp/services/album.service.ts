@@ -138,7 +138,7 @@ class AlbumService {
   ): void {
     const timeoutKey = `${fromPhone}:${albumParentId}`;
     if (albumProcessingTimeouts.has(timeoutKey)) {
-      clearTimeout(albumProcessingTimeouts.get(timeoutKey)!);
+      clearTimeout(albumProcessingTimeouts.get(timeoutKey));
     }
     const timeout = setTimeout(async () => {
       await this.processAlbum(fromPhone, albumParentId);

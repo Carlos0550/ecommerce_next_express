@@ -1,10 +1,11 @@
 import fs from 'fs';
 import path from 'path';
-import { applyTheme, BusinessData, PaletteData } from './theme';
+import type { BusinessData, PaletteData } from './theme';
+import { applyTheme } from './theme';
 export function order_ready_email_html({ saleId, buyerName, payment_method, business, palette }: { saleId: string; buyerName?: string; payment_method: string; business?: BusinessData | null; palette?: PaletteData | null }) {
   const tplPath = path.join(__dirname, './files/order_ready_email.hbs');
   let html = fs.readFileSync(tplPath, 'utf-8');
-  const safeName = buyerName && buyerName.trim() ? buyerName : 'Cliente';
+  const safeName = buyerName?.trim() ? buyerName : 'Cliente';
   const isLocal = String(payment_method).toUpperCase() === 'EN_LOCAL';
   const address = business?.address || 'Av. Roque Gonzales y Roque Sáenz Peña';
   const mapsUrl = 'https://www.google.com/maps/@-27.4622582,-55.7443897,21z?entry=ttu&g_ep=EgoyMDI1MTEzMC4wIKXMDSoASAFQAw%3D%3D'; 

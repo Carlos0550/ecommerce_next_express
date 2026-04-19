@@ -1,6 +1,6 @@
 import { prisma } from '@/config/prisma';
-import { WhatsAppConversationSession } from '../../schemas/whatsapp.schemas';
-import { GreetingTone } from './tone.detector';
+import type { WhatsAppConversationSession } from '../../schemas/whatsapp.schemas';
+import type { GreetingTone } from './tone.detector';
 const ADMIN_PANEL_URL = process.env.ADMINISTRATIVE_PANEL_URL || '';
 const STORE_URL = process.env.STORE_URL || '';
 const SECURITY_SECTION = `

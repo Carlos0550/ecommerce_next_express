@@ -1,15 +1,16 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { configService } from './services/config.service';
 import { sessionService } from './services/session.service';
 import { messageService } from './services/message.service';
 import { webhookHandler } from './services/webhook.handler';
 import WasenderClient from './services/wasender.client';
 import { WhatsAppError } from './utils/business.utils';
+import type {
+  WebhookEvent} from './schemas/whatsapp.schemas';
 import {
   WhatsAppConfigSchema,
   CreateSessionSchema,
-  TestMessageSchema,
-  WebhookEvent,
+  TestMessageSchema
 } from './schemas/whatsapp.schemas';
 interface ErrorMapping {
   code: string;

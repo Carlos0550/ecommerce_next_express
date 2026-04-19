@@ -57,11 +57,13 @@ model Categories {
   created_at DateTime       @default(now()) @db.Timestamptz(3)
   is_active  Boolean        @default(true)
   status     CategoryStatus @default(active)
+  deleted_at DateTime?
   products   Products[]
 
   @@index([status, is_active])
   @@index([created_at])
   @@index([title])
+  @@index([deleted_at])
 }
 
 model Products {
@@ -77,6 +79,7 @@ model Products {
   state       ProductState @default(active)
   stock       Int          @default(1)
   options     Json         @default("[]")
+  deleted_at  DateTime?
   orderItems  OrderItems[]
   category    Categories?  @relation(fields: [categoryId], references: [id])
   sales       Sales[]      @relation("ProductsToSales")
@@ -86,6 +89,7 @@ model Products {
   @@index([is_active, state])
   @@index([created_at])
   @@index([price])
+  @@index([deleted_at])
 }
 
 enum OrderStatus {
@@ -105,7 +109,7 @@ model Sales {
   created_at     DateTime      @default(now()) @db.Timestamptz(3)
   userId         Int?
   total          Decimal       @default(0.00) @db.Decimal(12, 2)
-  tax            Float         @default(0.00)
+  tax            Decimal       @default(0.00) @db.Decimal(12, 2)
   loadedManually Boolean       @default(false)
   manualProducts Json?         @default("[]")
   paymentMethods Json?         @default("[]")

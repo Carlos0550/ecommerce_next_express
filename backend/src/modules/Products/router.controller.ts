@@ -1,5 +1,5 @@
-import { NextFunction, Request, Response } from "express"
-import { UpdateCategoryStatusSchema } from "./services/product.zod"
+import type { NextFunction, Request, Response } from "express"
+import type { UpdateCategoryStatusSchema } from "./services/product.zod"
 export const saveProduct = async (req: Request, res: Response, next: NextFunction) => {
     const { title, price, stock } = req.body
     try {
@@ -79,20 +79,20 @@ export const getAllProducts = async (req:Request, res: Response, next: NextFunct
                 error: "Faltan parametros obligatorios: page, limit."
             })
         }
-        if(title !== undefined && title == ""){
+        if(title !== undefined && title === ""){
             return res.status(400).json({
                 ok: false,
                 error: "El parametro title no puede estar vacio."
             })
         }
-        if(categoryId !== undefined && categoryId == ""){
+        if(categoryId !== undefined && categoryId === ""){
             return res.status(400).json({
                 ok: false,
                 error: "El parametro categoryId no puede estar vacio."
             })
         }
         if(isActive !== undefined){
-            var parsedBool = isActive === 'true' ? true : 
+            const parsedBool = isActive === 'true' ? true : 
                             isActive === 'false' ? false : undefined;
             if(parsedBool === undefined){
                 return res.status(400).json({
@@ -173,7 +173,7 @@ export const changeCategoryStatus = async (req: Request, res: Response, next: Ne
                 error: "Faltan parametros obligatorios: category_id, status."
             })
         }
-        const statusNumber = parseInt(status as string);
+        const statusNumber = parseInt(status);
         if(![1,2,3].includes(statusNumber) || isNaN(statusNumber)){
             return res.status(400).json({
                 ok: false,

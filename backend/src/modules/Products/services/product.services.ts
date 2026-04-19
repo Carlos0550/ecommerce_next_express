@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { uploadImage, deleteImage } from "@/config/minio";
 import fs from "fs";
 import { prisma } from "@/config/prisma";
 import { CategoryStatus, ProductState } from "@prisma/client";
-import {
+import type {
   UpdateCategoryStatusSchema,
   UpdateProductRequest,
   UpdateProductStatusSchema,
@@ -26,7 +26,7 @@ class ProductServices {
           .json({ ok: false, error: "Producto no encontrado" });
       }
       const providedUrls: string[] = Array.isArray(bodyImageUrls)
-        ? (bodyImageUrls as any[]).filter(
+        ? (bodyImageUrls).filter(
             (u) => typeof u === "string" && u.length > 0,
           )
         : [];
@@ -69,7 +69,7 @@ class ProductServices {
   async saveProduct(req: Request, res: Response) {
     const { title, price, stock, category_id } = req.body;
     const productImages = req.files;
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
     if (productImages && Array.isArray(productImages)) {
       for (const image of productImages as any[]) {
         try {
@@ -147,7 +147,7 @@ class ProductServices {
           error: "Esta categoría ya existe.",
         });
       }
-      let image_url: string = "";
+      let image_url = "";
       if (image) {
         const fileName = `category-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
         const buffer: Buffer =
@@ -182,7 +182,7 @@ class ProductServices {
       });
     }
   }
-  async getAllCategories(req: Request, res: Response) {
+  async getAllCategories(_req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
         orderBy: {
@@ -207,7 +207,7 @@ class ProductServices {
         (c: { status: CategoryStatus }) => {
           return {
             ...c,
-            status: status_to_number[c.status as CategoryStatus],
+            status: status_to_number[c.status],
           };
         },
       );
@@ -265,7 +265,7 @@ class ProductServices {
             category: true,
           },
           orderBy: sortBy
-            ? [{ [sortBy]: (sortOrder || "asc") as "asc" | "desc" }]
+            ? [{ [sortBy]: (sortOrder || "asc") }]
             : [{ created_at: "desc" }],
         }),
       ]);
@@ -295,12 +295,11 @@ class ProductServices {
   extractPathFromPublicUrl = (url: string): string | null => {
     try {
       const u = new URL(url);
-      const match = u.pathname.match(
-        /\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)/,
-      );
+      const match = /\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)/.exec(u.pathname);
       if (!match) return null;
       const bucket = match[1];
       const path = match[2];
+      if (!path) return null;
       const envBucket = process.env.SUPABASE_BUCKET || "images";
       if (bucket !== envBucket) {
         console.warn(
@@ -335,6 +334,7 @@ class ProductServices {
         where: { id: product_id },
         data: {
           state: ProductState.deleted,
+          deleted_at: new Date(),
         },
       });
       return res.status(200).json({
@@ -354,11 +354,11 @@ class ProductServices {
       const { title, price, stock, category_id, state } =
         req.body as UpdateProductRequest;
       const rawExisting =
-        (req.body as any).existingImageUrls ??
-        (req.body as any).existing_image_urls;
+        (req.body).existingImageUrls ??
+        (req.body).existing_image_urls;
       const rawDeleted =
-        (req.body as any).deletedImageUrls ??
-        (req.body as any).deleted_image_urls;
+        (req.body).deletedImageUrls ??
+        (req.body).deleted_image_urls;
       const normalizedExisting: string[] = Array.isArray(rawExisting)
         ? rawExisting
         : typeof rawExisting === "string" && rawExisting.trim().length
@@ -371,7 +371,7 @@ class ProductServices {
           : [];
       const { product_id } = req.params;
       const productImages = req.files;
-      let newImageUrls: string[] = [];
+      const newImageUrls: string[] = [];
       const existentProduct = await prisma.products.findFirst({
         where: { id: product_id },
       });
@@ -633,7 +633,7 @@ class ProductServices {
       const { category_id, status } =
         req.params as unknown as UpdateCategoryStatusSchema;
       const statusNumber = parseInt(status);
-      const status_map: { [key: number]: CategoryStatus } = {
+      const status_map: Record<number, CategoryStatus> = {
         1: CategoryStatus.active,
         2: CategoryStatus.inactive,
         3: CategoryStatus.deleted,
@@ -645,10 +645,12 @@ class ProductServices {
             "Estado de categoría inválido. Debe ser activo(1), inactivo(2) o eliminado(3)",
         });
       }
+      const nextStatus = status_map[statusNumber];
       await prisma.categories.update({
         where: { id: category_id },
         data: {
-          status: status_map[statusNumber],
+          status: nextStatus,
+          deleted_at: nextStatus === CategoryStatus.deleted ? new Date() : null,
         },
       });
       const statusMessages = {
@@ -668,7 +670,7 @@ class ProductServices {
       });
     }
   }
-  async getPublicCategories(req: Request, res: Response) {
+  async getPublicCategories(_req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
         where: {
@@ -758,8 +760,7 @@ class ProductServices {
         include: { category: true },
       });
       if (
-        !product ||
-        product.is_active !== true ||
+        product?.is_active !== true ||
         product.state !== ProductState.active
       ) {
         return res

@@ -4,10 +4,10 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET no está configurado. Ejecuta validateEnvironmentVariables() primero.');
 }
-export type JwtPayload = {
+export interface JwtPayload {
   sub: string;
   [key: string]: any;
-};
+}
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN as any });
 }

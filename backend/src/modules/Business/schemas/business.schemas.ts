@@ -1,5 +1,5 @@
-import { BusinessBankData } from "@prisma/client";
-export type BusinessDataRequest = {
+import type { BusinessBankData } from "@prisma/client";
+export interface BusinessDataRequest {
   name: string;
   email: string;
   phone: string;
@@ -12,4 +12,4 @@ export type BusinessDataRequest = {
   favicon?: string;
   hero_image?: string;
   bankData: BusinessBankData[];
-};
+}
