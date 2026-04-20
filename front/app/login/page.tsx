@@ -160,6 +160,13 @@ export default function ShopLoginPage() {
           >
             <Icon name="back" size={13} /> Ir a la tienda
           </Link>
+
+          <Link
+            href="/admin/login"
+            className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-transparent text-[13px] font-semibold text-[var(--color-text-dim)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            Ir al panel administrativo
+          </Link>
         </div>
       </div>
     </div>

@@ -127,6 +127,7 @@ class SalesServices {
             user: userToConnect,
             total: Number(finalTotal),
             tax: taxPercent,
+            processed: source === "CAJA",
             ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
             products: !isManual
               ? {

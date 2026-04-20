@@ -9,24 +9,46 @@ import { Icon } from "@/components/brand";
 import { formatARS } from "@/lib/utils";
 import type { Sale } from "@/lib/types";
 
-type Analytics = {
+type AnalyticsResponse = {
   success: boolean;
   analytics: {
-    day?: { total: number; orders: number };
-    week?: { total: number; orders: number };
-    month?: { total: number; orders: number };
-    net_income_month?: number;
-    series?: Array<{ d: string; v: number }>;
-    delta?: Record<string, number>;
+    totals?: {
+      sales_count?: number;
+      revenue_total?: number;
+      total_tax_collected?: number;
+    };
   };
 };
 
+function ymd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function fetchAnalytics(start: string, end: string) {
+  const { data } = await api.get<AnalyticsResponse>("/sales/analytics", {
+    params: { start_date: start, end_date: end },
+  });
+  return data.analytics?.totals ?? {};
+}
+
 export default function AdminDashboardPage() {
   const analytics = useQuery({
-    queryKey: ["sales", "analytics"],
+    queryKey: ["sales", "analytics", "dashboard"],
     queryFn: async () => {
-      const { data } = await api.get<Analytics>("/sales/analytics");
-      return data.analytics ?? {};
+      const today = new Date();
+      const todayStr = ymd(today);
+      const weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 6);
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const [day, week, month] = await Promise.all([
+        fetchAnalytics(todayStr, todayStr),
+        fetchAnalytics(ymd(weekAgo), todayStr),
+        fetchAnalytics(ymd(monthStart), todayStr),
+      ]);
+      return { day, week, month };
     },
   });
 
@@ -40,11 +62,10 @@ export default function AdminDashboardPage() {
     },
   });
 
-  const a = analytics.data ?? {};
-  const day = a.day?.total ?? 0;
-  const week = a.week?.total ?? 0;
-  const month = a.month?.total ?? 0;
-  const net = a.net_income_month ?? 0;
+  const day = analytics.data?.day.revenue_total ?? 0;
+  const week = analytics.data?.week.revenue_total ?? 0;
+  const month = analytics.data?.month.revenue_total ?? 0;
+  const net = month - (analytics.data?.month.total_tax_collected ?? 0);
 
   const subtitle = new Date().toLocaleDateString("es-AR", {
     day: "numeric",
@@ -108,8 +129,9 @@ export default function AdminDashboardPage() {
                     #{s.id}
                   </div>
                   <div className="text-[11px] text-[var(--color-text-dim)]">
-                    {new Date(s.createdAt).toLocaleString("es-AR")} ·{" "}
-                    {s.source}
+                    {new Date(
+                      s.createdAt ?? (s as any).created_at
+                    ).toLocaleString("es-AR")} · {s.source}
                   </div>
                 </div>
                 <span className="font-grotesk text-[13px] font-semibold text-[var(--color-text)]">

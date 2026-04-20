@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token, user, logout } = useAuthStore();
+  const { token, user, logout, hasHydrated } = useAuthStore();
   const [status, setStatus] = useState<"checking" | "ok" | "redirect">(
     "checking"
   );
@@ -23,6 +23,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
         setStatus("ok");
         return;
       }
+      if (!hasHydrated) return;
       if (!token || !user || !isAdmin(user)) {
         setStatus("redirect");
         router.replace("/admin/login");
@@ -49,7 +50,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isLoginRoute]);
+  }, [token, isLoginRoute, hasHydrated]);
 
   if (isLoginRoute) return <>{children}</>;
 

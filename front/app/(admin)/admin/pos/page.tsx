@@ -36,6 +36,12 @@ const PAYMENT_METHODS = [
 
 type Method = (typeof PAYMENT_METHODS)[number]["value"];
 
+function firstImage(p: Product): string | null {
+  const raw = (p.images as unknown as Array<string | { url?: string }> | undefined)?.[0];
+  if (!raw) return null;
+  return typeof raw === "string" ? raw : (raw.url ?? null);
+}
+
 export default function AdminPosPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -160,9 +166,12 @@ export default function AdminPosPage() {
   const products = productsQ.data ?? [];
 
   const filtered = useMemo(() => {
+    const base = products.filter(
+      (p) => p.state === "active" && Number(p.stock ?? 0) > 0
+    );
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
+    if (!q) return base;
+    return base.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         String(p.sku ?? "").toLowerCase().includes(q)
@@ -201,7 +210,7 @@ export default function AdminPosPage() {
           title: p.title,
           price,
           quantity: 1,
-          image: p.images?.[0]?.url ?? null,
+          image: firstImage(p),
         },
       ];
     });
@@ -316,7 +325,7 @@ export default function AdminPosPage() {
               </div>
             )}
             {filtered.map((p) => {
-              const img = p.images?.[0]?.url;
+              const img = firstImage(p);
               const stock = Number(p.stock ?? 0);
               return (
                 <button

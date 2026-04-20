@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api, unwrapError } from "@/lib/api";
 import { cn, formatARS } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { StatCard } from "@/components/admin/stat-card";
@@ -26,6 +27,7 @@ type SalesResp = {
 };
 
 export default function AdminSalesPage() {
+  const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 6 * 24 * 3600 * 1000)
     .toISOString()
@@ -34,6 +36,7 @@ export default function AdminSalesPage() {
   const [start, setStart] = useState(weekAgo);
   const [end, setEnd] = useState(today);
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const salesQ = useQuery({
     queryKey: ["sales", "list", { start, end, page }],
@@ -60,6 +63,78 @@ export default function AdminSalesPage() {
     const sum = sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
     return sum / n;
   }, [sales]);
+
+  const toggle = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const allVisibleSelected =
+    sales.length > 0 && sales.every((s) => selected.has(String(s.id)));
+  const toggleAll = () =>
+    setSelected((cur) => {
+      if (allVisibleSelected) {
+        const next = new Set(cur);
+        sales.forEach((s) => next.delete(String(s.id)));
+        return next;
+      }
+      const next = new Set(cur);
+      sales.forEach((s) => next.add(String(s.id)));
+      return next;
+    });
+
+  const clearSelection = () => setSelected(new Set());
+
+  const processBulk = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(
+        ids.map((id) => api.patch(`/sales/${id}/process`))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      return { ok: ids.length - failed, failed };
+    },
+    onSuccess: ({ ok, failed }) => {
+      if (ok > 0) toast.success(`${ok} venta(s) procesada(s)`);
+      if (failed > 0) toast.error(`${failed} fallaron`);
+      clearSelection();
+      qc.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const declineBulk = useMutation({
+    mutationFn: async ({ ids, reason }: { ids: string[]; reason: string }) => {
+      const results = await Promise.allSettled(
+        ids.map((id) => api.patch(`/sales/${id}/decline`, { reason }))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      return { ok: ids.length - failed, failed };
+    },
+    onSuccess: ({ ok, failed }) => {
+      if (ok > 0) toast.success(`${ok} venta(s) rechazada(s)`);
+      if (failed > 0) toast.error(`${failed} fallaron`);
+      clearSelection();
+      qc.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const handleBulkProcess = () => {
+    if (selected.size === 0) return;
+    processBulk.mutate(Array.from(selected));
+  };
+
+  const handleBulkDecline = () => {
+    if (selected.size === 0) return;
+    const reason = window.prompt(
+      `Motivo de rechazo para ${selected.size} venta(s):`
+    );
+    if (!reason || !reason.trim()) return;
+    declineBulk.mutate({ ids: Array.from(selected), reason: reason.trim() });
+  };
 
   const exportCsv = () => {
     const header = ["id", "fecha", "origen", "método", "total", "estado", "cliente"];
@@ -90,6 +165,8 @@ export default function AdminSalesPage() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const bulkPending = processBulk.isPending || declineBulk.isPending;
 
   return (
     <AdminShell
@@ -154,12 +231,51 @@ export default function AdminSalesPage() {
         </label>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_10%,transparent)] px-4 py-2.5 text-[13px]">
+          <div className="font-semibold text-[var(--color-text)]">
+            {selected.size} seleccionada(s)
+          </div>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button
+              onClick={handleBulkProcess}
+              disabled={bulkPending}
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-success)] px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-60"
+            >
+              <Icon name="check" size={12} /> Procesar
+            </button>
+            <button
+              onClick={handleBulkDecline}
+              disabled={bulkPending}
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-danger)] px-3 py-1.5 text-[12px] font-semibold text-white hover:brightness-110 disabled:opacity-60"
+            >
+              <Icon name="close" size={12} /> Rechazar
+            </button>
+            <button
+              onClick={clearSelection}
+              disabled={bulkPending}
+              className="rounded-[10px] border border-[var(--color-border)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)] disabled:opacity-60"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
         <div
           className="grid gap-3 border-b border-[var(--color-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]"
           style={{ gridTemplateColumns: GRID }}
         >
-          <div>#</div>
+          <div>
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleAll}
+              aria-label="Seleccionar todas"
+              className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+            />
+          </div>
           <div>Fecha</div>
           <div>Origen</div>
           <div>Método</div>
@@ -186,19 +302,33 @@ export default function AdminSalesPage() {
             : s.declined
               ? { color: "var(--color-danger)", label: "Rechazada" }
               : { color: "var(--color-warn)", label: "Pendiente" };
+          const id = String(s.id);
+          const checked = selected.has(id);
 
           return (
             <div
               key={s.id}
-              className="grid items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 text-[13px] last:border-b-0"
+              className={cn(
+                "grid items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 text-[13px] last:border-b-0",
+                checked && "bg-[color-mix(in_srgb,var(--color-accent)_8%,transparent)]"
+              )}
               style={{ gridTemplateColumns: GRID }}
             >
-              <div className="font-mono text-[12px] text-[var(--color-text)]">
-                #{s.id}
+              <div>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(id)}
+                  aria-label={`Seleccionar ${id}`}
+                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+                />
               </div>
+              
               <div className="text-[var(--color-text-dim)]">
-                {s.createdAt
-                  ? new Date(s.createdAt).toLocaleString("es-AR")
+                {s.createdAt ?? (s as any).created_at
+                  ? new Date(
+                      s.createdAt ?? (s as any).created_at
+                    ).toLocaleString("es-AR")
                   : "—"}
               </div>
               <div>
@@ -265,7 +395,7 @@ export default function AdminSalesPage() {
   );
 }
 
-const GRID = "80px 1.5fr 0.8fr 1fr 1.3fr 0.9fr 1fr";
+const GRID = "32px 80px 1.5fr 0.8fr 1fr 1.3fr 0.9fr 1fr";
 
 const inputCls =
   "h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]";
