@@ -10,7 +10,21 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { ProductFormSheet } from "@/components/admin/product-form-sheet";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Icon } from "@/components/brand";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Category, Product } from "@/lib/types";
+
+function productImages(p: Product): string[] {
+  const raw = p.images as unknown as Array<string | { url?: string }> | undefined;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((im) => (typeof im === "string" ? im : im?.url ?? ""))
+    .filter((u): u is string => !!u);
+}
 
 type ProductsResponse = {
   ok: boolean;
@@ -37,6 +51,7 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [viewTarget, setViewTarget] = useState<Product | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
 
@@ -534,7 +549,8 @@ export default function AdminProductsPage() {
                 ? { bg: "var(--color-warn)", fg: "var(--color-warn)", label: "Stock bajo" }
                 : { bg: "var(--color-success)", fg: "var(--color-success)", label: "Activo" };
 
-          const thumb = storageUrl(p.images?.[0]?.url);
+          const imgs = productImages(p);
+          const thumb = imgs[0] ? storageUrl(imgs[0]) : null;
 
           return (
             <div
@@ -605,6 +621,9 @@ export default function AdminProductsPage() {
                 </span>
               </div>
               <div className="flex gap-1 justify-end">
+                <IconBtn onClick={() => setViewTarget(p)} title="Ver detalle">
+                  <Icon name="eye" size={13} />
+                </IconBtn>
                 <IconBtn onClick={() => openEdit(p)} title="Editar">
                   <Icon name="edit" size={13} />
                 </IconBtn>
@@ -640,6 +659,75 @@ export default function AdminProductsPage() {
       </div>
       </div>
 
+      <Dialog
+        open={!!viewTarget}
+        onOpenChange={(o) => !o && setViewTarget(null)}
+      >
+        <DialogContent className="sm:max-w-[640px] bg-[var(--color-bg-elev)] text-[var(--color-text)]">
+          <DialogHeader>
+            <DialogTitle className="font-grotesk text-[17px]">
+              {viewTarget?.title ?? "Producto"}
+            </DialogTitle>
+          </DialogHeader>
+          {viewTarget && (() => {
+            const imgs = productImages(viewTarget);
+            const state = viewTarget.state ?? "active";
+            return (
+              <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+                {imgs.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {imgs.map((u, i) => (
+                      <div
+                        key={i}
+                        className="relative h-32 w-32 shrink-0 overflow-hidden rounded-lg bg-[var(--color-bg-input)]"
+                      >
+                        <Image
+                          src={storageUrl(u) ?? ""}
+                          alt={`${viewTarget.title} ${i + 1}`}
+                          fill
+                          sizes="128px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3 text-[13px]">
+                  <Field label="Precio" value={formatARS(Number(viewTarget.price))} />
+                  <Field label="Stock" value={String(viewTarget.stock ?? 0)} />
+                  <Field label="Categoría" value={viewTarget.category?.title ?? "—"} />
+                  <Field label="SKU" value={viewTarget.sku ?? "—"} mono />
+                  <Field label="Estado" value={state} />
+                  <Field label="Slug" value={viewTarget.slug ?? "—"} mono />
+                  {viewTarget.createdAt && (
+                    <Field
+                      label="Creado"
+                      value={new Date(viewTarget.createdAt).toLocaleString("es-AR")}
+                    />
+                  )}
+                  {viewTarget.updatedAt && (
+                    <Field
+                      label="Actualizado"
+                      value={new Date(viewTarget.updatedAt).toLocaleString("es-AR")}
+                    />
+                  )}
+                </div>
+                {viewTarget.description && (
+                  <div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+                      Descripción
+                    </div>
+                    <div className="whitespace-pre-wrap text-[13px] text-[var(--color-text)]">
+                      {viewTarget.description}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       <ProductFormSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -661,7 +749,33 @@ export default function AdminProductsPage() {
   );
 }
 
-const GRID = "32px 2.5fr 1fr 1fr 1fr 0.8fr 0.9fr 70px";
+const GRID = "32px 2.5fr 1fr 1fr 1fr 0.8fr 0.9fr 110px";
+
+function Field({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "text-[13px] text-[var(--color-text)]",
+          mono && "font-mono text-[11px]"
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
 
 function IconBtn({
   onClick,
