@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { API_URL } from "@/lib/api";
 import type { Business, Category, Product, FAQ } from "@/lib/types";
 
@@ -21,11 +22,11 @@ async function getJson<T>(path: string): Promise<T | null> {
   }
 }
 
-export async function fetchBusiness(): Promise<Business | null> {
+export const fetchBusiness = cache(async (): Promise<Business | null> => {
   const data = await getJson<any>("/business/public");
   if (!data) return null;
   return (data.business ?? data.data ?? data) as Business;
-}
+});
 
 export async function fetchPublicCategories(): Promise<Category[]> {
   const data = await getJson<any>("/products/public/categories");

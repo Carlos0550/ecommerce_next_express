@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { useCartStore } from "@/stores/cart.store";
-import { CinnamonLogo, Icon } from "@/components/brand";
+import { BrandLogo, Icon } from "@/components/brand";
+import { useBusinessName } from "@/components/business-provider";
 import { cn } from "@/lib/utils";
 
 const Schema = z.object({
@@ -26,6 +27,7 @@ export default function ShopLoginPage() {
   const cartItems = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clear);
   const [showPw, setShowPw] = useState(false);
+  const businessName = useBusinessName();
 
   const { register, handleSubmit, formState: { errors } } = useForm<Input>({
     resolver: zodResolver(Schema),
@@ -64,7 +66,7 @@ export default function ShopLoginPage() {
         className="hidden flex-col justify-between p-12 md:flex"
         style={{ background: "var(--hero-gradient)" }}
       >
-        <CinnamonLogo size={18} />
+        <BrandLogo size={18} />
         <div className="max-w-[460px]">
           <h1 className="font-grotesk text-[44px] font-semibold leading-[1.05] tracking-[-1px]">
             Bienvenida
@@ -78,14 +80,14 @@ export default function ShopLoginPage() {
           </p>
         </div>
         <div className="text-[11px] text-[var(--color-text-dim)]">
-          © {new Date().getFullYear()} Cinnamon
+          © {new Date().getFullYear()} {businessName}
         </div>
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-[420px]">
           <div className="md:hidden">
-            <CinnamonLogo size={18} />
+            <BrandLogo size={18} />
           </div>
           <div className="mt-8 md:mt-0">
             <div className="text-[11px] font-semibold uppercase tracking-[1.5px] text-[var(--color-text-dim)]">

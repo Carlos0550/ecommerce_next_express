@@ -160,15 +160,16 @@ export interface Business {
     | "sunset"
     | "midnight";
   banner_config?: BannerConfig | null;
+  bankData?: BankData[];
 }
 
 export interface BankData {
-  id?: number;
-  bankName: string;
-  accountNumber: string;
-  accountHolder: string;
-  alias?: string;
-  cbu?: string;
+  id?: string | number;
+  bank_name: string;
+  account_number: string;
+  account_holder: string;
+  alias?: string | null;
+  cbu?: string | null;
 }
 
 export interface FAQ {

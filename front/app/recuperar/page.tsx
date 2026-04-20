@@ -8,7 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
-import { CinnamonLogo, Icon } from "@/components/brand";
+import { BrandLogo, Icon } from "@/components/brand";
+import { useBusinessName } from "@/components/business-provider";
 import { cn } from "@/lib/utils";
 
 const Schema = z.object({ email: z.string().email("Email inválido") });
@@ -19,6 +20,7 @@ type Account = "customer" | "admin";
 export default function RecuperarPage() {
   const [account, setAccount] = useState<Account>("customer");
   const [sent, setSent] = useState(false);
+  const businessName = useBusinessName();
 
   const {
     register,
@@ -53,7 +55,7 @@ export default function RecuperarPage() {
     >
       <div className="w-full max-w-[440px]">
         <div className="mb-8 flex items-center justify-between">
-          <CinnamonLogo size={18} />
+          <BrandLogo size={18} />
           <Link
             href={account === "admin" ? "/admin/login" : "/login"}
             className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text-dim)] hover:text-[var(--color-accent)]"
@@ -183,7 +185,7 @@ export default function RecuperarPage() {
         </div>
 
         <p className="mt-5 text-center text-[11px] text-[var(--color-text-dim)]">
-          © 2026 Cinnamon Makeup &amp; Accesorios
+          © {new Date().getFullYear()} {businessName}
         </p>
       </div>
     </div>

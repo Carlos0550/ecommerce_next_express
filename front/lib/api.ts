@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth.store";
+import { translateError } from "@/lib/error-messages";
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
@@ -46,8 +47,11 @@ export function storageUrl(path: string | null | undefined): string {
 export function unwrapError(err: unknown): string {
   if (err instanceof AxiosError) {
     const data = err.response?.data as { message?: string; error?: string } | undefined;
-    return data?.message || data?.error || err.message;
+    if (data?.message && data.message.length > 0 && !/^[a-z][a-z0-9_]*$/.test(data.message)) {
+      return data.message;
+    }
+    return translateError(data?.error ?? data?.message ?? err.code ?? err.message);
   }
-  if (err instanceof Error) return err.message;
-  return "Error inesperado";
+  if (err instanceof Error) return translateError(err.message);
+  return translateError(null);
 }

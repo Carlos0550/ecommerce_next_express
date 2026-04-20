@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth.store";
-import { CinnamonLogo, Icon, type IconName } from "@/components/brand";
+import { BrandLogo, Icon, type IconName } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import { Bell, Search } from "lucide-react";
 
@@ -56,7 +56,7 @@ export function AdminShell({
     <div className="grid h-screen grid-cols-[232px_1fr] overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
       <aside className="flex h-screen flex-col gap-0.5 overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-5">
         <div className="px-2.5 pb-4 pt-1">
-          <CinnamonLogo size={16} />
+          <BrandLogo size={16} />
         </div>
 
         <SidebarGroup label="Principal">

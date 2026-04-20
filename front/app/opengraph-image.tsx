@@ -1,11 +1,23 @@
 import { ImageResponse } from "next/og";
+import { fetchBusiness } from "@/lib/shop/server";
+import { BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
-export const alt = "Cinnamon · Makeup & Accesorios";
 
-export default function OG() {
+export async function generateImageMetadata() {
+  const b = await fetchBusiness();
+  const name = b?.name?.trim() || BUSINESS_NAME_FALLBACK;
+  return [{ contentType, size, id: "default", alt: name }];
+}
+
+export default async function OG() {
+  const business = await fetchBusiness();
+  const name = business?.name?.trim() || BUSINESS_NAME_FALLBACK;
+  const tagline =
+    business?.description?.trim() ||
+    "Productos seleccionados con identidad propia.";
   return new ImageResponse(
     (
       <div
@@ -24,16 +36,12 @@ export default function OG() {
         }}
       >
         <div style={{ fontSize: 24, letterSpacing: 6, textTransform: "uppercase", color: "#c9a4ff" }}>
-          Cinnamon
+          {name}
         </div>
         <div style={{ fontSize: 108, fontWeight: 700, lineHeight: 1, letterSpacing: -3 }}>
-          Glow noir,
-          <br />
-          <span style={{ color: "#c9a4ff", fontStyle: "italic" }}>muy tuyo.</span>
+          {name}
         </div>
-        <div style={{ fontSize: 28, color: "#a99bbe" }}>
-          Makeup, skin care y accesorios con identidad propia.
-        </div>
+        <div style={{ fontSize: 28, color: "#a99bbe" }}>{tagline}</div>
       </div>
     ),
     size,

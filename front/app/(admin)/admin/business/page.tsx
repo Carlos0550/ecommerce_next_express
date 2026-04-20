@@ -14,9 +14,9 @@ import type { BannerConfig } from "@/lib/types";
 
 type BankEntry = {
   id?: number | string;
-  bankName: string;
-  accountNumber: string;
-  accountHolder: string;
+  bank_name: string;
+  account_number: string;
+  account_holder: string;
   alias?: string;
   cbu?: string;
 };
@@ -171,7 +171,7 @@ export default function AdminBusinessPage() {
   const addBank = () =>
     set("bankData", [
       ...(form.bankData ?? []),
-      { bankName: "", accountNumber: "", accountHolder: "", alias: "", cbu: "" },
+      { bank_name: "", account_number: "", account_holder: "", alias: "", cbu: "" },
     ]);
   const removeBank = (i: number) =>
     set(
@@ -399,25 +399,25 @@ export default function AdminBusinessPage() {
                 >
                   <Field label="Banco">
                     <input
-                      value={b.bankName}
-                      onChange={(e) => updateBank(i, { bankName: e.target.value })}
+                      value={b.bank_name}
+                      onChange={(e) => updateBank(i, { bank_name: e.target.value })}
                       className={inputCls}
                     />
                   </Field>
                   <Field label="Titular">
                     <input
-                      value={b.accountHolder}
+                      value={b.account_holder}
                       onChange={(e) =>
-                        updateBank(i, { accountHolder: e.target.value })
+                        updateBank(i, { account_holder: e.target.value })
                       }
                       className={inputCls}
                     />
                   </Field>
                   <Field label="Nº cuenta">
                     <input
-                      value={b.accountNumber}
+                      value={b.account_number}
                       onChange={(e) =>
-                        updateBank(i, { accountNumber: e.target.value })
+                        updateBank(i, { account_number: e.target.value })
                       }
                       className={inputCls + " font-mono"}
                     />

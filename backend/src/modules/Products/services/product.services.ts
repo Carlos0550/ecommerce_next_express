@@ -730,7 +730,7 @@ class ProductServices {
       const sortBy = (req.query.sortBy as string) || undefined;
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
       const skip = (page - 1) * limit;
-      const where: any = { is_active: true, state: "active" };
+      const where: any = { is_active: true, state: "active", stock: { gt: 0 } };
       if (title) {
         const trimmed = title.trim();
         if (trimmed.length > 0) {
@@ -793,7 +793,8 @@ class ProductServices {
       });
       if (
         product?.is_active !== true ||
-        product.state !== ProductState.active
+        product.state !== ProductState.active ||
+        (product.stock ?? 0) <= 0
       ) {
         return res
           .status(404)

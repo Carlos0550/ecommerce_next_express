@@ -1,16 +1,27 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useBusiness, BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
 
 interface Props {
   size?: number;
   showTag?: boolean;
   className?: string;
-  /** Cuando es true usa `currentColor`, útil cuando vive dentro de un botón o header de otro tono. */
   inherit?: boolean;
+  /** Override del nombre — para entornos sin BusinessProvider (ej. preview SSR estático). */
+  name?: string;
+  /** Override del tagline — fallback al `business.type` si está disponible. */
+  tag?: string;
 }
 
-export function CinnamonLogo({ size = 20, showTag = true, className, inherit }: Props) {
+export function BrandLogo({ size = 20, showTag = true, className, inherit, name, tag }: Props) {
+  const business = useBusiness();
+  const resolvedName =
+    (name ?? business?.name)?.trim() || BUSINESS_NAME_FALLBACK;
+  const resolvedTag = (tag ?? business?.type)?.trim();
   const glyphColor = inherit ? "currentColor" : "var(--color-text)";
   const glyphAccent = inherit ? "currentColor" : "var(--color-accent)";
+
   return (
     <div className={cn("flex items-center gap-[10px]", className)}>
       <svg
@@ -40,9 +51,9 @@ export function CinnamonLogo({ size = 20, showTag = true, className, inherit }: 
           className="font-grotesk font-semibold tracking-[-0.5px]"
           style={{ fontSize: size, color: inherit ? "currentColor" : "var(--color-text)" }}
         >
-          Cinnamon
+          {resolvedName}
         </span>
-        {showTag ? (
+        {showTag && resolvedTag ? (
           <span
             className="mt-[3px] font-medium uppercase tracking-[1.5px]"
             style={{
@@ -50,7 +61,7 @@ export function CinnamonLogo({ size = 20, showTag = true, className, inherit }: 
               color: inherit ? "currentColor" : "var(--color-text-dim)",
             }}
           >
-            Makeup &amp; Accesorios
+            {resolvedTag}
           </span>
         ) : null}
       </div>

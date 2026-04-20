@@ -51,6 +51,7 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  Copy,
 } from "lucide-react";
 
 const MAP = {
@@ -105,6 +106,7 @@ const MAP = {
   alert: AlertCircle,
   success: CheckCircle2,
   error: XCircle,
+  copy: Copy,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof MAP;

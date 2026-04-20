@@ -221,6 +221,8 @@ model BusinessBankData {
   bank_name      String
   account_number String
   account_holder String
+  alias          String?
+  cbu            String?
   businessId     String
   business       BusinessData @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }

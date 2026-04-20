@@ -12,6 +12,8 @@ import { api, unwrapError } from "@/lib/api";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { Icon } from "@/components/brand";
+import { useBusiness } from "@/components/business-provider";
+import { BankDataDisplay } from "@/components/shop/bank-data-display";
 import { formatARS, cn } from "@/lib/utils";
 
 const Schema = z.object({
@@ -35,6 +37,8 @@ export default function CheckoutPage() {
   const items = useCartStore((s) => s.items);
   const clear = useCartStore((s) => s.clear);
   const user = useAuthStore((s) => s.user);
+  const business = useBusiness();
+  const bankAccounts = business?.bankData ?? [];
   const [method, setMethod] = useState(PAYMENTS[0].k);
 
   const subtotal = items.reduce((n, i) => n + i.price * i.quantity, 0);
@@ -67,10 +71,7 @@ export default function CheckoutPage() {
       clear();
       router.push("/orders");
     },
-    onError: (err) => {
-      const msg = unwrapError(err);
-      toast.error(msg === "rate_limit_exceeded" ? "Demasiados pedidos. Intentá más tarde." : msg);
-    },
+    onError: (err) => toast.error(unwrapError(err)),
   });
 
   if (items.length === 0) {
@@ -123,34 +124,45 @@ export default function CheckoutPage() {
 
           <Card title="2 · Método de pago">
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
-              {PAYMENTS.map((m) => (
-                <button
-                  key={m.k}
-                  type="button"
-                  onClick={() => setMethod(m.k)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-2xl border p-3.5 text-left transition md:flex-col md:items-center md:text-center",
-                    method === m.k
-                      ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
-                      : "border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-strong)]"
-                  )}
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-bg-input)]">
-                    <Icon
-                      name={m.icon}
-                      size={16}
-                      className={
-                        method === m.k ? "text-[var(--color-accent)]" : "text-[var(--color-text-dim)]"
-                      }
-                    />
-                  </div>
-                  <div className="md:mt-1">
-                    <div className="text-[13px] font-medium">{m.label}</div>
-                    <div className="text-[11px] text-[var(--color-text-dim)]">{m.sub}</div>
-                  </div>
-                </button>
-              ))}
+              {PAYMENTS.map((m) => {
+                const sub =
+                  m.k === "TRANSFERENCIA"
+                    ? bankAccounts.length > 0
+                      ? "CBU/Alias disponibles"
+                      : "No disponible"
+                    : m.sub;
+                return (
+                  <button
+                    key={m.k}
+                    type="button"
+                    onClick={() => setMethod(m.k)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl border p-3.5 text-left transition md:flex-col md:items-center md:text-center",
+                      method === m.k
+                        ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
+                        : "border-[var(--color-border)] bg-[var(--color-bg-card)] hover:border-[var(--color-border-strong)]"
+                    )}
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-bg-input)]">
+                      <Icon
+                        name={m.icon}
+                        size={16}
+                        className={
+                          method === m.k ? "text-[var(--color-accent)]" : "text-[var(--color-text-dim)]"
+                        }
+                      />
+                    </div>
+                    <div className="md:mt-1">
+                      <div className="text-[13px] font-medium">{m.label}</div>
+                      <div className="text-[11px] text-[var(--color-text-dim)]">{sub}</div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+            {method === "TRANSFERENCIA" && (
+              <BankDataDisplay accounts={bankAccounts} />
+            )}
           </Card>
         </div>
 

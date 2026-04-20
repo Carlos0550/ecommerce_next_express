@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCartStore } from "@/stores/cart.store";
 import { useAuthStore } from "@/stores/auth.store";
-import { CinnamonLogo, Icon } from "@/components/brand";
+import { BrandLogo, Icon } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
@@ -28,7 +28,7 @@ export function ShopHeader({ categories }: { categories: Category[] }) {
     <header className="sticky top-0 z-40 hidden border-b border-[var(--color-border)] bg-[var(--color-bg-elev)]/95 backdrop-blur-md md:block">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-8 px-10">
         <Link href="/" className="shrink-0">
-          <CinnamonLogo size={17} />
+          <BrandLogo size={17} />
         </Link>
         <nav className="flex flex-1 items-center gap-6">
           {links.map((l) => (

@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { useAuthStore, isAdmin } from "@/stores/auth.store";
 import type { AuthResponse } from "@/lib/types";
-import { CinnamonLogo, Icon } from "@/components/brand";
+import { BrandLogo, Icon } from "@/components/brand";
+import { useBusinessName } from "@/components/business-provider";
 import { formatARS } from "@/lib/utils";
 
 const LoginSchema = z.object({
@@ -25,6 +26,7 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [showPw, setShowPw] = useState(false);
+  const businessName = useBusinessName();
 
   const {
     register,
@@ -64,7 +66,7 @@ export default function AdminLoginPage() {
         className="hidden flex-col border-r border-[var(--color-border)] p-12 md:flex"
         style={{ background: "var(--hero-gradient)" }}
       >
-        <CinnamonLogo size={18} />
+        <BrandLogo size={18} />
         <div className="flex max-w-[480px] flex-1 flex-col justify-center">
           <div className="mb-4 text-[11px] font-bold uppercase tracking-[1.8px] text-[var(--color-accent)]">
             — Panel administrativo
@@ -102,7 +104,7 @@ export default function AdminLoginPage() {
           </div>
         </div>
         <div className="text-[11px] text-[var(--color-text-dim)]">
-          © 2026 Cinnamon Makeup &amp; Accesorios
+          © {new Date().getFullYear()} {businessName}
         </div>
       </aside>
 
@@ -112,7 +114,7 @@ export default function AdminLoginPage() {
           className="w-full max-w-[420px]"
         >
           <div className="md:hidden mb-8">
-            <CinnamonLogo size={18} />
+            <BrandLogo size={18} />
           </div>
           <div className="text-[11px] font-semibold uppercase tracking-[1.5px] text-[var(--color-text-dim)]">
             Ingreso administradora

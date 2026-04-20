@@ -7,6 +7,7 @@ import { api, unwrapError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Icon } from "@/components/brand";
+import { useBusinessName } from "@/components/business-provider";
 
 type Config = {
   whatsapp_enabled?: boolean;
@@ -28,12 +29,13 @@ type QRResponse = {
 
 export default function AdminWhatsAppPage() {
   const qc = useQueryClient();
+  const businessName = useBusinessName();
   const [enabled, setEnabled] = useState(false);
   const [allowed, setAllowed] = useState("");
-  const [sessionName, setSessionName] = useState("cinnamon");
+  const [sessionName, setSessionName] = useState("session");
   const [sessionPhone, setSessionPhone] = useState("");
   const [testTo, setTestTo] = useState("");
-  const [testMsg, setTestMsg] = useState("Hola desde Cinnamon 👋");
+  const [testMsg, setTestMsg] = useState(`Hola desde ${businessName} 👋`);
 
   const configQ = useQuery({
     queryKey: ["wa", "config"],

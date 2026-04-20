@@ -88,6 +88,8 @@ class BusinessServices {
                 bank_name: b.bank_name,
                 account_number: b.account_number,
                 account_holder: b.account_holder,
+                alias: b.alias ?? null,
+                cbu: b.cbu ?? null,
               })),
             }
           : undefined,
@@ -135,6 +137,8 @@ class BusinessServices {
                     bank_name: b.bank_name,
                     account_number: b.account_number,
                     account_holder: b.account_holder,
+                    alias: b.alias ?? null,
+                    cbu: b.cbu ?? null,
                   })),
                 }
               : { deleteMany: {} },

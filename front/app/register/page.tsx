@@ -10,7 +10,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
-import { CinnamonLogo, Icon, type IconName } from "@/components/brand";
+import { BrandLogo, Icon, type IconName } from "@/components/brand";
+import { useBusinessName } from "@/components/business-provider";
 import { cn } from "@/lib/utils";
 
 const Schema = z.object({
@@ -23,6 +24,7 @@ type Input = z.infer<typeof Schema>;
 export default function RegisterPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const businessName = useBusinessName();
   const { register, handleSubmit, formState: { errors } } = useForm<Input>({
     resolver: zodResolver(Schema),
   });
@@ -48,13 +50,13 @@ export default function RegisterPage() {
         className="hidden flex-col justify-between p-12 md:flex"
         style={{ background: "var(--hero-gradient)" }}
       >
-        <CinnamonLogo size={18} />
+        <BrandLogo size={18} />
         <div className="max-w-[460px]">
           <h1 className="font-grotesk text-[44px] font-semibold leading-[1.05] tracking-[-1px]">
             Sumate a
             <br />
             <em className="text-[var(--color-accent)]" style={{ fontStyle: "italic" }}>
-              Cinnamon.
+              {businessName}.
             </em>
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-[var(--color-text-dim)]">
@@ -62,14 +64,14 @@ export default function RegisterPage() {
           </p>
         </div>
         <div className="text-[11px] text-[var(--color-text-dim)]">
-          © {new Date().getFullYear()} Cinnamon
+          © {new Date().getFullYear()} {businessName}
         </div>
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-[420px]">
           <div className="md:hidden">
-            <CinnamonLogo size={18} />
+            <BrandLogo size={18} />
           </div>
           <div className="mt-8 md:mt-0">
             <div className="text-[11px] font-semibold uppercase tracking-[1.5px] text-[var(--color-text-dim)]">
