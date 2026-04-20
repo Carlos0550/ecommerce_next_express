@@ -53,8 +53,8 @@ export function AdminShell({
       .toUpperCase() ?? "AM";
 
   return (
-    <div className="grid min-h-screen grid-cols-[232px_1fr] bg-[var(--color-bg)] text-[var(--color-text)]">
-      <aside className="flex flex-col gap-0.5 border-r border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-5">
+    <div className="grid h-screen grid-cols-[232px_1fr] overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+      <aside className="flex h-screen flex-col gap-0.5 overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-5">
         <div className="px-2.5 pb-4 pt-1">
           <CinnamonLogo size={16} />
         </div>

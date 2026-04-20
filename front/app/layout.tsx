@@ -23,11 +23,19 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  ),
   title: {
     default: "Cinnamon · Makeup & Accesorios",
     template: "%s · Cinnamon",
   },
   description: "Maquillaje, skincare y accesorios con identidad propia.",
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    siteName: "Cinnamon",
+  },
 };
 
 export default function RootLayout({

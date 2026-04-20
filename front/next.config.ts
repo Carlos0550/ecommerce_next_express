@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "3001", pathname: "/api/storage/**" },
       { protocol: "https", hostname: "**.railway.app", pathname: "/api/storage/**" },
+      { protocol: "https", hostname: "**.railway.app", pathname: "/images/**" },
     ],
   },
   experimental: {

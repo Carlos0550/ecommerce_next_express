@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -130,7 +131,7 @@ export default function AdminDashboardPage() {
               { href: "/admin/orders", label: "Órdenes pendientes", icon: "package" as const },
               { href: "/admin/business", label: "Datos del negocio", icon: "settings" as const },
             ].map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className="flex items-center gap-3 rounded-[10px] border border-[var(--color-border)] px-3.5 py-2.5 text-[13px] text-[var(--color-text)] transition hover:bg-[var(--color-bg-input)]"
@@ -141,7 +142,7 @@ export default function AdminDashboardPage() {
                   className="text-[var(--color-accent)]"
                 />
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

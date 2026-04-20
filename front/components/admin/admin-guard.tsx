@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token, user, setUser, logout } = useAuthStore();
+  const { token, user, logout } = useAuthStore();
   const [status, setStatus] = useState<"checking" | "ok" | "redirect">(
     "checking"
   );
@@ -32,7 +32,6 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
         const { data } = await api.get("/admin/validate-token");
         if (cancelled) return;
         if (data?.ok) {
-          setUser({ ...user, ...data });
           setStatus("ok");
         } else {
           throw new Error("invalid");

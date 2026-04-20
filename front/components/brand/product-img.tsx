@@ -1,13 +1,37 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { storageUrl } from "@/lib/api";
 
 interface Props {
   label: string;
   tone?: "accent" | "pink" | "muted";
   rounded?: number;
   className?: string;
+  image?: string | null;
 }
 
-export function ProductImg({ label, tone = "accent", rounded = 14, className }: Props) {
+export function ProductImg({ label, tone = "accent", rounded = 14, className, image }: Props) {
+  if (image) {
+    return (
+      <div
+        className={cn("relative overflow-hidden border", className)}
+        style={{
+          aspectRatio: "1 / 1",
+          borderRadius: rounded,
+          borderColor: "var(--color-border)",
+          background: "var(--color-bg-input)",
+        }}
+      >
+        <Image
+          src={storageUrl(image)}
+          alt={label}
+          fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 320px"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
   const background =
     tone === "accent"
       ? "var(--color-accent-soft)"
@@ -20,7 +44,7 @@ export function ProductImg({ label, tone = "accent", rounded = 14, className }: 
       : tone === "pink"
         ? "var(--color-pink)"
         : "var(--color-text-muted)";
-  const patternId = `stripe-${label.replace(/\s+/g, "-")}`;
+  const patternId = `stripe-${(label || "img").replace(/\s+/g, "-")}`;
   return (
     <div
       className={cn("relative overflow-hidden border", className)}
