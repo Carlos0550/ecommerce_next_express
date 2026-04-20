@@ -96,7 +96,7 @@ export function AdminShell({
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-col">
+      <main className="flex h-screen min-w-0 flex-col">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)] px-7 py-[18px]">
           <div>
             <h1 className="font-grotesk text-[20px] font-semibold tracking-[-0.3px] text-[var(--color-text)]">

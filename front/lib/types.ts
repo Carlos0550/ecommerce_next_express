@@ -116,6 +116,28 @@ export interface Sale {
   createdAt: string;
 }
 
+export type BannerVariant =
+  | "none"
+  | "split-grid"
+  | "split-single"
+  | "centered"
+  | "overlay";
+
+export type BannerImageSource = "auto-products" | "products" | "custom";
+
+export interface BannerConfig {
+  variant: BannerVariant;
+  eyebrow?: string;
+  title_main?: string;
+  title_accent?: string;
+  subtitle?: string;
+  cta_label?: string;
+  cta_href?: string;
+  image_source: BannerImageSource;
+  product_ids?: number[];
+  custom_images?: string[];
+}
+
 export interface Business {
   id: number;
   name: string;
@@ -129,7 +151,15 @@ export interface Business {
   business_image?: string;
   favicon?: string;
   hero_image?: string;
-  active_palette?: "kuromi" | "mono" | "blush";
+  active_palette?:
+    | "kuromi"
+    | "mono"
+    | "blush"
+    | "sage"
+    | "ocean"
+    | "sunset"
+    | "midnight";
+  banner_config?: BannerConfig | null;
 }
 
 export interface BankData {

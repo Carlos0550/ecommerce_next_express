@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCartStore } from "@/stores/cart.store";
 import { Icon } from "@/components/brand";
 import { formatARS, cn } from "@/lib/utils";
+import { playAddToCartSound } from "@/lib/sound";
 import type { Product } from "@/lib/types";
 
 export function AddToCart({ product }: { product: Product }) {
@@ -18,6 +19,7 @@ export function AddToCart({ product }: { product: Product }) {
   const handleAdd = () => {
     if (outOfStock) return;
     add(product, qty);
+    playAddToCartSound();
     toast.success("Agregado al carrito");
   };
 
@@ -76,6 +78,7 @@ export function AddToCart({ product }: { product: Product }) {
           onClick={() => {
             if (outOfStock) return;
             add(product, qty);
+            playAddToCartSound();
             router.push("/cart");
           }}
           disabled={outOfStock}

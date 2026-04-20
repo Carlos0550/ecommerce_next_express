@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import { api, storageUrl, unwrapError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { BannerEditor, DEFAULT_BANNER } from "@/components/admin/banner-editor";
 import { Icon } from "@/components/brand";
 import { usePaletteStore, type PaletteName } from "@/stores/palette.store";
+import type { BannerConfig } from "@/lib/types";
 
 type BankEntry = {
   id?: number | string;
@@ -33,6 +35,7 @@ type BusinessData = {
   favicon?: string;
   hero_image?: string;
   active_palette?: PaletteName;
+  banner_config?: BannerConfig | null;
   bankData?: BankEntry[];
 };
 
@@ -40,6 +43,14 @@ const PALETTES: { id: PaletteName; label: string; swatch: string[] }[] = [
   { id: "kuromi", label: "Kuromi", swatch: ["#0a0a0a", "#b694ff", "#e0c3fc"] },
   { id: "mono", label: "Mono", swatch: ["#ffffff", "#000000", "#d4d4d4"] },
   { id: "blush", label: "Blush", swatch: ["#fff4f3", "#ff6b6b", "#ffc4bd"] },
+  { id: "sage", label: "Sage", swatch: ["#edf1e9", "#6f8e5a", "#c9a961"] },
+  { id: "ocean", label: "Ocean", swatch: ["#e8eff3", "#1f87a6", "#4fb3cf"] },
+  { id: "sunset", label: "Sunset", swatch: ["#fbedde", "#e16b3b", "#f0a35e"] },
+  {
+    id: "midnight",
+    label: "Midnight",
+    swatch: ["#07090f", "#6fa4ff", "#4fe3d6"],
+  },
 ];
 
 export default function AdminBusinessPage() {
@@ -68,9 +79,11 @@ export default function AdminBusinessPage() {
 
   useEffect(() => {
     if (businessQ.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync server state to local form
       setForm({
         ...businessQ.data,
         bankData: businessQ.data.bankData ?? [],
+        banner_config: businessQ.data.banner_config ?? DEFAULT_BANNER,
       });
     }
   }, [businessQ.data]);
@@ -290,7 +303,7 @@ export default function AdminBusinessPage() {
               <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
                 Paleta activa
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2.5">
+              <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
                 {PALETTES.map((p) => {
                   const active = palette === p.id;
                   return (
@@ -351,6 +364,12 @@ export default function AdminBusinessPage() {
               </div>
             </div>
           </div>
+
+          {/* Banner del shop */}
+          <BannerEditor
+            value={form.banner_config ?? DEFAULT_BANNER}
+            onChange={(next) => set("banner_config", next)}
+          />
 
           {/* Datos bancarios */}
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5 lg:col-span-2">

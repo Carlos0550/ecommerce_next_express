@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is([data-palette="kuromi"], [data-palette="kuromi"] *));
+@custom-variant dark (&:is([data-palette="kuromi"], [data-palette="kuromi"] *, [data-palette="midnight"], [data-palette="midnight"] *));
 
 /* ─────────────────────────────────────────────────────────────
    Cinnamon — 3 paletas como CSS vars en :root + data-palette.
@@ -82,6 +82,110 @@
     radial-gradient(100% 70% at 100% 100%, rgba(209, 107, 134, 0.14), transparent 60%),
     #fdf7f5;
   color-scheme: light;
+}
+
+[data-palette="sage"] {
+  --color-bg: #f7f8f4;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #edf1e9;
+  --color-border: rgba(74, 100, 60, 0.12);
+  --color-border-strong: rgba(74, 100, 60, 0.24);
+  --color-text: #1f2a1a;
+  --color-text-dim: #5c6e54;
+  --color-text-muted: #98a38d;
+  --color-accent: #6f8e5a;
+  --color-accent-strong: #557247;
+  --color-accent-soft: rgba(111, 142, 90, 0.12);
+  --color-pink: #c9a961;
+  --color-pink-soft: rgba(201, 169, 97, 0.16);
+  --color-success: #4f7b4d;
+  --color-warn: #b98f35;
+  --color-danger: #b23e3e;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 15% 0%, rgba(111, 142, 90, 0.20), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(201, 169, 97, 0.14), transparent 60%),
+    #f7f8f4;
+  color-scheme: light;
+}
+
+[data-palette="ocean"] {
+  --color-bg: #f4f8fa;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #e8eff3;
+  --color-border: rgba(36, 90, 110, 0.12);
+  --color-border-strong: rgba(36, 90, 110, 0.26);
+  --color-text: #0f2a33;
+  --color-text-dim: #4e6a75;
+  --color-text-muted: #9aaab2;
+  --color-accent: #1f87a6;
+  --color-accent-strong: #1a6f8a;
+  --color-accent-soft: rgba(31, 135, 166, 0.12);
+  --color-pink: #4fb3cf;
+  --color-pink-soft: rgba(79, 179, 207, 0.16);
+  --color-success: #1f8f6e;
+  --color-warn: #c49b4f;
+  --color-danger: #c45b5b;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(79, 179, 207, 0.22), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(31, 135, 166, 0.14), transparent 60%),
+    #f4f8fa;
+  color-scheme: light;
+}
+
+[data-palette="sunset"] {
+  --color-bg: #fff7f0;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #fbedde;
+  --color-border: rgba(176, 96, 38, 0.12);
+  --color-border-strong: rgba(176, 96, 38, 0.24);
+  --color-text: #2a1810;
+  --color-text-dim: #6b4f40;
+  --color-text-muted: #b09584;
+  --color-accent: #e16b3b;
+  --color-accent-strong: #c2552a;
+  --color-accent-soft: rgba(225, 107, 59, 0.12);
+  --color-pink: #f0a35e;
+  --color-pink-soft: rgba(240, 163, 94, 0.18);
+  --color-success: #6b9050;
+  --color-warn: #d69434;
+  --color-danger: #c84a36;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 10% 0%, rgba(240, 163, 94, 0.26), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(225, 107, 59, 0.16), transparent 60%),
+    #fff7f0;
+  color-scheme: light;
+}
+
+[data-palette="midnight"] {
+  --color-bg: #07090f;
+  --color-bg-elev: #0f1422;
+  --color-bg-card: #141a2b;
+  --color-bg-input: #1a2236;
+  --color-border: rgba(112, 165, 255, 0.12);
+  --color-border-strong: rgba(112, 165, 255, 0.22);
+  --color-text: #eef3ff;
+  --color-text-dim: #94a6c9;
+  --color-text-muted: #5b6a85;
+  --color-accent: #6fa4ff;
+  --color-accent-strong: #4d87e8;
+  --color-accent-soft: rgba(111, 164, 255, 0.14);
+  --color-pink: #4fe3d6;
+  --color-pink-soft: rgba(79, 227, 214, 0.16);
+  --color-success: #5fe3a6;
+  --color-warn: #ffcb52;
+  --color-danger: #ff7e7e;
+  --color-button-text: #07090f;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(111, 164, 255, 0.26), transparent 60%),
+    radial-gradient(80% 60% at 90% 100%, rgba(79, 227, 214, 0.18), transparent 60%),
+    #07090f;
+  color-scheme: dark;
 }
 
 /* Tailwind v4 theme: exponer tokens como utilidades */

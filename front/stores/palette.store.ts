@@ -3,12 +3,23 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type PaletteName = "kuromi" | "mono" | "blush";
+export type PaletteName =
+  | "kuromi"
+  | "mono"
+  | "blush"
+  | "sage"
+  | "ocean"
+  | "sunset"
+  | "midnight";
 
 export const PALETTE_META: Record<PaletteName, { label: string; swatch: string; isDark: boolean }> = {
   kuromi: { label: "Kuromi", swatch: "#c9a4ff", isDark: true },
   mono: { label: "Minimal B&N", swatch: "#0b0a0d", isDark: false },
   blush: { label: "Blanco y Rosa", swatch: "#d16b86", isDark: false },
+  sage: { label: "Sage", swatch: "#6f8e5a", isDark: false },
+  ocean: { label: "Ocean", swatch: "#1f87a6", isDark: false },
+  sunset: { label: "Sunset", swatch: "#e16b3b", isDark: false },
+  midnight: { label: "Midnight", swatch: "#6fa4ff", isDark: true },
 };
 
 interface PaletteState {

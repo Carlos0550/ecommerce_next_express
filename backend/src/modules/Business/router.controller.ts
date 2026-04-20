@@ -5,7 +5,36 @@ import { generateBusinessDescription } from "@/config/groq";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
 import fs from "fs";
 import { logger } from "@/utils/logger";
+import { PALETTES, isValidPaletteName } from "@/templates/palettes";
 class BusinessController {
+  async uploadBannerImage(req: Request, res: Response) {
+    try {
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) {
+        return res
+          .status(400)
+          .json({ error: "No se proporcionó ningún archivo" });
+      }
+      const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+      const timestamp = Date.now();
+      const uniqueName = `banner-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      const uploaded = await uploadToBucket(
+        buffer,
+        uniqueName,
+        "business",
+        "banner",
+        file.mimetype,
+      );
+      if (!uploaded.path) {
+        return res.status(500).json({ error: "Error al subir la imagen" });
+      }
+      const publicUrl = getPublicUrlFor("business", uploaded.path);
+      return res.json({ success: true, url: publicUrl });
+    } catch (error) {
+      logger.error("uploadBannerImage_error", error);
+      return res.status(500).json({ error: "Error al procesar la imagen" });
+    }
+  }
   async uploadImage(req: Request, res: Response) {
     try {
       const file = (req as any).file as Express.Multer.File | undefined;
@@ -152,10 +181,10 @@ class BusinessController {
   async setActivePalette(req: Request, res: Response) {
     try {
       const { palette } = req.body as { palette?: string };
-      if (!palette || !["kuromi", "mono", "blush"].includes(palette)) {
-        return res
-          .status(400)
-          .json({ error: "Paleta inválida. Valores: kuromi | mono | blush" });
+      if (!palette || !isValidPaletteName(palette)) {
+        return res.status(400).json({
+          error: `Paleta inválida. Valores: ${Object.keys(PALETTES).join(" | ")}`,
+        });
       }
       await businessServices.setActivePalette(palette);
       return res.status(200).json({ palette });

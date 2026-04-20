@@ -21,6 +21,16 @@ router.post(
   (req: Request, res: Response) => businessController.uploadImage(req, res),
 );
 router.post(
+  "/upload-banner-image",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  uploadSingleImage("file"),
+  handleImageUploadError,
+  validateImageMagicBytes,
+  (req: Request, res: Response) =>
+    businessController.uploadBannerImage(req, res),
+);
+router.post(
   "/generate-description",
   requireAuth,
   requireRole(["ADMIN"]),

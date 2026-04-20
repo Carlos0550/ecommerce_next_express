@@ -212,6 +212,7 @@ model BusinessData {
   whatsapp_allowed_remitents String?
   hero_image                 String?
   active_palette             String             @default("kuromi")
+  banner_config              Json?
   bankData                   BusinessBankData[]
 }
 

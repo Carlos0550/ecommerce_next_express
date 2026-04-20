@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "localhost", port: "3001", pathname: "/api/storage/**" },
       { protocol: "https", hostname: "**.railway.app", pathname: "/api/storage/**" },
       { protocol: "https", hostname: "**.railway.app", pathname: "/images/**" },
+      { protocol: "https", hostname: "**.up.railway.app", pathname: "/**" },
     ],
   },
   experimental: {

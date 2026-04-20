@@ -3,12 +3,17 @@ import { Hero } from "@/components/shop/hero";
 import { CategoryChips } from "@/components/shop/category-chips";
 import { ProductCard } from "@/components/shop/product-card";
 import { Icon } from "@/components/brand";
-import { fetchPublicCategories, fetchPublicProducts } from "@/lib/shop/server";
+import {
+  fetchBusiness,
+  fetchPublicCategories,
+  fetchPublicProducts,
+} from "@/lib/shop/server";
 
-export const revalidate = 60;
+export const revalidate = 10;
 
 export default async function ShopHome() {
-  const [categories, products] = await Promise.all([
+  const [business, categories, products] = await Promise.all([
+    fetchBusiness(),
     fetchPublicCategories(),
     fetchPublicProducts({ limit: 24 }),
   ]);
@@ -18,7 +23,7 @@ export default async function ShopHome() {
       <div className="md:hidden">
         <MobileHeader />
       </div>
-      <Hero featured={products} />
+      <Hero featured={products} config={business?.banner_config} />
 
       <div className="mx-auto max-w-[1280px] px-4 pt-4 md:px-10 md:pt-6">
         <div className="flex h-11 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3.5 md:hidden">
