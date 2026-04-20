@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { Router } from "express";
 import {
   requireAuth,
+  requireRole,
   attachAuthIfPresent,
 } from "@/middlewares/auth.middleware";
 import {
@@ -41,6 +42,49 @@ router.get("/", requireAuth, async (req: Request, res: Response) => {
   const rs = await service.listUserOrders(userId, page, limit);
   res.json(rs);
 });
+router.get(
+  "/admin",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  async (req: Request, res: Response) => {
+    const status = (req.query.status as string | undefined) || undefined;
+    const q = (req.query.q as string | undefined) || undefined;
+    const page = Number((req.query.page as string) || "1");
+    const limit = Number((req.query.limit as string) || "20");
+    const rs = await service.listAdminOrders({
+      status: status as any,
+      page,
+      limit,
+      q,
+    });
+    res.json(rs);
+  },
+);
+router.patch(
+  "/:id/status",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  async (req: Request, res: Response) => {
+    const id = String((req.params as any)?.id || "");
+    const status = String((req.body as any)?.status || "").toUpperCase();
+    const allowed = [
+      "PENDING",
+      "PAID",
+      "PROCESSING",
+      "SHIPPED",
+      "DELIVERED",
+      "CANCELLED",
+      "REFUNDED",
+    ];
+    if (!id) return res.status(400).json({ ok: false, error: "missing_id" });
+    if (!allowed.includes(status))
+      return res.status(400).json({ ok: false, error: "invalid_status" });
+    const rs = await service.updateStatus(id, status as any);
+    if (!rs.ok)
+      return res.status((rs as any).status || 400).json(rs);
+    res.json(rs);
+  },
+);
 router.post(
   "/:id/receipt",
   requireAuth,

@@ -6,7 +6,7 @@ import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
 import { logger } from "@/utils/logger";
 import { decrementStock } from "@/utils/stock";
-import type { PaymentMethod } from "@prisma/client";
+import type { PaymentMethod, OrderStatus } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
 interface OrderItemInput { product_id: string; quantity: number; options?: any }
@@ -216,6 +216,77 @@ export default class OrdersServices {
       console.error("saveTransferReceipt_error", err);
       return { ok: false, status: 500, error: "internal_error" };
     }
+  }
+  async listAdminOrders({
+    status,
+    page = 1,
+    limit = 20,
+    q,
+  }: {
+    status?: OrderStatus | "ALL";
+    page?: number;
+    limit?: number;
+    q?: string;
+  }) {
+    const take = Math.max(1, Math.min(100, Number(limit) || 20));
+    const skip = (Math.max(1, Number(page) || 1) - 1) * take;
+    const where: any = {};
+    if (status && status !== "ALL") where.status = status;
+    if (q && q.trim()) {
+      const term = q.trim();
+      where.OR = [
+        { id: { contains: term, mode: "insensitive" } },
+        { buyer_email: { contains: term, mode: "insensitive" } },
+        { buyer_name: { contains: term, mode: "insensitive" } },
+        { saleId: { contains: term, mode: "insensitive" } },
+      ];
+    }
+    const [items, total] = await Promise.all([
+      prisma.orders.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        skip,
+        take,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+          sale: {
+            select: {
+              id: true,
+              source: true,
+              processed: true,
+              declined: true,
+              decline_reason: true,
+              payment_method: true,
+            },
+          },
+        },
+      }),
+      prisma.orders.count({ where }),
+    ]);
+    const totalPages = Math.ceil(total / take) || 1;
+    return {
+      ok: true,
+      orders: items,
+      pagination: {
+        total,
+        page: Math.max(1, Number(page) || 1),
+        limit: take,
+        totalPages,
+        hasNextPage: (Number(page) || 1) < totalPages,
+        hasPrevPage: (Number(page) || 1) > 1,
+      },
+    };
+  }
+  async updateStatus(id: string, status: OrderStatus) {
+    const order = await prisma.orders.findUnique({ where: { id } });
+    if (!order) return { ok: false, status: 404, error: "order_not_found" };
+    const updated = await prisma.orders.update({
+      where: { id },
+      data: { status },
+    });
+    return { ok: true, order: updated };
   }
   async listUserOrders(userId: number, page = 1, limit = 10) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
