@@ -49,6 +49,7 @@ export default function AdminPosPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [method, setMethod] = useState<Method>("EFECTIVO");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const playBeep = (freq: number, duration = 0.08) => {
@@ -263,16 +264,150 @@ export default function AdminPosPage() {
       toast.success("Venta registrada");
       playSuccess();
       setCart([]);
+      setSheetOpen(false);
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["products"] });
     },
     onError: (err) => toast.error(unwrapError(err)),
   });
 
+  const ticket = (
+    <>
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+            Ticket
+          </div>
+          <div className="font-grotesk text-[16px] font-semibold text-[var(--color-text)]">
+            {itemCount} {itemCount === 1 ? "producto" : "productos"}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {cart.length > 0 && (
+            <button
+              onClick={clearCart}
+              className="text-[11px] text-[var(--color-danger)] hover:underline"
+            >
+              Vaciar
+            </button>
+          )}
+          <button
+            onClick={() => setSheetOpen(false)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)] lg:hidden"
+            aria-label="Cerrar"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-2">
+        {cart.length === 0 && (
+          <div className="flex h-40 items-center justify-center text-center text-[12px] text-[var(--color-text-dim)]">
+            Tocá un producto para agregarlo al ticket.
+          </div>
+        )}
+        {cart.map((l) => (
+          <div
+            key={l.product_id}
+            className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-2"
+          >
+            <div className="relative h-11 w-11 overflow-hidden rounded-md bg-[var(--color-bg-card)]">
+              {l.image ? (
+                <Image
+                  src={storageUrl(l.image)}
+                  alt={l.title}
+                  fill
+                  sizes="44px"
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-[var(--color-text-dim)]">
+                  <Icon name="image" size={14} />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12px] font-medium text-[var(--color-text)]">
+                {l.title}
+              </div>
+              <div className="text-[11px] text-[var(--color-text-dim)]">
+                {formatARS(l.price)} c/u
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => changeQty(l.product_id, -1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-card)]"
+              >
+                −
+              </button>
+              <div className="w-6 text-center font-mono text-[12px] text-[var(--color-text)]">
+                {l.quantity}
+              </div>
+              <button
+                onClick={() => changeQty(l.product_id, +1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-card)]"
+              >
+                +
+              </button>
+              <button
+                onClick={() => removeLine(l.product_id)}
+                className="ml-1 flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-danger)] hover:bg-[var(--color-bg-card)]"
+                title="Quitar"
+              >
+                <Icon name="trash" size={12} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-[var(--color-border)] p-3">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+          Método de pago
+        </div>
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          {PAYMENT_METHODS.map((m) => (
+            <button
+              key={m.value}
+              onClick={() => setMethod(m.value)}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-[10px] border px-2 py-2 text-[12px] font-semibold transition",
+                method === m.value
+                  ? "border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_15%,transparent)] text-[var(--color-accent)]"
+                  : "border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+              )}
+            >
+              <Icon name={m.icon} size={13} />
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-3 flex items-baseline justify-between">
+          <div className="text-[12px] text-[var(--color-text-dim)]">Total</div>
+          <div className="font-grotesk text-[22px] font-bold text-[var(--color-text)]">
+            {formatARS(total)}
+          </div>
+        </div>
+
+        <button
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending || cart.length === 0}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--color-accent)] text-[14px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
+        >
+          <Icon name="check" size={15} />
+          {saveMut.isPending ? "Procesando…" : "Cobrar venta"}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <AdminShell title="POS" subtitle="Ventas presenciales en caja">
-      <div className="grid gap-3.5 lg:h-[calc(100vh-130px)] lg:grid-cols-[1fr_380px]">
-        <section className="flex min-h-0 flex-col gap-3.5">
+      <div className="grid grid-cols-1 gap-3.5 lg:h-[calc(100vh-130px)] lg:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="flex min-h-0 min-w-0 flex-col gap-3 pb-24 lg:pb-0">
           <div className="relative">
             <input
               value={search}
@@ -313,7 +448,7 @@ export default function AdminPosPage() {
             ))}
           </div>
 
-          <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+          <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
             {productsQ.isLoading && (
               <div className="col-span-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center text-sm text-[var(--color-text-dim)]">
                 Cargando productos…
@@ -373,128 +508,42 @@ export default function AdminPosPage() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] lg:h-full">
-          <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
-                Ticket
-              </div>
-              <div className="font-grotesk text-[16px] font-semibold text-[var(--color-text)]">
-                {itemCount} {itemCount === 1 ? "producto" : "productos"}
-              </div>
-            </div>
-            {cart.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-[11px] text-[var(--color-danger)] hover:underline"
-              >
-                Vaciar
-              </button>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-3 py-2">
-            {cart.length === 0 && (
-              <div className="flex h-40 items-center justify-center text-center text-[12px] text-[var(--color-text-dim)]">
-                Tocá un producto para agregarlo al ticket.
-              </div>
-            )}
-            {cart.map((l) => (
-              <div
-                key={l.product_id}
-                className="mb-2 flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-2"
-              >
-                <div className="relative h-11 w-11 overflow-hidden rounded-md bg-[var(--color-bg-card)]">
-                  {l.image ? (
-                    <Image
-                      src={storageUrl(l.image)}
-                      alt={l.title}
-                      fill
-                      sizes="44px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-[var(--color-text-dim)]">
-                      <Icon name="image" size={14} />
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] font-medium text-[var(--color-text)]">
-                    {l.title}
-                  </div>
-                  <div className="text-[11px] text-[var(--color-text-dim)]">
-                    {formatARS(l.price)} c/u
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => changeQty(l.product_id, -1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-card)]"
-                  >
-                    −
-                  </button>
-                  <div className="w-6 text-center font-mono text-[12px] text-[var(--color-text)]">
-                    {l.quantity}
-                  </div>
-                  <button
-                    onClick={() => changeQty(l.product_id, +1)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-card)]"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={() => removeLine(l.product_id)}
-                    className="ml-1 flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-danger)] hover:bg-[var(--color-bg-card)]"
-                    title="Quitar"
-                  >
-                    <Icon name="trash" size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-[var(--color-border)] p-3">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
-              Método de pago
-            </div>
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m.value}
-                  onClick={() => setMethod(m.value)}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-[10px] border px-2 py-2 text-[12px] font-semibold transition",
-                    method === m.value
-                      ? "border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_15%,transparent)] text-[var(--color-accent)]"
-                      : "border-[var(--color-border)] bg-[var(--color-bg-input)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
-                  )}
-                >
-                  <Icon name={m.icon} size={13} />
-                  {m.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mb-3 flex items-baseline justify-between">
-              <div className="text-[12px] text-[var(--color-text-dim)]">Total</div>
-              <div className="font-grotesk text-[22px] font-bold text-[var(--color-text)]">
-                {formatARS(total)}
-              </div>
-            </div>
-
-            <button
-              onClick={() => saveMut.mutate()}
-              disabled={saveMut.isPending || cart.length === 0}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--color-accent)] text-[14px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
-            >
-              <Icon name="check" size={15} />
-              {saveMut.isPending ? "Procesando…" : "Cobrar venta"}
-            </button>
-          </div>
+        <aside className="hidden min-h-0 flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] lg:flex lg:h-full">
+          {ticket}
         </aside>
       </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[var(--color-bg-elev)]/95 p-3 backdrop-blur-md lg:hidden">
+        <div className="mb-1.5 text-center text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+          Tocá aquí para concretar la venta
+        </div>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          disabled={cart.length === 0}
+          className="flex h-12 w-full items-center justify-between rounded-xl bg-[var(--color-accent)] px-4 text-[var(--color-button-text)] disabled:opacity-50"
+        >
+          <span className="flex items-center gap-2 text-[13px] font-semibold">
+            <Icon name="cart" size={15} />
+            {itemCount} {itemCount === 1 ? "producto" : "productos"}
+          </span>
+          <span className="font-grotesk text-[16px] font-bold">
+            {formatARS(total)}
+          </span>
+        </button>
+      </div>
+
+      {sheetOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setSheetOpen(false)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col rounded-t-2xl border-t border-[var(--color-border)] bg-[var(--color-bg-card)]">
+            {ticket}
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }
