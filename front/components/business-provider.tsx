@@ -2,10 +2,11 @@
 
 import { createContext, useContext } from "react";
 import type { Business } from "@/lib/types";
+import { BUSINESS_NAME_FALLBACK } from "@/lib/shop/constants";
+
+export { BUSINESS_NAME_FALLBACK };
 
 const BusinessContext = createContext<Business | null>(null);
-
-export const BUSINESS_NAME_FALLBACK = "Tu tienda online";
 
 export function BusinessProvider({
   value,

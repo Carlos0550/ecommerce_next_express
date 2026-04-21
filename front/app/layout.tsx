@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
-import { BusinessProvider, BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
+import { BusinessProvider } from "@/components/business-provider";
+import { BUSINESS_NAME_FALLBACK } from "@/lib/shop/constants";
 import { fetchBusiness } from "@/lib/shop/server";
 import { storageUrl } from "@/lib/api";
 import "./globals.css";

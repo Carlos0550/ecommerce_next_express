@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { fetchBusiness } from "@/lib/shop/server";
-import { BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
+import { BUSINESS_NAME_FALLBACK } from "@/lib/shop/constants";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
