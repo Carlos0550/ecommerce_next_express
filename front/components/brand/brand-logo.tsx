@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { storageUrl } from "@/lib/api";
 import { useBusiness, BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
 
 interface Props {
@@ -21,31 +22,45 @@ export function BrandLogo({ size = 20, showTag = true, className, inherit, name,
   const resolvedTag = (tag ?? business?.type)?.trim();
   const glyphColor = inherit ? "currentColor" : "var(--color-text)";
   const glyphAccent = inherit ? "currentColor" : "var(--color-accent)";
+  const imgSrc = business?.business_image ? storageUrl(business.business_image) : "";
+  const glyphSize = Math.round(size * 1.7);
 
   return (
     <div className={cn("flex items-center gap-[10px]", className)}>
-      <svg
-        width={size * 1.4}
-        height={size * 1.4}
-        viewBox="0 0 40 40"
-        className="shrink-0"
-        aria-hidden
-      >
-        <circle cx="20" cy="22" r="13" fill="none" stroke={glyphColor} strokeWidth="1.6" />
-        <path
-          d="M10 11 L14 16 M30 11 L26 16"
-          stroke={glyphColor}
-          strokeWidth="1.6"
-          strokeLinecap="round"
+      {imgSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imgSrc}
+          alt={resolvedName}
+          width={glyphSize}
+          height={glyphSize}
+          style={{ width: glyphSize, height: glyphSize }}
+          className="shrink-0 rounded-full object-cover"
         />
-        <circle cx="20" cy="22" r="2" fill={glyphAccent} />
-        <path
-          d="M20 16.5 L20 18 M20 26 L20 27.5 M14.5 22 L16 22 M24 22 L25.5 22"
-          stroke={glyphAccent}
-          strokeWidth="1.4"
-          strokeLinecap="round"
-        />
-      </svg>
+      ) : (
+        <svg
+          width={size * 1.4}
+          height={size * 1.4}
+          viewBox="0 0 40 40"
+          className="shrink-0"
+          aria-hidden
+        >
+          <circle cx="20" cy="22" r="13" fill="none" stroke={glyphColor} strokeWidth="1.6" />
+          <path
+            d="M10 11 L14 16 M30 11 L26 16"
+            stroke={glyphColor}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <circle cx="20" cy="22" r="2" fill={glyphAccent} />
+          <path
+            d="M20 16.5 L20 18 M20 26 L20 27.5 M14.5 22 L16 22 M24 22 L25.5 22"
+            stroke={glyphAccent}
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
       <div className="flex flex-col leading-none">
         <span
           className="font-grotesk font-semibold tracking-[-0.5px]"

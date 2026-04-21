@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { BusinessProvider, BUSINESS_NAME_FALLBACK } from "@/components/business-provider";
 import { fetchBusiness } from "@/lib/shop/server";
+import { storageUrl } from "@/lib/api";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,8 +31,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     business?.description?.trim() ||
     "Productos seleccionados con identidad propia.";
-  const ogImage = business?.hero_image?.trim() || business?.business_image?.trim();
-  const iconSrc = business?.business_image?.trim();
+  const heroRaw = business?.hero_image?.trim() || business?.business_image?.trim();
+  const ogImage = heroRaw ? storageUrl(heroRaw) : undefined;
+  const iconRaw = business?.business_image?.trim();
+  const iconSrc = iconRaw ? storageUrl(iconRaw) : undefined;
   return {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
