@@ -176,9 +176,11 @@ export default function AdminSalesPage() {
         <button
           onClick={exportCsv}
           disabled={sales.length === 0}
-          className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3.5 py-2.5 text-[13px] font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-input)] disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 text-[12px] font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-input)] disabled:opacity-50 md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
         >
-          <Icon name="download" size={14} /> Exportar CSV
+          <Icon name="download" size={14} />
+          <span className="hidden sm:inline">Exportar CSV</span>
+          <span className="sm:hidden">CSV</span>
         </button>
       }
     >
@@ -262,7 +264,8 @@ export default function AdminSalesPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+      <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+       <div className="min-w-[820px]">
         <div
           className="grid gap-3 border-b border-[var(--color-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]"
           style={{ gridTemplateColumns: GRID }}
@@ -366,6 +369,7 @@ export default function AdminSalesPage() {
             </div>
           );
         })}
+       </div>
       </div>
 
       {totalPages > 1 && (

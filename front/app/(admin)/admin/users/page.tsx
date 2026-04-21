@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
       subtitle={`${total} ${tab === "admin" ? "administradores" : "clientes"} registrados`}
     >
       <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-        <div className="inline-flex rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
+        <div className="inline-flex shrink-0 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
           {(
             [
               { id: "customer", label: "Clientes" },
@@ -108,9 +108,9 @@ export default function AdminUsersPage() {
           ))}
         </div>
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 md:block" />
 
-        <div className="flex h-10 items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3">
+        <div className="flex h-10 w-full items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 md:w-auto">
           <Icon
             name="search"
             size={13}
@@ -123,12 +123,13 @@ export default function AdminUsersPage() {
               setPage(1);
             }}
             placeholder="Buscar por nombre o email"
-            className="w-[220px] bg-transparent text-[13px] outline-none placeholder:text-[var(--color-text-muted)]"
+            className="w-full bg-transparent text-[13px] outline-none placeholder:text-[var(--color-text-muted)] md:w-[220px]"
           />
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+      <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+       <div className="min-w-[720px]">
         <div
           className="grid gap-3 border-b border-[var(--color-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]"
           style={{ gridTemplateColumns: GRID }}
@@ -230,6 +231,7 @@ export default function AdminUsersPage() {
             </div>
           );
         })}
+       </div>
       </div>
 
       {totalPages > 1 && (

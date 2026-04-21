@@ -57,15 +57,16 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const business = await fetchBusiness();
+  const palette = business?.active_palette ?? "kuromi";
   return (
     <html
       lang="es"
-      data-palette="kuromi"
+      data-palette={palette}
       className={`${inter.variable} ${grotesk.variable} ${jetbrains.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-full antialiased">
-        <Providers>
+        <Providers serverPalette={palette}>
           <BusinessProvider value={business}>{children}</BusinessProvider>
         </Providers>
       </body>

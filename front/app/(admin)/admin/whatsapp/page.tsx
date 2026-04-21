@@ -174,7 +174,7 @@ export default function AdminWhatsAppPage() {
 
           {!connected && (
             <>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block">
                   <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text-dim)]">
                     Nombre sesión
@@ -282,7 +282,7 @@ export default function AdminWhatsAppPage() {
         <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
           Mensaje de prueba
         </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr_auto]">
+        <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr_auto] md:items-end">
           <label className="block">
             <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text-dim)]">
               Destino
@@ -307,7 +307,7 @@ export default function AdminWhatsAppPage() {
           <button
             onClick={() => testMut.mutate()}
             disabled={testMut.isPending || !connected || !testTo}
-            className="self-end inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
           >
             <Icon name="arrow" size={14} />
             {testMut.isPending ? "Enviando…" : "Enviar"}

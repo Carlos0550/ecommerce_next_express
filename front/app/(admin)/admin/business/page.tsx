@@ -221,10 +221,15 @@ export default function AdminBusinessPage() {
         <button
           onClick={() => saveMut.mutate()}
           disabled={saveMut.isPending || !form.id}
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
+          className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60 md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
         >
           <Icon name="check" size={14} />
-          {saveMut.isPending ? "Guardando…" : "Guardar cambios"}
+          <span className="hidden sm:inline">
+            {saveMut.isPending ? "Guardando…" : "Guardar cambios"}
+          </span>
+          <span className="sm:hidden">
+            {saveMut.isPending ? "…" : "Guardar"}
+          </span>
         </button>
       }
     >
@@ -241,7 +246,7 @@ export default function AdminBusinessPage() {
             <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
               Datos del negocio
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Nombre">
                 <input
                   value={form.name}
@@ -271,7 +276,7 @@ export default function AdminBusinessPage() {
                   className={inputCls + " font-mono"}
                 />
               </Field>
-              <Field label="Dirección" className="col-span-2">
+              <Field label="Dirección" className="sm:col-span-2">
                 <input
                   value={form.address}
                   onChange={(e) => set("address", e.target.value)}
@@ -292,7 +297,7 @@ export default function AdminBusinessPage() {
                   className={inputCls}
                 />
               </Field>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <div className="flex items-center justify-between">
                   <div className="text-[11px] font-semibold text-[var(--color-text-dim)]">
                     Descripción
@@ -416,7 +421,7 @@ export default function AdminBusinessPage() {
               {(form.bankData ?? []).map((b, i) => (
                 <div
                   key={i}
-                  className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3 lg:grid-cols-5"
+                  className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3 sm:grid-cols-2 lg:grid-cols-5"
                 >
                   <Field label="Banco">
                     <input

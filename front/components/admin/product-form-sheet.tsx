@@ -136,7 +136,7 @@ export function ProductFormSheet({
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Categoría" error={errors.category_id?.message}>
               <select
                 {...register("category_id")}
@@ -159,7 +159,7 @@ export function ProductFormSheet({
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Precio (ARS)" error={errors.price?.message}>
               <input
                 {...register("price")}

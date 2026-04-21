@@ -78,9 +78,10 @@ export default function AdminDashboardPage() {
       title="Dashboard"
       subtitle={`Observabilidad del negocio · ${subtitle}`}
       actions={
-        <button className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]">
+        <button className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]">
           <Icon name="download" size={14} />
-          Exportar reporte
+          <span className="hidden sm:inline">Exportar reporte</span>
+          <span className="sm:hidden">Exportar</span>
         </button>
       }
     >

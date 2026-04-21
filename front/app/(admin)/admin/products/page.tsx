@@ -245,24 +245,29 @@ export default function AdminProductsPage() {
               });
             }}
             disabled={wipeAllMut.isPending}
-            className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--color-danger)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-danger)] hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] disabled:opacity-60"
+            title="Limpieza total"
+            className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[var(--color-danger)] px-3 text-[12px] font-semibold text-[var(--color-danger)] hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] disabled:opacity-60 md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
           >
             <Icon name="trash" size={14} />
-            {wipeAllMut.isPending ? "Limpiando…" : "Limpieza total"}
+            <span className="hidden sm:inline">
+              {wipeAllMut.isPending ? "Limpiando…" : "Limpieza total"}
+            </span>
           </button>
           <button
             onClick={openNew}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
+            className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
           >
-            <Icon name="plus" size={14} /> Nuevo producto
+            <Icon name="plus" size={14} />
+            <span className="hidden sm:inline">Nuevo producto</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
         </div>
       }
     >
-      <div className="flex h-[calc(100vh-130px)] flex-col gap-3.5">
+      <div className="flex flex-col gap-3.5 lg:h-[calc(100vh-130px)]">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-[240px] flex-1">
+        <div className="relative w-full min-w-[200px] sm:w-auto sm:flex-1">
           <input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -274,7 +279,7 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
+        <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(
             [
               { v: "all", label: "Todos" },
@@ -293,7 +298,7 @@ export default function AdminProductsPage() {
               }}
               disabled={trashView}
               className={cn(
-                "rounded-md px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-50",
+                "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-50",
                 !trashView && status === s.v
                   ? "bg-[var(--color-text)] text-[var(--color-bg)]"
                   : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
@@ -482,8 +487,8 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+      {/* Table (md+) */}
+      <div className="hidden min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] md:flex">
         <div
           className="grid shrink-0 gap-3 border-b border-[var(--color-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]"
           style={{ gridTemplateColumns: GRID }}
@@ -657,6 +662,130 @@ export default function AdminProductsPage() {
         })}
         </div>
       </div>
+
+      {/* Cards (mobile) */}
+      <div className="flex flex-col gap-2.5 md:hidden">
+        {productsQ.isLoading && (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center text-sm text-[var(--color-text-dim)]">
+            Cargando productos…
+          </div>
+        )}
+        {!productsQ.isLoading && products.length === 0 && (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-8 text-center">
+            <div className="font-grotesk text-[15px] font-semibold text-[var(--color-text)]">
+              Sin productos
+            </div>
+            <div className="mt-1 text-[12px] text-[var(--color-text-dim)]">
+              Empezá creando el primero.
+            </div>
+          </div>
+        )}
+        {products.map((p) => {
+          const stock = Number(p.stock ?? 0);
+          const stateTone =
+            stock === 0
+              ? { fg: "var(--color-danger)", label: "Sin stock" }
+              : stock < 10
+                ? { fg: "var(--color-warn)", label: "Stock bajo" }
+                : { fg: "var(--color-success)", label: "Activo" };
+          const imgs = productImages(p);
+          const thumb = imgs[0] ? storageUrl(imgs[0]) : null;
+          return (
+            <div
+              key={p.id}
+              className={cn(
+                "rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3",
+                selected.has(String(p.id)) &&
+                  "border-[var(--color-accent)] bg-[color-mix(in_srgb,var(--color-accent)_6%,transparent)]"
+              )}
+            >
+              <div className="flex gap-3">
+                <input
+                  type="checkbox"
+                  checked={selected.has(String(p.id))}
+                  onChange={() => toggleOne(String(p.id))}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                />
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[var(--color-bg-input)]">
+                  {thumb ? (
+                    <Image
+                      src={thumb}
+                      alt={p.title}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[10px] text-[var(--color-text-muted)]">
+                      —
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium text-[13px] text-[var(--color-text)]">
+                    {p.title}
+                  </div>
+                  <div className="mt-0.5 truncate text-[11px] text-[var(--color-text-dim)]">
+                    {p.category?.title ?? "Sin categoría"}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+                    <span className="font-grotesk font-semibold text-[var(--color-text)]">
+                      {formatARS(Number(p.price))}
+                    </span>
+                    <span
+                      className="font-medium"
+                      style={{ color: stock < 10 ? "var(--color-danger)" : "var(--color-text-dim)" }}
+                    >
+                      Stock: {stock}
+                    </span>
+                    <span
+                      className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={{
+                        background: `color-mix(in srgb, ${stateTone.fg} 15%, transparent)`,
+                        color: stateTone.fg,
+                      }}
+                    >
+                      {stateTone.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2.5 flex justify-end gap-1.5">
+                <IconBtn onClick={() => setViewTarget(p)} title="Ver">
+                  <Icon name="eye" size={13} />
+                </IconBtn>
+                <IconBtn onClick={() => openEdit(p)} title="Editar">
+                  <Icon name="edit" size={13} />
+                </IconBtn>
+                <IconBtn
+                  tone="danger"
+                  onClick={() => {
+                    setConfirmState({
+                      open: true,
+                      title: "Eliminar producto",
+                      description: (
+                        <>
+                          ¿Seguro que querés eliminar <b>{p.title}</b>? Esta
+                          acción no se puede deshacer.
+                        </>
+                      ),
+                      tone: "danger",
+                      confirmLabel: "Eliminar",
+                      onConfirm: () => {
+                        deleteMut.mutate(p.id);
+                        closeConfirm();
+                      },
+                    });
+                  }}
+                  title="Eliminar"
+                >
+                  <Icon name="trash" size={13} />
+                </IconBtn>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       </div>
 
       <Dialog
@@ -692,7 +821,7 @@ export default function AdminProductsPage() {
                     ))}
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3 text-[13px]">
+                <div className="grid grid-cols-1 gap-3 text-[13px] sm:grid-cols-2">
                   <Field label="Precio" value={formatARS(Number(viewTarget.price))} />
                   <Field label="Stock" value={String(viewTarget.stock ?? 0)} />
                   <Field label="Categoría" value={viewTarget.category?.title ?? "—"} />

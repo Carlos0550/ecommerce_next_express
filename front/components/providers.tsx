@@ -5,15 +5,32 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { makeQueryClient } from "@/lib/query";
-import { usePaletteStore } from "@/stores/palette.store";
+import { usePaletteStore, type PaletteName } from "@/stores/palette.store";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  serverPalette,
+}: {
+  children: React.ReactNode;
+  serverPalette?: PaletteName;
+}) {
   const [qc] = useState(() => makeQueryClient());
   const palette = usePaletteStore((s) => s.palette);
+  const setPalette = usePaletteStore((s) => s.setPalette);
 
   useEffect(() => {
+    if (!serverPalette) return;
+    try {
+      const raw = localStorage.getItem("cinnamon-palette");
+      if (!raw && palette !== serverPalette) {
+        setPalette(serverPalette);
+        return;
+      }
+    } catch {
+      // localStorage unavailable — fall through
+    }
     document.documentElement.dataset.palette = palette;
-  }, [palette]);
+  }, [palette, serverPalette, setPalette]);
 
   return (
     <QueryClientProvider client={qc}>

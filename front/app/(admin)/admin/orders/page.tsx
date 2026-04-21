@@ -196,8 +196,8 @@ export default function AdminOrdersPage() {
       title="Órdenes"
       subtitle={`${total} ${status === "ALL" ? "órdenes" : STATUS_LABEL[status as OrderStatus]?.toLowerCase() ?? "órdenes"}`}
     >
-      <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-        <div className="inline-flex flex-wrap rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
+      <div className="mb-3.5 flex flex-col gap-2.5 md:flex-row md:flex-wrap md:items-center">
+        <div className="-mx-1 flex gap-1 overflow-x-auto rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1 md:mx-0 md:inline-flex md:flex-wrap md:overflow-visible">
           {STATUS_FILTERS.map((o) => (
             <button
               key={o.id}
@@ -206,7 +206,7 @@ export default function AdminOrdersPage() {
                 setPage(1);
               }}
               className={cn(
-                "rounded-[8px] px-3 py-1.5 text-[12px] font-semibold transition",
+                "shrink-0 whitespace-nowrap rounded-[8px] px-3 py-1.5 text-[12px] font-semibold transition",
                 status === o.id
                   ? "bg-[var(--color-bg-elev)] text-[var(--color-text)] shadow-sm"
                   : "text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
@@ -217,7 +217,7 @@ export default function AdminOrdersPage() {
           ))}
         </div>
 
-        <div className="relative ml-auto">
+        <div className="relative w-full md:ml-auto md:w-64">
           <input
             value={q}
             onChange={(e) => {
@@ -225,7 +225,7 @@ export default function AdminOrdersPage() {
               setPage(1);
             }}
             placeholder="Buscar por ID, email, nombre…"
-            className="h-9 w-64 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] pl-8 pr-3 text-[12px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+            className="h-9 w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] pl-8 pr-3 text-[12px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
           />
           <div className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
             <Icon name="search" size={13} />
@@ -233,7 +233,7 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="mb-3 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3.5 py-2 text-[12px]">
+      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3.5 py-2 text-[12px]">
         <label className="flex items-center gap-2 text-[var(--color-text-dim)]">
           <input
             type="checkbox"

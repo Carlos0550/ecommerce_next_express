@@ -115,9 +115,11 @@ export default function AdminFaqPage() {
       actions={
         <button
           onClick={openNew}
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
+          className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
         >
-          <Icon name="plus" size={14} /> Nueva pregunta
+          <Icon name="plus" size={14} />
+          <span className="hidden sm:inline">Nueva pregunta</span>
+          <span className="sm:hidden">Nueva</span>
         </button>
       }
     >
@@ -236,7 +238,7 @@ export default function AdminFaqPage() {
                 </div>
               )}
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
                 <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text-dim)]">
                   Posición

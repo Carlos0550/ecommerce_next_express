@@ -271,7 +271,7 @@ export default function AdminPosPage() {
 
   return (
     <AdminShell title="POS" subtitle="Ventas presenciales en caja">
-      <div className="grid h-[calc(100vh-130px)] gap-3.5 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-3.5 lg:h-[calc(100vh-130px)] lg:grid-cols-[1fr_380px]">
         <section className="flex min-h-0 flex-col gap-3.5">
           <div className="relative">
             <input
@@ -285,11 +285,11 @@ export default function AdminPosPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible">
             <button
               onClick={() => setCategoryId(null)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
+                "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
                 categoryId === null
                   ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-button-text)]"
                   : "border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)]"
@@ -302,7 +302,7 @@ export default function AdminPosPage() {
                 key={c.id}
                 onClick={() => setCategoryId(String(c.id))}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
+                  "shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12px] font-semibold transition",
                   categoryId === String(c.id)
                     ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-button-text)]"
                     : "border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)]"
@@ -313,7 +313,7 @@ export default function AdminPosPage() {
             ))}
           </div>
 
-          <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+          <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
             {productsQ.isLoading && (
               <div className="col-span-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center text-sm text-[var(--color-text-dim)]">
                 Cargando productos…
@@ -373,7 +373,7 @@ export default function AdminPosPage() {
           </div>
         </section>
 
-        <aside className="flex h-full min-h-0 flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+        <aside className="flex min-h-0 flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] lg:h-full">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">

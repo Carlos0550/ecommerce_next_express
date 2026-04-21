@@ -14,12 +14,12 @@ export function StatCard({
   icon: IconName;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-[18px]">
-      <div className="flex items-center justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+    <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 md:p-[18px]">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)] md:text-[11px]">
           {label}
         </div>
-        <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--color-accent-soft)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-accent-soft)]">
           <Icon
             name={icon}
             size={14}
@@ -27,7 +27,7 @@ export function StatCard({
           />
         </div>
       </div>
-      <div className="font-grotesk text-[28px] font-semibold leading-none tracking-[-0.6px] text-[var(--color-text)]">
+      <div className="truncate font-grotesk text-[20px] font-semibold leading-none tracking-[-0.6px] text-[var(--color-text)] md:text-[24px] lg:text-[28px]">
         {value}
       </div>
       {delta && (
