@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { logger } from "@/utils/logger";
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GROQ_API_KEY) {
   console.error(
     "❌ GROQ_API_KEY no está configurada. Las funciones de IA estarán deshabilitadas.",
@@ -10,11 +11,25 @@ if (!GROQ_API_KEY) {
 } else {
   console.log("🚀 Groq AI configurado correctamente");
 }
+if (!GEMINI_API_KEY) {
+  console.warn(
+    "⚠️ GEMINI_API_KEY no está configurada. Se usará Groq como fallback de visión.",
+  );
+} else {
+  console.log("🚀 Gemini (visión) configurado correctamente");
+}
 const groq = new OpenAI({
   apiKey: GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const gemini = GEMINI_API_KEY
+  ? new OpenAI({
+      apiKey: GEMINI_API_KEY,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    })
+  : null;
+const GROQ_VISION_FALLBACK_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const GEMINI_VISION_MODEL = "gemini-2.5-flash";
 const TEXT_MODEL = "llama-3.3-70b-versatile";
 const isDevelopment = process.env.NODE_ENV === "development";
 function detectImageMimeType(buffer: Buffer): string | null {
@@ -124,6 +139,342 @@ export interface ProductAnalysisResult {
     confidence: "high" | "medium" | "low";
   };
 }
+
+interface VisionFeatures {
+  productType: string;
+  materials: string[];
+  colors: string[];
+  details: string[];
+  brand: string | null;
+  variants: { name: string; values: string[] }[];
+}
+
+interface ImageMessage {
+  type: "image_url";
+  image_url: { url: string; detail: "high" };
+}
+
+const introStyles = [
+  {
+    name: "PREGUNTA_RETÓRICA",
+    example:
+      "¿Lista para brillar? ¿Buscas el accesorio perfecto? ¿Quieres destacar?",
+  },
+  {
+    name: "AFIRMACIÓN_DIRECTA",
+    example: "Este accesorio es exactamente lo que tu look necesita",
+  },
+  {
+    name: "STORYTELLING",
+    example:
+      "Imagina lucir espectacular en cada salida. Piensa en todas las miradas que atraerás",
+  },
+  {
+    name: "BENEFICIO_PRINCIPAL",
+    example: "Logra un look único con este increíble diseño",
+  },
+  {
+    name: "EXCLUSIVIDAD",
+    example: "Descubre la pieza que está conquistando corazones",
+  },
+];
+
+const toneStyles = [
+  {
+    name: "ENTUSIASTA",
+    keywords: "¡increíble! ¡fantástico! ¡espectacular! ¡te va a encantar!",
+  },
+  {
+    name: "ELEGANTE",
+    keywords: "sofisticado, refinado, distinguido, exquisito, premium",
+  },
+  {
+    name: "CERCANO",
+    keywords: "vas a amar esto, es perfecto para vos, tu nuevo favorito",
+  },
+  {
+    name: "PROFESIONAL",
+    keywords: "calidad superior, acabado impecable, materiales selectos",
+  },
+  {
+    name: "ASPIRACIONAL",
+    keywords: "eleva tu estilo, transforma tu look, destaca entre todas",
+  },
+];
+
+const closingStyles = [
+  { name: "URGENCIA", example: "¡No esperes más, hazlo tuyo!" },
+  { name: "ASPIRACIONAL", example: "Dale a tu estilo el upgrade que merece" },
+  { name: "EMOCIONAL", example: "Porque vos lo vales, date ese gusto" },
+  { name: "PRÁCTICO", example: "Una inversión que vale cada peso" },
+  { name: "EXCLUSIVO", example: "Sé parte de quienes ya lo disfrutan" },
+];
+
+const structureFormats = [
+  {
+    name: "CLÁSICO",
+    sections:
+      "**Beneficios:**\n- (3 puntos)\n\n**Características:**\n- (3 puntos)\n\n**Modo de uso:**\n(1-2 oraciones)",
+  },
+  {
+    name: "NARRATIVO",
+    sections:
+      "(Sin secciones con títulos. 3-4 párrafos fluidos describiendo el producto de forma conversacional, mezclando beneficios, características y uso.)",
+  },
+  {
+    name: "DESTACADOS",
+    sections:
+      "**Lo que te encantará:**\n- (4-5 puntos mezclando beneficios y características)\n\n**Detalles:**\nPárrafo breve con especificaciones y modo de uso.",
+  },
+  {
+    name: "PREGUNTA_RESPUESTA",
+    sections:
+      "**¿Por qué elegirlo?**\n(Párrafo con beneficios principales)\n\n**¿Qué incluye?**\n- (Lista de características)\n\n**¿Cómo usarlo?**\n(Instrucciones breves)",
+  },
+  {
+    name: "MINIMALISTA",
+    sections:
+      "**Destacados:**\n- (4-5 puntos concisos con lo más importante)\n\nPárrafo final con detalles adicionales y cierre motivacional.",
+  },
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]!;
+}
+
+function safeJsonParse(raw: string): Record<string, unknown> {
+  let content = raw.trim();
+  content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  const match = /\{[\s\S]*\}/.exec(content);
+  if (match) content = match[0];
+  try {
+    return JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    const fixed = content.replace(/"((?:[^"\\]|\\.)*)"/g, (m) =>
+      m
+        .replace(/(?<!\\)\n/g, "\\n")
+        .replace(/(?<!\\)\r/g, "\\r")
+        .replace(/(?<!\\)\t/g, "\\t"),
+    );
+    return JSON.parse(fixed) as Record<string, unknown>;
+  }
+}
+
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === "string")
+    : [];
+}
+
+async function extractProductFeatures(
+  imageMessages: ImageMessage[],
+  additionalContext: string | undefined,
+): Promise<VisionFeatures> {
+  const contextBlock = additionalContext
+    ? `\n\nContexto del usuario (puede nombrar el producto o hacer correcciones): ${additionalContext}`
+    : "";
+
+  const systemPrompt = `Analizas imágenes de productos de e-commerce y devuelves características objetivas visibles en JSON.
+
+Schema:
+{"productType": string, "materials": string[], "colors": string[], "details": string[], "brand": string | null, "variants": [{"name": string, "values": string[]}]}
+
+REGLAS:
+- productType: qué es exactamente (ej: "labial líquido mate", "pulsera de cuero trenzado").
+- materials: materiales visibles.
+- colors: colores presentes.
+- details: 3-6 características relevantes (textura, acabado, tamaño aparente, empaque).
+- brand: marca legible en la imagen o null.
+- variants: solo si hay VARIACIONES REALES entre productos visibles (colores distintos, tallas). Si todos son idénticos → [].
+- Si el usuario dice que algo NO existe, no lo incluyas.
+- Nunca digas "cabello humano" ni "uñas humanas".`;
+
+  const visionClient = gemini ?? groq;
+  const visionModel = gemini ? GEMINI_VISION_MODEL : GROQ_VISION_FALLBACK_MODEL;
+  const visionProvider = gemini ? "Gemini" : "Groq";
+  console.log(`👁️ Visión: ${visionProvider} (${visionModel})`);
+
+  const response = await visionClient.chat.completions.create({
+    model: visionModel,
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Extrae las features del producto.${contextBlock}`,
+          },
+          ...imageMessages,
+        ],
+      },
+    ],
+    temperature: 0.3,
+    max_tokens: 800,
+    response_format: { type: "json_object" },
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content)
+    throw new Error(`Sin respuesta del modelo de visión (${visionModel})`);
+  const parsed = safeJsonParse(content);
+
+  const variants = Array.isArray(parsed.variants)
+    ? parsed.variants
+        .filter(
+          (v): v is { name: unknown; values: unknown } =>
+            !!v && typeof v === "object",
+        )
+        .filter(
+          (v) => typeof v.name === "string" && Array.isArray(v.values),
+        )
+        .map((v) => ({
+          name: v.name as string,
+          values: (v.values as unknown[]).filter(
+            (x): x is string => typeof x === "string",
+          ),
+        }))
+    : [];
+
+  return {
+    productType:
+      typeof parsed.productType === "string" ? parsed.productType : "producto",
+    materials: asStringArray(parsed.materials),
+    colors: asStringArray(parsed.colors),
+    details: asStringArray(parsed.details),
+    brand:
+      typeof parsed.brand === "string" && parsed.brand.trim()
+        ? parsed.brand
+        : null,
+    variants,
+  };
+}
+
+async function generateCopyFromFeatures(
+  features: VisionFeatures,
+  additionalContext: string | undefined,
+  availableCategories: { id: string; title: string }[] | undefined,
+): Promise<ProductAnalysisResult> {
+  const intro = pickRandom(introStyles);
+  const tone = pickRandom(toneStyles);
+  const closing = pickRandom(closingStyles);
+  const structure = pickRandom(structureFormats);
+
+  console.log(
+    `🎨 Estilos: Apertura=${intro.name}, Tono=${tone.name}, Cierre=${closing.name}, Estructura=${structure.name}`,
+  );
+
+  const isCorrection = additionalContext?.includes("CORRECCIONES DEL USUARIO");
+  const hasCategories = !!availableCategories?.length;
+
+  const categoryBlock =
+    hasCategories && availableCategories
+      ? `\n\nCATEGORÍA: elegí exactamente UNA de esta lista (nunca inventes):\n${availableCategories
+          .map((c) => `- ${c.title}`)
+          .join("\n")}\nconfidence: "high" si el match es claro, "medium" si es probable, "low" si es incierto.`
+      : "";
+
+  const schema = hasCategories
+    ? `{"title": string, "description": string, "options": [{"name": string, "values": string[]}], "suggestedCategory": {"name": string, "confidence": "high" | "medium" | "low"}}`
+    : `{"title": string, "description": string, "options": [{"name": string, "values": string[]}]}`;
+
+  const systemPrompt = `Sos copywriter senior de e-commerce. Escribís descripciones únicas y variadas en español neutro.
+
+ESTILO OBLIGATORIO DE ESTA DESCRIPCIÓN:
+- Apertura (${intro.name}): inspirate en "${intro.example}". Solo empieces con "Presentamos" si el estilo es EXCLUSIVIDAD.
+- Tono (${tone.name}): usá léxico como ${tone.keywords}.
+- Cierre (${closing.name}): inspirate en "${closing.example}".
+- Estructura (${structure.name}):
+${structure.sections}
+
+TITLE:
+- Máximo 50 caracteres, sin emojis ni guiones.
+- Incluí keywords SEO y variá el orden (producto+adjetivo / adjetivo+producto / kit de…).
+
+DESCRIPTION:
+- 600-1200 caracteres.
+- Párrafo intro (2-3 oraciones) en el estilo de apertura.
+- Cuerpo con la estructura asignada. Títulos de sección en **negrita** y listas con "-". Usá saltos de línea reales ("\\n") entre secciones y párrafos.
+- Frase de cierre corta en el estilo asignado.
+- Variá el vocabulario (premium, excepcional, superior, de primera). Nunca "alta calidad" a secas, nunca "básico/común/simple".
+- Si features.brand no es null, mencionala una vez.
+- Nunca digas "cabello humano" ni "uñas humanas".
+
+OPTIONS:
+- Si el contexto del usuario menciona opciones de compra (color/talla/variante) → usalas tal cual.
+- Si no, usá features.variants. Si está vacío → options: [].${categoryBlock}
+
+Respondé SOLO con JSON válido con este schema:
+${schema}`;
+
+  const contextBlock = additionalContext
+    ? isCorrection
+      ? `\n\nCORRECCIONES DEL USUARIO (prioridad absoluta, el usuario conoce su producto; eliminá cualquier mención a lo que niega):\n${additionalContext}`
+      : `\n\nCONTEXTO DEL USUARIO:\n${additionalContext}`
+    : "";
+
+  const userPrompt = `FEATURES DEL PRODUCTO (extraídas de las imágenes):
+${JSON.stringify(features, null, 2)}${contextBlock}
+
+Generá el JSON con title, description${hasCategories ? ", options y suggestedCategory" : " y options"}.`;
+
+  const response = await groq.chat.completions.create({
+    model: TEXT_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: isCorrection ? 0.3 : 0.6,
+    max_tokens: 1500,
+    response_format: { type: "json_object" },
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error("Sin respuesta del modelo de texto");
+  const parsed = safeJsonParse(content);
+
+  const title = (typeof parsed.title === "string"
+    ? parsed.title
+    : "Producto Generado por IA"
+  ).substring(0, 50);
+  const description =
+    (typeof parsed.description === "string"
+      ? parsed.description
+      : ""
+    ).substring(0, 1200) || "Descripción generada automáticamente por IA.";
+  const options = Array.isArray(parsed.options)
+    ? parsed.options.filter(
+        (o): o is { name: string; values: string[] } =>
+          !!o &&
+          typeof o === "object" &&
+          typeof (o as { name?: unknown }).name === "string" &&
+          Array.isArray((o as { values?: unknown }).values),
+      )
+    : [];
+
+  let suggestedCategory: ProductAnalysisResult["suggestedCategory"];
+  const sc = parsed.suggestedCategory as
+    | { name?: unknown; confidence?: unknown }
+    | undefined;
+  if (sc && typeof sc === "object" && typeof sc.name === "string" && sc.name.trim()) {
+    const validConfidences = ["high", "medium", "low"] as const;
+    const confidence = (validConfidences as readonly string[]).includes(
+      sc.confidence as string,
+    )
+      ? (sc.confidence as "high" | "medium" | "low")
+      : "low";
+    suggestedCategory = {
+      name: sc.name.toLowerCase().trim(),
+      confidence,
+    };
+    console.log(
+      `📂 Categoría sugerida: ${suggestedCategory.name} (confianza: ${suggestedCategory.confidence})`,
+    );
+  }
+
+  return { title, description, options, suggestedCategory };
+}
+
 export const analyzeProductImages = async (
   imageUrls: string[],
   additionalContext?: string,
@@ -131,16 +482,13 @@ export const analyzeProductImages = async (
 ): Promise<ProductAnalysisResult> => {
   try {
     const imageMessagesRaw = await Promise.all(
-      imageUrls.map(async (url) => {
+      imageUrls.map(async (url): Promise<ImageMessage | null> => {
         if (isWhatsAppUrl(url)) {
           const base64Image = await downloadAndConvertToBase64(url);
           if (base64Image) {
             return {
-              type: "image_url" as const,
-              image_url: {
-                url: base64Image,
-                detail: "high" as const,
-              },
+              type: "image_url",
+              image_url: { url: base64Image, detail: "high" },
             };
           }
           console.warn(
@@ -153,26 +501,20 @@ export const analyzeProductImages = async (
           const base64Image = await convertLocalUrlToBase64(url);
           if (base64Image) {
             return {
-              type: "image_url" as const,
-              image_url: {
-                url: base64Image,
-                detail: "high" as const,
-              },
+              type: "image_url",
+              image_url: { url: base64Image, detail: "high" },
             };
           }
           return null;
         }
         return {
-          type: "image_url" as const,
-          image_url: {
-            url: url,
-            detail: "high" as const,
-          },
+          type: "image_url",
+          image_url: { url, detail: "high" },
         };
       }),
     );
     const imageMessages = imageMessagesRaw.filter(
-      (msg): msg is NonNullable<typeof msg> => msg !== null,
+      (msg): msg is ImageMessage => msg !== null,
     );
     console.log(
       `🖼️ Imágenes válidas: ${imageMessages.length}/${imageUrls.length}`,
@@ -182,376 +524,20 @@ export const analyzeProductImages = async (
         "No se pudieron procesar las imágenes. Por favor intenta con otras imágenes.",
       );
     }
-    const introStyles = [
-      {
-        name: "PREGUNTA_RETÓRICA",
-        example:
-          "¿Lista para brillar? ¿Buscas el accesorio perfecto? ¿Quieres destacar?",
-      },
-      {
-        name: "AFIRMACIÓN_DIRECTA",
-        example: "Este accesorio es exactamente lo que tu look necesita",
-      },
-      {
-        name: "STORYTELLING",
-        example:
-          "Imagina lucir espectacular en cada salida. Piensa en todas las miradas que atraerás",
-      },
-      {
-        name: "BENEFICIO_PRINCIPAL",
-        example: "Logra un look único con este increíble diseño",
-      },
-      {
-        name: "EXCLUSIVIDAD",
-        example: "Descubre la pieza que está conquistando corazones",
-      },
-    ];
-    const toneStyles = [
-      {
-        name: "ENTUSIASTA",
-        keywords: "¡increíble! ¡fantástico! ¡espectacular! ¡te va a encantar!",
-      },
-      {
-        name: "ELEGANTE",
-        keywords: "sofisticado, refinado, distinguido, exquisito, premium",
-      },
-      {
-        name: "CERCANO",
-        keywords: "vas a amar esto, es perfecto para vos, tu nuevo favorito",
-      },
-      {
-        name: "PROFESIONAL",
-        keywords: "calidad superior, acabado impecable, materiales selectos",
-      },
-      {
-        name: "ASPIRACIONAL",
-        keywords: "eleva tu estilo, transforma tu look, destaca entre todas",
-      },
-    ];
-    const closingStyles = [
-      { name: "URGENCIA", example: "¡No esperes más, hazlo tuyo!" },
-      {
-        name: "ASPIRACIONAL",
-        example: "Dale a tu estilo el upgrade que merece",
-      },
-      { name: "EMOCIONAL", example: "Porque vos lo vales, date ese gusto" },
-      { name: "PRÁCTICO", example: "Una inversión que vale cada peso" },
-      { name: "EXCLUSIVO", example: "Sé parte de quienes ya lo disfrutan" },
-    ];
-    const structureFormats = [
-      {
-        name: "CLÁSICO",
-        sections: `**✨ Beneficios:**\n- (3 puntos)\n\n**📦 Características:**\n- (3 puntos)\n\n**💡 Modo de uso:**\n(1-2 oraciones)`,
-      },
-      {
-        name: "NARRATIVO",
-        sections: `(Sin secciones con títulos. Escribe 3-4 párrafos fluidos describiendo el producto de forma conversacional. Mezcla beneficios, características y uso de forma natural.)`,
-      },
-      {
-        name: "DESTACADOS",
-        sections: `**🌟 Lo que te encantará:**\n- (4-5 puntos mezclando beneficios y características)\n\n**📝 Detalles:**\nPárrafo breve con especificaciones y modo de uso.`,
-      },
-      {
-        name: "PREGUNTA_RESPUESTA",
-        sections: `**¿Por qué elegirlo?**\n(Párrafo con beneficios principales)\n\n**¿Qué incluye?**\n- (Lista de características)\n\n**¿Cómo usarlo?**\n(Instrucciones breves)`,
-      },
-      {
-        name: "MINIMALISTA",
-        sections: `**✦ Destacados:**\n- (4-5 puntos concisos con lo más importante)\n\nPárrafo final con detalles adicionales y cierre motivacional.`,
-      },
-    ];
-    const selectedIntro =
-      introStyles[Math.floor(Math.random() * introStyles.length)]!;
-    const selectedTone =
-      toneStyles[Math.floor(Math.random() * toneStyles.length)]!;
-    const selectedClosing =
-      closingStyles[Math.floor(Math.random() * closingStyles.length)]!;
-    const selectedStructure =
-      structureFormats[Math.floor(Math.random() * structureFormats.length)]!;
-    console.log(
-      `🎨 Estilos: Apertura=${selectedIntro.name}, Tono=${selectedTone.name}, Cierre=${selectedClosing.name}, Estructura=${selectedStructure.name}`,
+
+    const features = await extractProductFeatures(
+      imageMessages,
+      additionalContext,
     );
-    const categoriesSection =
-      availableCategories && availableCategories.length > 0
-        ? `
-=== CATEGORÍAS DISPONIBLES ===
-Las siguientes categorías existen en el sistema:
-${availableCategories.map((c, i) => `${i + 1}. ${c.title}`).join("\n")}
-IMPORTANTE sobre CATEGORÍA:
-- Analiza el producto en las imágenes y determina a qué categoría pertenece
-- DEBES elegir UNA de las categorías de la lista anterior
-- Si el producto claramente pertenece a una categoría (ej: labial = makeup, pulsera = accesorios), indica confianza "high"
-- Si tienes algo de duda pero puedes inferir, indica confianza "medium"
-- Si realmente no puedes determinar la categoría, indica confianza "low"
-- NUNCA inventes categorías que no estén en la lista
-`
-        : "";
-    const systemPrompt = `Eres un experto copywriter de e-commerce. Tu trabajo es generar descripciones ÚNICAS y VARIADAS.
-TAREA: Analiza las imágenes y genera un JSON con title, description, options${availableCategories ? " y suggestedCategory" : ""}.
-=== ESTILO OBLIGATORIO PARA ESTA DESCRIPCIÓN ===
-⚠️ CRÍTICO: DEBES seguir EXACTAMENTE estos estilos. NO uses otros estilos.
-📌 APERTURA: ${selectedIntro.name}
-   → INSPÍRATE EN: "${selectedIntro.example}"
-   → NUNCA empieces con "Presentamos" ni "Descubre" si no es tu estilo asignado
-📌 TONO: ${selectedTone.name}  
-   → USA estas palabras/frases: ${selectedTone.keywords}
-📌 CIERRE: ${selectedClosing.name}
-   → INSPÍRATE EN: "${selectedClosing.example}"
-PROHIBIDO:
-❌ NO uses "Presentamos" a menos que tu estilo sea EXCLUSIVIDAD
-❌ NO uses siempre las mismas estructuras de oración
-❌ NO repitas vocabulario genérico como "alta calidad" sin variación
-=== TITLE (título) ===
-- Máximo 50 caracteres
-- Profesional y atractivo
-- Sin guiones ni emojis
-- Incluye palabras clave SEO
-- VARÍA la estructura: a veces usa "[Producto] + [Adjetivo]", otras "[Adjetivo] + [Producto]", otras "Kit/Set de [Producto]"
-=== DESCRIPTION (descripción) ===
-REQUISITO: La descripción DEBE tener entre 600 y 1200 caracteres.
-📌 ESTRUCTURA ASIGNADA: ${selectedStructure.name}
-USA ESTA ESTRUCTURA:
-${selectedStructure.sections}
-FORMATO DE TU DESCRIPCIÓN:
-1. Párrafo introductorio (2-3 oraciones) - USA EL ESTILO DE APERTURA: ${selectedIntro.name}
-2. Cuerpo con la estructura ${selectedStructure.name} indicada arriba
-3. Frase final motivacional - USA EL ESTILO DE CIERRE: ${selectedClosing.name}
-REGLAS:
-- VARÍA el vocabulario: "premium", "excepcional", "superior", "de primera"
-- NO uses checkmarks (✅) en listas, solo guiones "-"
-- Si hay marca visible, menciónala
-- Evita "básico", "común", "simple"
-- NO menciones "cabello humano", "uñas humanas"
-=== OPTIONS (opciones) ===
-PRIORIDAD 1: Si el contexto adicional menciona opciones de compra explícitas, ÚSALAS DIRECTAMENTE.
-PRIORIDAD 2: Si NO hay opciones en el contexto, detecta VARIACIONES REALES Y VISIBLES en las imágenes.
-REGLAS:
-1. Si el contexto menciona opciones → USA esas opciones exactas
-2. Si NO hay contexto, solo genera si hay DIFERENCIAS claras visibles (colores, tallas, etc.)
-3. NO inventes opciones basadas en cantidad de productos
-4. Si todos son idénticos Y no hay contexto → devuelve []
-Formato: [{"name": "Nombre", "values": ["Valor1", "Valor2"]}]
-=== EJEMPLOS DE VARIEDAD EN APERTURAS ===
-PREGUNTA_RETÓRICA + ENTUSIASTA:
-"¿Lista para brillar en cada ocasión? ¡Este increíble set de maquillaje es tu nuevo aliado de belleza!"
-AFIRMACIÓN_DIRECTA + ELEGANTE:
-"Este sofisticado set de maquillaje reúne todo lo que necesitas para lograr acabados impecables y refinados."
-STORYTELLING + CERCANO:
-"Imagina empezar cada mañana con todo lo que necesitas a la mano. Este set va a ser tu nuevo favorito, ¡te lo aseguro!"
-BENEFICIO_PRINCIPAL + PROFESIONAL:
-"Consigue resultados de salón en casa con este completo set que incluye herramientas de calidad profesional."
-EXCLUSIVIDAD + ASPIRACIONAL:
-"Descubre la nueva colección que está transformando rutinas de belleza. Eleva tu experiencia a otro nivel."
-=== FORMATO DE SALIDA ===
-Responde SOLO con JSON válido, sin markdown ni explicaciones.
-${availableCategories ? `{"title":"...","description":"...","options":[],"suggestedCategory":{"name":"nombre_categoria_exacto","confidence":"high|medium|low"}}` : `{"title":"...","description":"...","options":[]}`}
-${categoriesSection}
-⚠️ RECORDATORIO FINAL - LEE ANTES DE GENERAR:
-- Descripción DEBE tener mínimo 600 caracteres
-- ESTRUCTURA: ${selectedStructure.name} - sigue el formato indicado arriba
-- APERTURA: ${selectedIntro.name} → "${selectedIntro.example}"
-- TONO: usa palabras como ${selectedTone.keywords}
-- CIERRE: ${selectedClosing.name} → "${selectedClosing.example}"
-- Si tu estilo NO es EXCLUSIVIDAD, NO empieces con "Presentamos"
-- VARÍA el vocabulario`;
-    const response = await groq.chat.completions.create({
-      model: VISION_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `${
-                additionalContext?.includes("CORRECCIONES DEL USUARIO")
-                  ? `
-🚨🚨🚨 CORRECCIÓN OBLIGATORIA - LEE ANTES DE VER LAS IMÁGENES 🚨🚨🚨
-${additionalContext}
-REGLAS ABSOLUTAS:
-1. NO menciones NADA que el usuario haya dicho que NO tiene el producto
-2. Si crees ver "estrellas de colores" pero el usuario dice que NO las tiene, NO LAS MENCIONES
-3. Si crees ver algo diferente a lo que dice el usuario, CONFÍA EN EL USUARIO
-4. El usuario CONOCE su producto mejor que cualquier análisis de imagen
-PROHIBIDO EN ESTA DESCRIPCIÓN:
-- Mencionar elementos que el usuario dijo que NO existen
-- Inventar características basándote solo en la imagen
-- Ignorar las correcciones del usuario
-Ahora analiza las imágenes RESPETANDO las correcciones anteriores.
-`
-                  : ""
-              }Analiza estas imágenes y genera título, descripción y opciones de compra.
-        CRÍTICO sobre OPCIONES:
-        ${
-          additionalContext &&
-          !additionalContext.includes("CORRECCIONES DEL USUARIO")
-            ? `- El contexto adicional contiene información sobre opciones de compra. DEBES usar esas opciones explícitamente.
-        - Si el contexto menciona opciones (ej: "Color: Rojo, Azul" o "tallas S, M, L"), conviértelas al formato JSON requerido.
-        - El contexto tiene PRIORIDAD sobre la detección automática en las imágenes.
-        `
-            : `- Solo genera opciones si hay VARIACIONES REALES visibles entre los productos (colores diferentes, tallas, etc.)
-        - NO inventes opciones basadas en la cantidad de productos
-        - Si todos los productos son idénticos, devuelve options: []
-        `
-        }${
-          additionalContext &&
-          !additionalContext.includes("CORRECCIONES DEL USUARIO")
-            ? `\n\nCONTEXTO ADICIONAL DEL USUARIO:
-        ${additionalContext}
-        IMPORTANTE: Si el contexto menciona opciones de compra, variables, variantes, colores, tallas, etc., DEBES incluirlas en el campo "options" del JSON.`
-            : ""
-        }${
-          additionalContext?.includes("CORRECCIONES DEL USUARIO")
-            ? `
-🚨 RECORDATORIO FINAL: El usuario dijo que el producto ${additionalContext.replace(/.*CORRECCIONES DEL USUARIO.*\n/i, "").replace(/\n/g, " ")} - RESPETA ESTO.`
-            : ""
-        }`,
-            },
-            ...imageMessages,
-          ],
-        },
-      ],
-      temperature: additionalContext?.includes("CORRECCIONES DEL USUARIO")
-        ? 0.3
-        : 0.75,
-      max_tokens: 2000,
-    });
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error("No se recibió respuesta de Groq");
-    }
-    let jsonContent = content.trim();
-    if (jsonContent.startsWith("```json")) {
-      jsonContent = jsonContent
-        .replace(/^```json\s*/, "")
-        .replace(/\s*```$/, "");
-    } else if (jsonContent.startsWith("```")) {
-      jsonContent = jsonContent.replace(/^```\s*/, "").replace(/\s*```$/, "");
-    }
-    const jsonMatch = /\{[\s\S]*\}/.exec(jsonContent);
-    if (jsonMatch) {
-      jsonContent = jsonMatch[0];
-    }
-    const sanitizeInvalidEscapes = (str: string): string => {
-      let fixed = str.replace(/\\u(?![0-9a-fA-F]{4})/g, "\\\\u");
-      fixed = fixed.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
-      return fixed;
-    };
-    jsonContent = sanitizeInvalidEscapes(jsonContent);
-    const escapeControlChars = (str: string): string => {
-      let result = "";
-      let inString = false;
-      let escapeNext = false;
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-        if (char === undefined) continue;
-        if (escapeNext) {
-          result += char;
-          escapeNext = false;
-          continue;
-        }
-        if (char === "\\") {
-          result += char;
-          escapeNext = true;
-          continue;
-        }
-        if (char === '"') {
-          inString = !inString;
-          result += char;
-          continue;
-        }
-        if (inString) {
-          if (char === "\n") {
-            result += "\\n";
-          } else if (char === "\r") {
-            result += "\\r";
-          } else if (char === "\t") {
-            result += "\\t";
-          } else if (char === "\f") {
-            result += "\\f";
-          } else if (char === "\b") {
-            result += "\\b";
-          } else if (char.charCodeAt(0) < 32) {
-            result += `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
-          } else {
-            result += char;
-          }
-        } else {
-          result += char;
-        }
-      }
-      return result;
-    };
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonContent);
-    } catch (parseError) {
-      console.warn(
-        "Error al parsear JSON, intentando escapar caracteres de control:",
-        parseError,
-      );
-      try {
-        const cleaned = escapeControlChars(jsonContent);
-        parsed = JSON.parse(cleaned);
-      } catch (secondError) {
-        console.warn(
-          "Error persistente, intentando extracción manual:",
-          secondError,
-        );
-        const titleMatch = /"title"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/.exec(jsonContent);
-        const descMatch = /"description"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/.exec(jsonContent);
-        const optionsMatch = /"options"\s*:\s*(\[[^\]]*\])/.exec(jsonContent);
-        if (titleMatch || descMatch) {
-          parsed = {
-            title: titleMatch?.[1]
-              ? titleMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "\t")
-              : "Producto Generado por IA",
-            description: descMatch?.[1]
-              ? descMatch[1].replace(/\\n/g, "\n").replace(/\\t/g, "\t")
-              : "Descripción generada automáticamente por IA.",
-            options: optionsMatch?.[1] ? JSON.parse(optionsMatch[1]) : [],
-          };
-        } else {
-          console.error(
-            "Error al parsear JSON. Contenido recibido:",
-            jsonContent.substring(0, 500),
-          );
-          throw new Error(
-            `Error al parsear respuesta de Groq: ${secondError instanceof Error ? secondError.message : String(secondError)}`,
-          );
-        }
-      }
-    }
-    const title = parsed.title?.substring(0, 50) || "Producto Generado por IA";
-    const description =
-      parsed.description?.substring(0, 1200) ||
-      "Descripción generada automáticamente por IA.";
-    const options = Array.isArray(parsed.options) ? parsed.options : [];
-    let suggestedCategory: ProductAnalysisResult["suggestedCategory"] =
-      undefined;
-    if (
-      parsed.suggestedCategory &&
-      typeof parsed.suggestedCategory === "object"
-    ) {
-      const { name, confidence } = parsed.suggestedCategory;
-      if (name && typeof name === "string") {
-        const validConfidences = ["high", "medium", "low"] as const;
-        const normalizedConfidence = validConfidences.includes(confidence)
-          ? confidence
-          : "low";
-        suggestedCategory = {
-          name: name.toLowerCase().trim(),
-          confidence: normalizedConfidence,
-        };
-        console.log(
-          `📂 Categoría sugerida: ${suggestedCategory.name} (confianza: ${suggestedCategory.confidence})`,
-        );
-      }
-    }
-    return { title, description, options, suggestedCategory };
+    console.log(
+      `🔍 Features: ${features.productType} | colores: ${features.colors.join(", ") || "—"} | variants: ${features.variants.length}`,
+    );
+
+    return await generateCopyFromFeatures(
+      features,
+      additionalContext,
+      availableCategories,
+    );
   } catch (error) {
     console.error("Error al analizar imágenes con Groq:", error);
     throw error instanceof Error ? error : new Error(String(error));
@@ -572,43 +558,29 @@ export const regenerateDescriptionWithCorrections = async (
       messages: [
         {
           role: "system",
-          content: `Eres un experto copywriter de e-commerce. Tu tarea es CORREGIR una descripción de producto existente.
-REGLAS ABSOLUTAS:
-1. El usuario ha indicado que la descripción tiene ERRORES
-2. DEBES eliminar todo lo que el usuario diga que es INCORRECTO
-3. DEBES mantener el mismo estilo y formato de la descripción original
-4. NO inventes características nuevas que no estaban en la descripción original
-5. Si el usuario dice que algo NO existe, ELIMÍNALO completamente
-FORMATO DE SALIDA CRÍTICO:
-- Devuelve SOLO la descripción corregida, sin explicaciones
-- MANTÉN EL FORMATO MARKDOWN exactamente como está en la descripción original
-- USA SALTOS DE LÍNEA (\\n) para separar párrafos y secciones
-- MANTÉN las secciones con sus títulos en negrita: **✦ Destacados:**, **🌟 Lo que te encantará:**, **📝 Detalles:**, **¿Por qué elegirlo?**, etc.
-- MANTÉN los guiones (-) para las listas
-- MANTÉN la misma estructura de párrafos y secciones
-- Mantén la misma longitud aproximada
-EJEMPLO DE FORMATO CORRECTO:
-Párrafo introductorio aquí.
-**🌟 Lo que te encantará:**
-- Punto 1
-- Punto 2
-- Punto 3
-**📝 Detalles:**
-Párrafo con detalles aquí.
-Frase de cierre.`,
+          content: `Sos copywriter de e-commerce. Tu tarea es CORREGIR una descripción existente según el usuario.
+
+REGLAS:
+1. El usuario indicó errores en la descripción.
+2. Eliminá todo lo que el usuario diga que es incorrecto o que NO existe.
+3. NO inventes características nuevas.
+4. Mantené el mismo estilo, tono y longitud aproximada.
+
+FORMATO:
+- Devolvé SOLO la descripción corregida, sin explicaciones.
+- Mantené el formato markdown: saltos de línea reales ("\\n"), secciones con título en **negrita** (ej: **Destacados:**, **Lo que te encantará:**, **Detalles:**, **¿Por qué elegirlo?**), listas con "-".
+- No pongas todo en una sola línea.`,
         },
         {
           role: "user",
           content: `PRODUCTO: ${productTitle}
-DESCRIPCIÓN ACTUAL (CON ERRORES) - MANTÉN ESTE FORMATO:
+DESCRIPCIÓN ACTUAL (mantené este formato):
 ${currentDescription}
+
 CORRECCIONES DEL USUARIO:
 ${userCorrections}
-IMPORTANTE: 
-1. El usuario dice que ${userCorrections}. DEBES eliminar cualquier mención a lo que el usuario dice que NO tiene el producto.
-2. MANTÉN el formato markdown con saltos de línea, secciones en negrita (**), y listas con guiones (-)
-3. NO pongas todo en una sola línea
-Genera la descripción CORREGIDA manteniendo el formato:`,
+
+Generá la descripción corregida manteniendo el formato markdown.`,
         },
       ],
       temperature: 0.3,

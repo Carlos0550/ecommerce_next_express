@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import { ProductImg, Icon } from "@/components/brand";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { fetchPublicProduct } from "@/lib/shop/server";
@@ -9,6 +10,14 @@ import { formatARS } from "@/lib/utils";
 export const revalidate = 60;
 
 type Params = { slug: string };
+
+function normalizeMarkdown(raw: string): string {
+  let text = raw.replace(/\r\n/g, "\n");
+  text = text.replace(/\s+-\s+/g, "\n- ");
+  text = text.replace(/(\*\*[^*]+:\*\*)\s*/g, "\n\n$1\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
+}
 
 export async function generateMetadata({
   params,
@@ -80,29 +89,49 @@ export default async function ProductPage({
         <h1 className="font-grotesk text-[26px] font-semibold leading-[1.1] tracking-[-0.6px] md:text-[38px] md:tracking-[-0.8px]">
           {product.title}
         </h1>
-        <div className="mt-2.5 flex items-center gap-2.5 text-[12px] text-[var(--color-text-dim)]">
-          <div className="flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Icon
-                key={i}
-                name="star"
-                size={13}
-                className={
-                  i <= 4
-                    ? "text-[var(--color-accent)]"
-                    : "text-[var(--color-border)]"
-                }
-              />
-            ))}
-          </div>
-          4.8 · 124 reseñas
-        </div>
         <div className="mt-5 font-grotesk text-[28px] font-semibold md:text-[32px]">
           {formatARS(Number(product.price))}
         </div>
         {product.description && (
-          <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-[13px] leading-relaxed text-[var(--color-text-dim)]">
-            {product.description}
+          <div className="prose-product mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 text-[13px] leading-relaxed text-[var(--color-text-dim)]">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="mb-3 last:mb-0">{children}</p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-[var(--color-text)]">
+                    {children}
+                  </strong>
+                ),
+                ul: ({ children }) => (
+                  <ul className="my-3 list-disc space-y-1 pl-5">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="my-3 list-decimal space-y-1 pl-5">
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => <li>{children}</li>,
+                h1: ({ children }) => (
+                  <h3 className="mb-2 mt-3 font-grotesk text-[15px] font-semibold text-[var(--color-text)]">
+                    {children}
+                  </h3>
+                ),
+                h2: ({ children }) => (
+                  <h3 className="mb-2 mt-3 font-grotesk text-[15px] font-semibold text-[var(--color-text)]">
+                    {children}
+                  </h3>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="mb-2 mt-3 font-grotesk text-[14px] font-semibold text-[var(--color-text)]">
+                    {children}
+                  </h3>
+                ),
+              }}
+            >
+              {normalizeMarkdown(product.description)}
+            </ReactMarkdown>
           </div>
         )}
         <AddToCart product={product} />
