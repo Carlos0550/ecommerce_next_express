@@ -1,5 +1,5 @@
 export function normalizePhoneNumber(phone: string): string {
-  let cleaned = phone.replace(/\s+/g, '').replace(/-/g, '');
+  const cleaned = phone.replace(/\s+/g, '').replace(/-/g, '');
   if (cleaned.startsWith('+')) {
     return cleaned;
   }

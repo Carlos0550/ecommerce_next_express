@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { applyTheme, BusinessData, PaletteData } from "./theme";
+import type { BusinessData, PaletteData } from "./theme";
+import { applyTheme } from "./theme";
 export function welcomeKuromiHTML(
   name: string,
   text: string,

@@ -18,9 +18,9 @@ async function ensureLocalStorageDir(): Promise<void> {
     console.error('Error creando directorio de almacenamiento local:', error);
   }
 }
-ensureLocalStorageDir();
+void ensureLocalStorageDir();
 export const supabase = USE_SUPABASE
-  ? createClient(SUPABASE_URL!, SUPABASE_KEY!)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
   : null;
 if (!USE_SUPABASE) {
   console.log('📁 Usando almacenamiento local (Supabase no configurado)');
@@ -30,13 +30,13 @@ if (!USE_SUPABASE) {
 export async function uploadImage(
   file: Buffer,
   fileName: string,
-  folder: string = '',
+  folder = '',
   contentType?: string
 ): Promise<{ url: string | null; error: any }> {
   if (USE_SUPABASE && supabase) {
     try {
       const filePath = folder ? `${folder}/${fileName}` : fileName;
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from(SUPABASE_BUCKET)
         .upload(filePath, file, {
           upsert: true,
@@ -73,7 +73,7 @@ export async function uploadToBucket(
   file: Buffer,
   fileName: string,
   bucket: string,
-  folder: string = '',
+  folder = '',
   contentType?: string
 ): Promise<{ path: string | null; error: any }> {
   if (USE_SUPABASE && supabase) {
@@ -105,7 +105,7 @@ export async function uploadToBucket(
     return { path: null, error };
   }
 }
-export async function createSignedUrl(bucket: string, filePath: string, expiresInSec: number = 3600): Promise<{ url: string | null; error: any }> {
+export async function createSignedUrl(bucket: string, filePath: string, expiresInSec = 3600): Promise<{ url: string | null; error: any }> {
   if (USE_SUPABASE && supabase) {
     try {
       const { data, error } = await supabase.storage.from(bucket).createSignedUrl(filePath, expiresInSec);

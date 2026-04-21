@@ -3,6 +3,8 @@ import { exec } from "child_process";
 import "@/config/dayjs";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { validateEnvironmentVariables } from "@/config/env";
 import { prisma } from "@/config/prisma";
 import UserRouter from "@/modules/User/routes";
@@ -16,7 +18,6 @@ import OrdersRouter from "@/modules/Orders/routes";
 import ProfileRouter from "@/modules/Profile/routes";
 import BusinessRouter from "@/modules/Business/router";
 import FaqRouter from "@/modules/FAQ/routes";
-import PaletteRouter from "@/modules/Palettes/routes";
 import WhatsAppRouter from "@/modules/WhatsApp/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import swaggerUi from "swagger-ui-express";
@@ -24,10 +25,78 @@ import spec from "./docs/openapi";
 import morgan from "morgan";
 import path from "path";
 import fs from "fs";
+import { logger } from "@/utils/logger";
+import { requestContext } from "@/middlewares/requestContext";
+import { notFoundHandler } from "@/middlewares/notFound";
+import { errorHandler } from "@/middlewares/errorHandler";
+import { asyncHandler } from "@/utils/asyncHandler";
+import { BadRequestError, ForbiddenError, NotFoundError } from "@/utils/errors";
 validateEnvironmentVariables();
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
 const isProduction = process.env.NODE_ENV === "production";
+
+app.use(helmet());
+app.use(requestContext);
+
+const getClientIp = (req: any): string => {
+  const xForwardedFor = req.headers["x-forwarded-for"];
+  if (xForwardedFor) {
+    if (typeof xForwardedFor === "string") {
+      const first = xForwardedFor.split(",")[0];
+      if (first) return first.trim();
+    } else if (xForwardedFor[0]) {
+      return xForwardedFor[0];
+    }
+  }
+  return req.ip || req.connection.remoteAddress || "unknown";
+};
+
+const createLimiter = (options: any) => {
+  return rateLimit({
+    keyGenerator: (req) => getClientIp(req),
+    ...options,
+  });
+};
+
+const authLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados intentos. Esperá 15 minutos." },
+});
+
+const registerLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados registros. Esperá 1 hora." },
+});
+
+const checkoutLimiter = createLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiados pedidos. Esperá 1 hora." },
+});
+
+const webhookLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const productUploadLimiter = createLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "too_many_requests", message: "Demasiadas subidas. Esperá un minuto." },
+});
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
   : isProduction
@@ -38,8 +107,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         "http://localhost:5173",
         "http://localhost:5174",
       ];
-console.log(
-  `🔒 CORS configurado - Producción: ${isProduction}, Orígenes permitidos: ${allowedOrigins.length > 0 ? allowedOrigins.join(", ") : "(ninguno configurado)"}`,
+logger.info(
+  `CORS configurado - Producción: ${isProduction}, Orígenes permitidos: ${allowedOrigins.length > 0 ? allowedOrigins.join(", ") : "(ninguno configurado)"}`,
 );
 app.use(
   cors({
@@ -48,8 +117,8 @@ app.use(
         return callback(null, true);
       }
       if (isProduction && allowedOrigins.length === 0) {
-        console.warn(
-          `⚠️ CORS: Rechazando origen ${origin} - ALLOWED_ORIGINS no configurado`,
+        logger.warn(
+          `CORS: Rechazando origen ${origin} - ALLOWED_ORIGINS no configurado`,
         );
         return callback(
           new Error("CORS: ALLOWED_ORIGINS debe configurarse en producción"),
@@ -61,12 +130,12 @@ app.use(
         if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
           callback(null, true);
         } else {
-          console.warn(`⚠️ CORS: Origen no permitido en desarrollo: ${origin}`);
+          logger.warn(`CORS: Origen no permitido en desarrollo: ${origin}`);
           callback(new Error("CORS: Origen no permitido"));
         }
       } else {
-        console.warn(
-          `⚠️ CORS: Origen no permitido: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`,
+        logger.warn(
+          `CORS: Origen no permitido: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`,
         );
         callback(new Error("CORS: Origen no permitido"));
       }
@@ -86,18 +155,25 @@ app.use(
 app.use(
   morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
     stream: {
-      write: (msg) => console.log(msg.trim()),
+      write: (msg) => logger.http(msg.trim()),
     },
   }),
 );
-app.get("/api/health", async (_req, res) => {
-  try {
+app.get(
+  "/api/health",
+  asyncHandler(async (_req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ ok: true, db: "connected" });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: "health_check_failed" });
-  }
-});
+  })
+);
+app.use("/api/admin/login", authLimiter);
+app.use("/api/admin/password/reset", authLimiter);
+app.use("/api/shop/login", authLimiter);
+app.use("/api/shop/password/reset", authLimiter);
+app.use("/api/shop/register", registerLimiter);
+app.use("/api/orders/create", checkoutLimiter);
+app.use("/api/products/save-product", productUploadLimiter);
+app.use("/api/whatsapp/webhook", webhookLimiter);
 app.use("/api/admin", AdminAuthRouter);
 app.use("/api/shop", ShopAuthRouter);
 app.use("/api/auth", AuthRouter);
@@ -109,33 +185,27 @@ app.use("/api/sales", SalesRouter);
 app.use("/api/cart", CartRouter);
 app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
-app.use("/api", PaletteRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
-app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
-  try {
-    const matches = req.url.match(/^\/api\/storage\/([^\/]+)\/(.+)$/);
+app.get(
+  /^\/api\/storage\/([^/]+)\/(.+)$/,
+  asyncHandler(async (req, res) => {
+    const matches = /^\/api\/storage\/([^/]+)\/(.+)$/.exec(req.url);
     if (!matches) {
-      return res.status(400).json({ ok: false, error: "invalid_path" });
+      throw new BadRequestError("Ruta inválida", undefined, "invalid_path");
     }
     const bucket = matches[1];
     const filePath = matches[2];
     if (!bucket || !filePath) {
-      return res.status(400).json({ ok: false, error: "invalid_path" });
+      throw new BadRequestError("Ruta inválida", undefined, "invalid_path");
     }
     if (filePath.includes("..") || bucket.includes("..")) {
-      return res.status(403).json({ ok: false, error: "forbidden" });
+      throw new ForbiddenError("Ruta no permitida");
     }
-    const fullPath = path.join(
-      process.cwd(),
-      "uploads",
-      "storage",
-      bucket,
-      filePath,
-    );
+    const fullPath = path.join(process.cwd(), "uploads", "storage", bucket, filePath);
     try {
       await fs.promises.access(fullPath);
     } catch {
-      return res.status(404).json({ ok: false, error: "file_not_found" });
+      throw new NotFoundError("Archivo no encontrado", "file_not_found");
     }
     const ext = path.extname(filePath).toLowerCase();
     const contentTypes: Record<string, string> = {
@@ -150,62 +220,27 @@ app.get(/^\/api\/storage\/([^\/]+)\/(.+)$/, async (req, res) => {
     const contentType = contentTypes[ext] || "application/octet-stream";
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=31536000");
-    const fileStream = fs.createReadStream(fullPath);
-    fileStream.pipe(res);
-  } catch (error) {
-    console.error("Error sirviendo archivo local:", error);
-    res.status(500).json({ ok: false, error: "server_error" });
-  }
-});
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(spec));
-app.get("/docs.json", (_req, res) => res.json(spec));
-app.use(
-  (
-    err: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) => {
-    console.error("Error no manejado:", err);
-    if (err.message && err.message.includes("CORS")) {
-      return res
-        .status(403)
-        .json({ ok: false, error: "cors_error", message: err.message });
-    }
-    if (err.name === "ValidationError" || err.name === "ZodError") {
-      return res
-        .status(400)
-        .json({ ok: false, error: "validation_error", message: err.message });
-    }
-    if (err.status === 401 || err.name === "UnauthorizedError") {
-      return res
-        .status(401)
-        .json({ ok: false, error: "unauthorized", message: err.message });
-    }
-    const status = err.status || err.statusCode || 500;
-    const message =
-      process.env.NODE_ENV === "production"
-        ? "Error interno del servidor"
-        : err.message;
-    res.status(status).json({
-      ok: false,
-      error: "internal_error",
-      message,
-    });
-  },
+    fs.createReadStream(fullPath).pipe(res);
+  })
 );
+if (!isProduction) {
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(spec));
+  app.get("/docs.json", (_req, res) => res.json(spec));
+}
+app.use(notFoundHandler);
+app.use(errorHandler);
 app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+  logger.info(`API listening on http://localhost:${PORT}`);
   if (process.env.NODE_ENV === "production") {
     exec("npx prisma migrate deploy", (error, stdout, stderr) => {
       if (error) {
-        console.error(`Migration error: ${error.message}`);
+        logger.error(`Migration error: ${error.message}`);
         return;
       }
       if (stderr) {
-        console.log(`Migration info: ${stderr}`);
+        logger.info(`Migration info: ${stderr}`);
       }
-      console.log(`Migration result: ${stdout}`);
+      logger.info(`Migration result: ${stdout}`);
     });
   }
   initUploadsCleanupJob();
@@ -214,6 +249,6 @@ app.listen(PORT, () => {
       whatsAppServices.startTimeoutWorker();
     })
     .catch((err) => {
-      console.error("Error iniciando worker de timeout de WhatsApp:", err);
+      logger.error("Error iniciando worker de timeout de WhatsApp:", err);
     });
 });

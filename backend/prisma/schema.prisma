@@ -6,15 +6,20 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
 model User {
-  id                   Int      @id @default(autoincrement())
-  email                String   @unique
-  is_active            Boolean  @default(true)
-  created_at           DateTime @default(now()) @db.Timestamptz(3)
-  updated_at           DateTime @updatedAt @db.Timestamptz(3)
+  id                   Int                  @id @default(autoincrement())
+  email                String               @unique
+  is_active            Boolean              @default(true)
+  created_at           DateTime             @default(now()) @db.Timestamptz(3)
+  updated_at           DateTime             @updatedAt @db.Timestamptz(3)
   name                 String
   password             String
-  role                 Int      @default(2)
+  role                 UserRole             @default(CUSTOMER)
   profile_image        String?
   phone                String?
   shipping_city        String?
@@ -24,27 +29,25 @@ model User {
   cart                 Cart?
   orders               Orders[]
   sales                Sales[]
+  passwordResetTokens  PasswordResetToken[]
+  whatsAppSessions     WhatsAppSession[]
 
   @@index([is_active])
   @@index([role])
   @@index([created_at])
 }
 
-model Admin {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password      String
-  name          String
-  is_active     Boolean  @default(true)
-  profile_image String?
-  role          Int      @default(1)
-  created_at    DateTime @default(now()) @db.Timestamptz(3)
-  updated_at    DateTime @updatedAt @db.Timestamptz(3)
-  phone         String?
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([is_active])
-  @@index([created_at])
-  @@index([phone])
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Categories {
@@ -54,17 +57,19 @@ model Categories {
   created_at DateTime       @default(now()) @db.Timestamptz(3)
   is_active  Boolean        @default(true)
   status     CategoryStatus @default(active)
+  deleted_at DateTime?
   products   Products[]
 
   @@index([status, is_active])
   @@index([created_at])
   @@index([title])
+  @@index([deleted_at])
 }
 
 model Products {
   id          String       @id @default(cuid())
   title       String
-  price       Float        @default(0.00)
+  price       Decimal      @default(0.00) @db.Decimal(12, 2)
   is_active   Boolean      @default(true)
   created_at  DateTime     @default(now()) @db.Timestamptz(3)
   images      Json         @default("[]")
@@ -74,6 +79,7 @@ model Products {
   state       ProductState @default(active)
   stock       Int          @default(1)
   options     Json         @default("[]")
+  deleted_at  DateTime?
   orderItems  OrderItems[]
   category    Categories?  @relation(fields: [categoryId], references: [id])
   sales       Sales[]      @relation("ProductsToSales")
@@ -83,6 +89,17 @@ model Products {
   @@index([is_active, state])
   @@index([created_at])
   @@index([price])
+  @@index([deleted_at])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
 }
 
 model Sales {
@@ -91,8 +108,8 @@ model Sales {
   source         SaleSource
   created_at     DateTime      @default(now()) @db.Timestamptz(3)
   userId         Int?
-  total          Float         @default(0.00)
-  tax            Float         @default(0.00)
+  total          Decimal       @default(0.00) @db.Decimal(12, 2)
+  tax            Decimal       @default(0.00) @db.Decimal(12, 2)
   loadedManually Boolean       @default(false)
   manualProducts Json?         @default("[]")
   paymentMethods Json?         @default("[]")
@@ -112,7 +129,7 @@ model Sales {
 
 model Cart {
   id     Int          @id @default(autoincrement())
-  total  Float        @default(0.00)
+  total  Decimal      @default(0.00) @db.Decimal(12, 2)
   userId Int          @unique
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   items  OrderItems[]
@@ -128,31 +145,34 @@ model OrderItems {
   cartId            Int
   selected_options  Json     @default("[]")
   cart              Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product           Products @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Products @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([cartId])
   @@index([productId])
 }
 
 model Orders {
-  id                    String   @id @default(cuid())
+  id                    String      @id @default(cuid())
   userId                Int?
-  items                 Json     @default("[]")
-  total                 Float    @default(0.00)
+  items                 Json        @default("[]")
+  total                 Decimal     @default(0.00) @db.Decimal(12, 2)
   payment_method        String
-  created_at            DateTime @default(now()) @db.Timestamptz(3)
+  created_at            DateTime    @default(now()) @db.Timestamptz(3)
   buyer_email           String?
   buyer_name            String?
   saleId                String?
   transfer_receipt_path String?
   buyer_phone           String?
-  subtotal              Float?   @default(0.00)
-  sale                  Sales?   @relation(fields: [saleId], references: [id])
-  user                  User?    @relation(fields: [userId], references: [id])
+  subtotal              Decimal?    @default(0.00) @db.Decimal(12, 2)
+  status                OrderStatus @default(PENDING)
+  sale                  Sales?      @relation(fields: [saleId], references: [id])
+  user                  User?       @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([created_at])
   @@index([saleId])
+  @@index([buyer_email])
+  @@index([status])
 }
 
 model FAQ {
@@ -191,6 +211,8 @@ model BusinessData {
   whatsapp_webhook_secret    String?
   whatsapp_allowed_remitents String?
   hero_image                 String?
+  active_palette             String             @default("kuromi")
+  banner_config              Json?
   bankData                   BusinessBankData[]
 }
 
@@ -199,28 +221,15 @@ model BusinessBankData {
   bank_name      String
   account_number String
   account_holder String
+  alias          String?
+  cbu            String?
   businessId     String
-  business       BusinessData @relation(fields: [businessId], references: [id])
-}
-
-model ColorPalette {
-  id            String   @id @default(cuid())
-  name          String   @unique
-  colors        String[]
-  is_active     Boolean  @default(true)
-  use_for_admin Boolean  @default(false)
-  use_for_shop  Boolean  @default(false)
-  created_at    DateTime @default(now()) @db.Timestamptz(3)
-  updated_at    DateTime @updatedAt @db.Timestamptz(3)
-
-  @@index([is_active])
-  @@index([use_for_admin])
-  @@index([use_for_shop])
+  business       BusinessData @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 model WhatsAppSession {
   phone           String    @id
-  adminId         Int
+  userId          Int
   state           String
   productData     Json      @default("{}")
   messageHistory  Json      @default("[]")
@@ -228,8 +237,9 @@ model WhatsAppSession {
   lastUserMessage DateTime?
   reminderSent    Boolean   @default(false)
   reminderSentAt  DateTime?
+  user            User      @relation(fields: [userId], references: [id])
 
-  @@index([adminId])
+  @@index([userId])
   @@index([lastActivity])
 }
 

@@ -3,7 +3,7 @@ import { analyzeProductImages } from '@/config/groq';
 import { uploadImage } from '@/config/minio';
 import { messageService } from '../../message.service';
 import { sessionManager } from '../session.manager';
-import { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
+import type { WhatsAppConversationSession } from '../../../schemas/whatsapp.schemas';
 const STORE_URL = process.env.STORE_URL || process.env.FRONTEND_URL || '';
 class ProductActions {
   async processWithAI(

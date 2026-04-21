@@ -3,17 +3,17 @@ import AuthServices from '@/modules/User/services/auth_services';
 import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
 const router = Router();
 const authServices = new AuthServices();
-router.post('/login', (req, _res, next) => next(), (req, res) => authServices.loginAdmin(req, res));
+router.post('/login', (_req, _res, next) => next(), (req, res) => authServices.loginAdmin(req, res));
 router.post(
   '/register',
   requireAuth,
-  requireRole([1]),
-  (req, _res, next) => next(),
+  requireRole(["ADMIN"]),
+  (_req, _res, next) => next(),
   (req, res) => authServices.registerAdmin(req, res),
 );
-router.post('/password/reset', (req, _res, next) => next(), (req, res) => authServices.resetPasswordAdmin(req, res));
-router.post('/password/change', requireAuth, requireRole([1]), (req, res) => authServices.changePasswordAdmin(req, res));
-router.get('/validate-token', requireAuth, requireRole([1]), (req, res) => {
+router.post('/password/reset', (_req, _res, next) => next(), (req, res) => authServices.resetPasswordAdmin(req, res));
+router.post('/password/change', requireAuth, requireRole(["ADMIN"]), (req, res) => authServices.changePasswordAdmin(req, res));
+router.get('/validate-token', requireAuth, requireRole(["ADMIN"]), (req, res) => {
   const user = (req as any).user;
   res.json({
     ok: true,

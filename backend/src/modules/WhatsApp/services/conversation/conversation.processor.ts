@@ -10,14 +10,14 @@ import {
 } from './tone.detector';
 import { isPhoneAllowed } from '../../utils/phone.utils';
 import { getBusiness } from '../../utils/business.utils';
-import {
+import type {
   WhatsAppConversationSession,
   WebhookMessageReceived,
 } from '../../schemas/whatsapp.schemas';
 const ACTIONS_SKIP_SAVE = ['cancel', 'reset', 'create_product', 'end_conversation'];
 class ConversationProcessor {
   async processMessage(
-    adminId: number,
+    userId: number,
     phone: string,
     messageData: WebhookMessageReceived['data'] & { media_urls?: string[]; isAlbum?: boolean }
   ): Promise<void> {
@@ -33,7 +33,7 @@ class ConversationProcessor {
         if (!transcription) return;
         textContent = transcription;
       }
-      let session = await this.getOrCreateSession(adminId, phone, textContent, messageData.type);
+      let session = await this.getOrCreateSession(userId, phone, textContent, messageData.type);
       if (isGreeting(textContent) && messageData.type !== 'image' && !session.greetingTone) {
         session.greetingTone = detectGreetingTone(textContent);
       }
@@ -153,7 +153,7 @@ class ConversationProcessor {
     }
   }
   private async getOrCreateSession(
-    adminId: number,
+    userId: number,
     phone: string,
     textContent: string,
     messageType: string
@@ -165,7 +165,7 @@ class ConversationProcessor {
       session = null;
     }
     if (!session) {
-      session = sessionManager.createNewSession(adminId, phone);
+      session = sessionManager.createNewSession(userId, phone);
     }
     return session;
   }
@@ -292,7 +292,7 @@ class ConversationProcessor {
     for (const pattern of stockPatterns) {
       const match = normalized.match(pattern);
       if (match) {
-        stock = parseInt(match[1], 10);
+        stock = parseInt(match[1] ?? "0", 10);
         break;
       }
     }
@@ -316,7 +316,7 @@ class ConversationProcessor {
         }
       }
     }
-    let contextText = normalized
+    const contextText = normalized
       .replace(/\d+\s*(?:en\s*stock|unidades?|uni\.?|u\b)/gi, '')
       .replace(/stock[:\s]*\d+/gi, '')
       .replace(/x\d+\b/gi, '')

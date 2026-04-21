@@ -7,7 +7,7 @@ export default class FaqServices {
     });
     return { ok: true, items };
   }
-  async listAdmin(page: number = 1, limit: number = 50) {
+  async listAdmin(page = 1, limit = 50) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const [items, total] = await Promise.all([
       prisma.fAQ.findMany({
@@ -28,7 +28,7 @@ export default class FaqServices {
     return { ok: true, item };
   }
   async softDelete(id: string) {
-    await prisma.fAQ.delete({ where: { id } });
+    await prisma.fAQ.update({ where: { id }, data: { deleted_at: new Date(), is_active: false } });
     return { ok: true };
   }
 }

@@ -1,0 +1,266 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is([data-palette="kuromi"], [data-palette="kuromi"] *, [data-palette="midnight"], [data-palette="midnight"] *));
+
+/* ─────────────────────────────────────────────────────────────
+   Cinnamon — 3 paletas como CSS vars en :root + data-palette.
+   Tomadas 1:1 del mockup (entry_21_asset.js).
+   ───────────────────────────────────────────────────────────── */
+
+:root,
+[data-palette="kuromi"] {
+  --color-bg: #0b0a0d;
+  --color-bg-elev: #141118;
+  --color-bg-card: #1a1620;
+  --color-bg-input: #201b28;
+  --color-border: rgba(214, 180, 255, 0.12);
+  --color-border-strong: rgba(214, 180, 255, 0.22);
+  --color-text: #f4eefb;
+  --color-text-dim: #a99bbe;
+  --color-text-muted: #6e6380;
+  --color-accent: #c9a4ff;
+  --color-accent-strong: #b488ff;
+  --color-accent-soft: rgba(201, 164, 255, 0.14);
+  --color-pink: #ff9dd6;
+  --color-pink-soft: rgba(255, 157, 214, 0.16);
+  --color-success: #7ee6b8;
+  --color-warn: #ffd37a;
+  --color-danger: #ff8b9e;
+  --color-button-text: #0b0a0d;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(201, 164, 255, 0.25), transparent 60%),
+    radial-gradient(80% 60% at 90% 100%, rgba(255, 157, 214, 0.18), transparent 60%),
+    #0b0a0d;
+  color-scheme: dark;
+}
+
+[data-palette="mono"] {
+  --color-bg: #fafafa;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f4f4f5;
+  --color-border: rgba(15, 15, 16, 0.09);
+  --color-border-strong: rgba(15, 15, 16, 0.18);
+  --color-text: #0b0a0d;
+  --color-text-dim: #5c5862;
+  --color-text-muted: #9a969f;
+  --color-accent: #0b0a0d;
+  --color-accent-strong: #000000;
+  --color-accent-soft: rgba(11, 10, 13, 0.06);
+  --color-pink: #0b0a0d;
+  --color-pink-soft: rgba(11, 10, 13, 0.06);
+  --color-success: #116a42;
+  --color-warn: #7a5a0b;
+  --color-danger: #9b1c1c;
+  --color-button-text: #fafafa;
+  --hero-gradient: linear-gradient(180deg, #f4f4f5 0%, #fafafa 100%);
+  color-scheme: light;
+}
+
+[data-palette="blush"] {
+  --color-bg: #fdf7f5;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f7edea;
+  --color-border: rgba(194, 88, 120, 0.14);
+  --color-border-strong: rgba(194, 88, 120, 0.28);
+  --color-text: #2a1a1f;
+  --color-text-dim: #7a5a63;
+  --color-text-muted: #b09098;
+  --color-accent: #d16b86;
+  --color-accent-strong: #b9526f;
+  --color-accent-soft: rgba(209, 107, 134, 0.12);
+  --color-pink: #e88ba4;
+  --color-pink-soft: rgba(232, 139, 164, 0.18);
+  --color-success: #4a8f6b;
+  --color-warn: #b78a3e;
+  --color-danger: #b94b62;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 10% 0%, rgba(232, 139, 164, 0.22), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(209, 107, 134, 0.14), transparent 60%),
+    #fdf7f5;
+  color-scheme: light;
+}
+
+[data-palette="sage"] {
+  --color-bg: #f7f8f4;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #edf1e9;
+  --color-border: rgba(74, 100, 60, 0.12);
+  --color-border-strong: rgba(74, 100, 60, 0.24);
+  --color-text: #1f2a1a;
+  --color-text-dim: #5c6e54;
+  --color-text-muted: #98a38d;
+  --color-accent: #6f8e5a;
+  --color-accent-strong: #557247;
+  --color-accent-soft: rgba(111, 142, 90, 0.12);
+  --color-pink: #c9a961;
+  --color-pink-soft: rgba(201, 169, 97, 0.16);
+  --color-success: #4f7b4d;
+  --color-warn: #b98f35;
+  --color-danger: #b23e3e;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 15% 0%, rgba(111, 142, 90, 0.20), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(201, 169, 97, 0.14), transparent 60%),
+    #f7f8f4;
+  color-scheme: light;
+}
+
+[data-palette="ocean"] {
+  --color-bg: #f4f8fa;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #e8eff3;
+  --color-border: rgba(36, 90, 110, 0.12);
+  --color-border-strong: rgba(36, 90, 110, 0.26);
+  --color-text: #0f2a33;
+  --color-text-dim: #4e6a75;
+  --color-text-muted: #9aaab2;
+  --color-accent: #1f87a6;
+  --color-accent-strong: #1a6f8a;
+  --color-accent-soft: rgba(31, 135, 166, 0.12);
+  --color-pink: #4fb3cf;
+  --color-pink-soft: rgba(79, 179, 207, 0.16);
+  --color-success: #1f8f6e;
+  --color-warn: #c49b4f;
+  --color-danger: #c45b5b;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(79, 179, 207, 0.22), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(31, 135, 166, 0.14), transparent 60%),
+    #f4f8fa;
+  color-scheme: light;
+}
+
+[data-palette="sunset"] {
+  --color-bg: #fff7f0;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #fbedde;
+  --color-border: rgba(176, 96, 38, 0.12);
+  --color-border-strong: rgba(176, 96, 38, 0.24);
+  --color-text: #2a1810;
+  --color-text-dim: #6b4f40;
+  --color-text-muted: #b09584;
+  --color-accent: #e16b3b;
+  --color-accent-strong: #c2552a;
+  --color-accent-soft: rgba(225, 107, 59, 0.12);
+  --color-pink: #f0a35e;
+  --color-pink-soft: rgba(240, 163, 94, 0.18);
+  --color-success: #6b9050;
+  --color-warn: #d69434;
+  --color-danger: #c84a36;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 10% 0%, rgba(240, 163, 94, 0.26), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(225, 107, 59, 0.16), transparent 60%),
+    #fff7f0;
+  color-scheme: light;
+}
+
+[data-palette="midnight"] {
+  --color-bg: #07090f;
+  --color-bg-elev: #0f1422;
+  --color-bg-card: #141a2b;
+  --color-bg-input: #1a2236;
+  --color-border: rgba(112, 165, 255, 0.12);
+  --color-border-strong: rgba(112, 165, 255, 0.22);
+  --color-text: #eef3ff;
+  --color-text-dim: #94a6c9;
+  --color-text-muted: #5b6a85;
+  --color-accent: #6fa4ff;
+  --color-accent-strong: #4d87e8;
+  --color-accent-soft: rgba(111, 164, 255, 0.14);
+  --color-pink: #4fe3d6;
+  --color-pink-soft: rgba(79, 227, 214, 0.16);
+  --color-success: #5fe3a6;
+  --color-warn: #ffcb52;
+  --color-danger: #ff7e7e;
+  --color-button-text: #07090f;
+  --hero-gradient:
+    radial-gradient(120% 80% at 20% 0%, rgba(111, 164, 255, 0.26), transparent 60%),
+    radial-gradient(80% 60% at 90% 100%, rgba(79, 227, 214, 0.18), transparent 60%),
+    #07090f;
+  color-scheme: dark;
+}
+
+/* Tailwind v4 theme: exponer tokens como utilidades */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-elev: var(--color-bg-elev);
+  --color-bg-card: var(--color-bg-card);
+  --color-bg-input: var(--color-bg-input);
+  --color-border-token: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-fg: var(--color-text);
+  --color-fg-dim: var(--color-text-dim);
+  --color-fg-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-pink: var(--color-pink);
+  --color-pink-soft: var(--color-pink-soft);
+  --color-success: var(--color-success);
+  --color-warn: var(--color-warn);
+  --color-danger: var(--color-danger);
+  --color-button-text: var(--color-button-text);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-grotesk: var(--font-grotesk), var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+}
+
+/* shadcn compat: mapeamos tokens nuestros a las vars que shadcn espera. */
+:root {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-bg-card);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg-elev);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-button-text);
+  --secondary: var(--color-bg-elev);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-bg-input);
+  --muted-foreground: var(--color-text-dim);
+  --accent: var(--color-accent-soft);
+  --accent-foreground: var(--color-accent);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-bg-input);
+  --ring: var(--color-accent);
+  --radius: 0.75rem;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  border-color: var(--color-border);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}

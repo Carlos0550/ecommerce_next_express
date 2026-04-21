@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express"
+import type { Request, Response, NextFunction } from "express"
 export function ensureQuantity(req: Request, _res: Response, next: NextFunction) {
   const q = Number((req.body?.quantity ?? req.params?.quantity ?? 1))
   ;(req as any).quantity = Math.max(1, isNaN(q) ? 1 : q)

@@ -1,12 +1,14 @@
 import { prisma } from "@/config/prisma";
-import { SaleRequest, SalesSummaryRequest } from "./schemas/sales.schemas";
+import type { SaleRequest } from "./schemas/sales.schemas";
 import { sendEmail } from "@/config/resend";
 import { sale_email_html } from "@/templates/sale_email";
 import { order_ready_email_html } from "@/templates/order_ready_email";
 import { order_declined_email_html } from "@/templates/order_declined_email";
 import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
-import PaletteServices from "@/modules/Palettes/services/palette.services";
+import { getActivePalette } from "@/utils/getActivePalette";
+import { logger } from "@/utils/logger";
+import { decrementStock } from "@/utils/stock";
 class SalesServices {
   async saveSale(request: SaleRequest) {
     const { payment_method, source, product_ids, user_sale, items } = request;
@@ -72,7 +74,7 @@ class SalesServices {
       }
       const parsedUserId = user_id !== undefined ? Number(user_id) : undefined;
       const primaryPaymentMethod =
-        (request.payment_methods && request.payment_methods[0]?.method) ||
+        (request.payment_methods?.[0]?.method) ||
         payment_method;
       const paymentBreakdown = Array.isArray(request.payment_methods)
         ? request.payment_methods
@@ -100,35 +102,62 @@ class SalesServices {
           userToConnect = { connect: { id: parsedUserId } };
         }
       }
-      const sale = await prisma.sales.create({
-        data: {
-          payment_method: primaryPaymentMethod,
-          source,
-          user: userToConnect,
-          total: Number(finalTotal),
-          tax: taxPercent,
-          ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
-          products: !isManual
-            ? {
-                connect: Array.from(
-                  new Set(product_data.map((p) => p.id).filter(Boolean)),
-                ).map((id) => ({ id })),
-              }
-            : undefined,
-          manualProducts: isManual ? (manualItems as any) : undefined,
-          loadedManually: isManual,
-          paymentMethods: paymentBreakdown as any,
-          items: product_data as any,
-        },
+      const shouldDecrementStock = !isManual && !request.skipStockDecrement;
+      const stockCounts = new Map<string, number>();
+      if (shouldDecrementStock) {
+        if (Array.isArray(items) && items.length > 0) {
+          items.forEach((i) =>
+            stockCounts.set(
+              String(i.product_id),
+              (stockCounts.get(String(i.product_id)) || 0) +
+                Math.max(1, Number(i.quantity) || 1),
+            ),
+          );
+        } else {
+          (product_ids || []).forEach((id) =>
+            stockCounts.set(String(id), (stockCounts.get(String(id)) || 0) + 1),
+          );
+        }
+      }
+      const sale = await prisma.$transaction(async (tx) => {
+        const created = await tx.sales.create({
+          data: {
+            payment_method: primaryPaymentMethod,
+            source,
+            user: userToConnect,
+            total: Number(finalTotal),
+            tax: taxPercent,
+            processed: source === "CAJA",
+            ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
+            products: !isManual
+              ? {
+                  connect: Array.from(
+                    new Set(product_data.map((p) => p.id).filter(Boolean)),
+                  ).map((id) => ({ id })),
+                }
+              : undefined,
+            manualProducts: isManual ? (manualItems as any) : undefined,
+            loadedManually: isManual,
+            paymentMethods: paymentBreakdown as any,
+            items: product_data as any,
+          },
+        });
+        if (shouldDecrementStock && stockCounts.size > 0) {
+          await decrementStock(
+            tx,
+            Array.from(stockCounts.entries()).map(([id, quantity]) => ({ id, quantity })),
+          );
+        }
+        return created;
       });
-      setImmediate(async () => {
+      setImmediate(() => {
+        void (async () => {
         try {
           const user = parsedUserId
             ? await prisma.user.findUnique({ where: { id: parsedUserId } })
             : null;
-          console.log(user);
           const business = await BusinessServices.getBusiness();
-          const palette = await PaletteServices.getActiveFor("shop");
+          const palette = await getActivePalette();
           const html = sale_email_html({
             source,
             payment_method: primaryPaymentMethod,
@@ -146,16 +175,17 @@ class SalesServices {
             finalTotal,
             saleId: (sale as any)?.id ?? undefined,
             saleDate:
-              (createdAtOverride as Date) ||
+              (createdAtOverride) ||
               ((sale as any)?.created_at as Date) ||
               new Date(),
             buyerName: user?.name ?? undefined,
             buyerEmail: user?.email ?? undefined,
-            business: business as any,
+            business: business,
             palette: palette as any,
           });
-          const admins: any[] = await prisma.admin.findMany({
-            where: { is_active: true },
+          const admins: any[] = await prisma.user.findMany({
+            where: { role: "ADMIN", is_active: true },
+            select: { email: true },
           });
           const adminEmails = admins
             .map((u: { email: string }) => u.email)
@@ -181,36 +211,15 @@ class SalesServices {
           } else {
             console.warn("No recipient configured for sale email");
           }
-          if (!isManual) {
-            const counts = new Map<string, number>();
-            if (Array.isArray(items) && items.length > 0) {
-              items.forEach((i) =>
-                counts.set(
-                  String(i.product_id),
-                  (counts.get(String(i.product_id)) || 0) +
-                    Math.max(1, Number(i.quantity) || 1),
-                ),
-              );
-            } else {
-              (product_ids || []).forEach((id) =>
-                counts.set(String(id), (counts.get(String(id)) || 0) + 1),
-              );
-            }
-            for (const [id, qty] of counts.entries()) {
-              await prisma.$executeRaw`UPDATE "Products"
-                              SET stock = GREATEST(stock - ${qty}, 0),
-                                  state = CASE WHEN GREATEST(stock - ${qty}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
-                              WHERE id = ${id}`;
-            }
-          }
         } catch (err) {
-          console.error("Error sending sale email", err);
+          logger.error("Error sending sale email", { err });
         }
+        })();
       });
       return (sale as any)?.id || true;
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -262,7 +271,7 @@ class SalesServices {
       const taxAmount = subtotal * (taxPercent / 100);
       const finalTotal = subtotal + taxAmount;
       const primaryPaymentMethod =
-        (request.payment_methods && request.payment_methods[0]?.method) ||
+        (request.payment_methods?.[0]?.method) ||
         request.payment_method ||
         (existing.payment_method as any);
       const paymentBreakdown = Array.isArray(request.payment_methods)
@@ -299,7 +308,7 @@ class SalesServices {
       return { success: true, sale: updated };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -307,11 +316,12 @@ class SalesServices {
     try {
       const existing = await prisma.sales.findUnique({ where: { id } });
       if (!existing) return { success: false, message: "sale_not_found" };
+      await prisma.orders.updateMany({ where: { saleId: id }, data: { saleId: null } });
       await prisma.sales.delete({ where: { id } });
       return { success: true };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -320,11 +330,13 @@ class SalesServices {
     per_page = 5,
     start_date,
     end_date,
+    pending = false,
   }: {
     page?: number;
     per_page?: number;
     start_date?: string;
     end_date?: string;
+    pending?: boolean;
   }) {
     try {
       const take = Math.max(1, Number(per_page) || 5);
@@ -332,7 +344,7 @@ class SalesServices {
       const skip = (currentPage - 1) * take;
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.startOf("day");
-      const parseDateTz = (value?: string, endOfDay: boolean = false) => {
+      const parseDateTz = (value?: string, endOfDay = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
@@ -346,7 +358,6 @@ class SalesServices {
           lte: end.toDate(),
         },
       };
-      const pending = (global as any)?.__pendingFilter || false;
       if (pending) {
         where.source = "WEB" as any;
         where.processed = false;
@@ -389,7 +400,7 @@ class SalesServices {
       return { sales, pagination, totalSalesByDate: parsed_totalSalesByDate };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -406,7 +417,7 @@ class SalesServices {
     try {
       const defaultEnd = nowTz();
       const defaultStart = defaultEnd.subtract(30, "day");
-      const parseDate = (value?: string, endOfDay: boolean = false) => {
+      const parseDate = (value?: string, endOfDay = false) => {
         if (!value) return undefined;
         const parsed = dayjs.tz(value, "YYYY-MM-DD", DEFAULT_TZ);
         if (!parsed.isValid()) return undefined;
@@ -503,7 +514,7 @@ class SalesServices {
           revenue: 0,
         };
       });
-      categoryMap["sin_categoria"] = {
+      categoryMap.sin_categoria = {
         category_id: "sin_categoria",
         name: "Sin categoría",
         count: 0,
@@ -517,8 +528,11 @@ class SalesServices {
           totalTaxCollected += taxAmount;
         }
         const hour = dayjs.tz(sale.created_at).hour();
-        hourMap[hour].count += 1;
-        hourMap[hour].revenue += saleTotal;
+        const bucket = hourMap[hour];
+        if (bucket) {
+          bucket.count += 1;
+          bucket.revenue += saleTotal;
+        }
         const items = (sale.items as any[]) || [];
         items.forEach((item: any) => {
           const qty = Number(item.quantity) || 1;
@@ -544,7 +558,8 @@ class SalesServices {
           }
         });
         if (sale.loadedManually) {
-          categoryMap["sin_categoria"].count += items.length;
+          const unc = categoryMap.sin_categoria;
+          if (unc) unc.count += items.length;
         }
       });
       Object.keys(categoryMap).forEach((catId) => {
@@ -555,10 +570,13 @@ class SalesServices {
             ) ||
             (catId === "sin_categoria" && s.loadedManually),
         );
-        categoryMap[catId].revenue = catSales.reduce(
-          (acc, s) => acc + Number(s.total || 0),
-          0,
-        );
+        const cat = categoryMap[catId];
+        if (cat) {
+          cat.revenue = catSales.reduce(
+            (acc, s) => acc + Number(s.total || 0),
+            0,
+          );
+        }
       });
       const prevCount = previousSales.length;
       const prevRevenue = previousSales.reduce(
@@ -688,7 +706,7 @@ class SalesServices {
       };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return {
         success: false,
         message: error_msg,
@@ -704,18 +722,17 @@ class SalesServices {
       if (!sale) return { success: false, message: "sale_not_found" };
       if ((sale as any).processed) return { success: true };
       await prisma.sales.update({ where: { id }, data: { processed: true } });
-      const buyer_email = sale.orders[0].buyer_email || sale.user?.email;
-      const buyerName =
-        sale.orders[0].buyer_name || sale.user?.name || undefined;
-      console.log("buyer_email", buyer_email);
+      const firstOrder = sale.orders[0];
+      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
+      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
-        const palette = await PaletteServices.getActiveFor("shop");
+        const palette = await getActivePalette();
         const html = order_ready_email_html({
           saleId: sale.id,
           buyerName,
           payment_method: String(sale.payment_method),
-          business: business as any,
+          business: business,
           palette: palette as any,
         });
         await sendEmail({
@@ -728,7 +745,7 @@ class SalesServices {
       return { success: false, message: "email_not_found" };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }
@@ -743,17 +760,17 @@ class SalesServices {
         where: { id },
         data: { declined: true, decline_reason: reason, processed: false },
       });
-      const buyer_email = sale.orders[0].buyer_email || sale.user?.email;
-      const buyerName =
-        sale.orders[0].buyer_name || sale.user?.name || undefined;
+      const firstOrder = sale.orders[0];
+      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
+      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
       if (buyer_email) {
         const business = await BusinessServices.getBusiness();
-        const palette = await PaletteServices.getActiveFor("shop");
+        const palette = await getActivePalette();
         const html = order_declined_email_html({
           saleId: sale.id,
           buyerName,
           reason,
-          business: business as any,
+          business: business,
           palette: palette as any,
         });
         await sendEmail({
@@ -765,7 +782,7 @@ class SalesServices {
       return { success: true };
     } catch (error) {
       const error_msg = error instanceof Error ? error.message : String(error);
-      console.log(error);
+      logger.error("sales_service_error", { error });
       return { success: false, message: error_msg };
     }
   }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { saveProduct, saveCategory, getAllProducts, updateProductController, changeCategoryStatus, changeProductStatus } from "./router.controller";
-import { uploadMultipleImages, handleImageUploadError, uploadSingleImage } from "../../middlewares/image.middleware";
+import { uploadMultipleImages, handleImageUploadError, uploadSingleImage, validateImageMagicBytes } from "../../middlewares/image.middleware";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import ProductServices from "./services/product.services";
 const router = Router();
@@ -8,50 +8,52 @@ const product_service = new ProductServices
 router.post(
     "/save-product",
      requireAuth,
-     requireRole([1]),
-     uploadMultipleImages('productImages', 10),
-     handleImageUploadError, 
+     requireRole(["ADMIN"]),
+     uploadMultipleImages('productImages', 1),
+     handleImageUploadError,
+     validateImageMagicBytes,
      saveProduct,
      (req: any, res: any) => product_service.saveProduct(req, res)
 )
-router.post("/categories", requireAuth, requireRole([1]), uploadSingleImage("image"), saveCategory, (req, res) => product_service.saveCategory(req, res))
-router.put("/categories/:category_id", requireAuth, requireRole([1]), uploadSingleImage("image"), (req, res) => product_service.updateCategory(req, res))
-router.get("/categories", requireAuth, requireRole([1]), (req, res) => product_service.getAllCategories(req, res))
-router.get("/", requireAuth, getAllProducts, requireRole([1]),(req, res) => product_service.getAllProducts(req, res))
-router.delete("/:product_id", requireAuth,requireRole([1]), (req, res) => product_service.deleteProduct(req, res))
+router.post("/categories", requireAuth, requireRole(["ADMIN"]), uploadSingleImage("image"), validateImageMagicBytes, saveCategory, (req, res) => product_service.saveCategory(req, res))
+router.put("/categories/:category_id", requireAuth, requireRole(["ADMIN"]), uploadSingleImage("image"), validateImageMagicBytes, (req, res) => product_service.updateCategory(req, res))
+router.get("/categories", requireAuth, requireRole(["ADMIN"]), (req, res) => product_service.getAllCategories(req, res))
+router.get("/", requireAuth, requireRole(["ADMIN"]), getAllProducts, (req, res) => product_service.getAllProducts(req, res))
+router.delete("/:product_id", requireAuth,requireRole(["ADMIN"]), (req, res) => product_service.deleteProduct(req, res))
 router.put(
     "/:product_id",
     requireAuth,
-    requireRole([1]),
-    uploadMultipleImages('productImages', 10),
+    requireRole(["ADMIN"]),
+    uploadMultipleImages('productImages', 1),
     handleImageUploadError,
+    validateImageMagicBytes,
     updateProductController,
     (req: any, res: any) => product_service.updateProduct(req, res)
 )
 router.patch(
     "/categories/status/:category_id/:status",
     requireAuth,
-    requireRole([1]),
+    requireRole(["ADMIN"]),
     changeCategoryStatus,
     (req, res) => product_service.categoryChangeStatus(req, res)
 )
 router.patch(
     "/status/:product_id/:state",
     requireAuth,
-    requireRole([1]),
+    requireRole(["ADMIN"]),
     changeProductStatus,
     (req, res) => product_service.productChangeStatus(req, res)
 )
 router.patch(
     "/stock/:product_id/:quantity",
     requireAuth,
-    requireRole([1]),
+    requireRole(["ADMIN"]),
     (req, res) => product_service.updateStock(req, res)
 )
 router.post(
     "/ai/enhance/:product_id",
     requireAuth,
-    requireRole([1]),
+    requireRole(["ADMIN"]),
     (req, res) => product_service.enhanceProductContent(req, res)
 )
 router.get("/public", (req, res) => product_service.getPublicProducts(req, res))

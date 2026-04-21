@@ -1,12 +1,12 @@
 function validateEnvVar(
   name: string,
   value: string | undefined,
-  required: boolean = true,
+  required = true,
 ): string {
   if (required && (!value || value.trim() === "")) {
     throw new Error(`❌ Variable de entorno requerida faltante: ${name}`);
   }
-  if (value && value.trim() === "") {
+  if (value?.trim() === "") {
     throw new Error(`❌ Variable de entorno ${name} está vacía`);
   }
   const hasValue = value !== undefined && value !== null && value !== "";

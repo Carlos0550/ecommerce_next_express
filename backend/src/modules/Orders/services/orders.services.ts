@@ -3,12 +3,14 @@ import { sendEmail } from "@/config/resend";
 import { purchase_email_html } from "@/templates/purchase_email";
 import salesServices from "@/modules/Sales/services/sales.services";
 import BusinessServices from "@/modules/Business/business.services";
-import PaletteServices from "@/modules/Palettes/services/palette.services";
-import { PaymentMethod } from "@prisma/client";
+import { getActivePalette } from "@/utils/getActivePalette";
+import { logger } from "@/utils/logger";
+import { decrementStock } from "@/utils/stock";
+import type { PaymentMethod, OrderStatus } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
-type OrderItemInput = { product_id: string; quantity: number; options?: any };
-type CustomerInput = {
+interface OrderItemInput { product_id: string; quantity: number; options?: any }
+interface CustomerInput {
   name: string;
   email: string;
   phone?: string;
@@ -17,7 +19,7 @@ type CustomerInput = {
   city?: string;
   province?: string;
   pickup?: boolean;
-};
+}
 export default class OrdersServices {
   async createOrder(
     userId: number | undefined,
@@ -40,6 +42,7 @@ export default class OrdersServices {
           price: Number(product.price),
           quantity: Math.max(1, Number(item.quantity) || 1),
           options: item.options || [],
+          stock: Number(product.stock),
         };
       })
       .filter((i) => i !== null) as {
@@ -48,6 +51,7 @@ export default class OrdersServices {
       price: number;
       quantity: number;
       options: any;
+      stock: number;
     }[];
     if (snapshot.length === 0) {
       return {
@@ -65,6 +69,20 @@ export default class OrdersServices {
         status: 400,
         error: "invalid_products",
         missing_product_ids: missing,
+      };
+    }
+    const outOfStock = snapshot.filter((it) => it.stock < it.quantity);
+    if (outOfStock.length > 0) {
+      return {
+        ok: false,
+        status: 409,
+        error: "insufficient_stock",
+        out_of_stock: outOfStock.map((it) => ({
+          product_id: it.id,
+          title: it.title,
+          available: it.stock,
+          requested: it.quantity,
+        })),
       };
     }
     const subtotal = snapshot.reduce(
@@ -97,32 +115,37 @@ export default class OrdersServices {
     if (userId && Number.isInteger(userId)) {
       orderData.user = { connect: { id: userId } };
     }
-    const order = await prisma.orders.create({
-      data: orderData,
-    });
-    if (userId && Number.isInteger(userId)) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          phone: customer.phone || undefined,
-          shipping_street: customer.street || undefined,
-          shipping_postal_code: customer.postal_code || undefined,
-          shipping_city: customer.city || undefined,
-          shipping_province: customer.province || undefined,
-        },
-      });
-      const cart = await prisma.cart.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-      if (cart?.id) {
-        await prisma.orderItems.deleteMany({ where: { cartId: cart.id } });
-        await prisma.cart.update({
-          where: { id: cart.id },
-          data: { total: 0 },
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.orders.create({ data: orderData });
+      await decrementStock(
+        tx,
+        snapshot.map((it) => ({ id: it.id, quantity: it.quantity })),
+      );
+      if (userId && Number.isInteger(userId)) {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            phone: customer.phone || undefined,
+            shipping_street: customer.street || undefined,
+            shipping_postal_code: customer.postal_code || undefined,
+            shipping_city: customer.city || undefined,
+            shipping_province: customer.province || undefined,
+          },
         });
+        const cart = await tx.cart.findUnique({
+          where: { userId },
+          select: { id: true },
+        });
+        if (cart?.id) {
+          await tx.orderItems.deleteMany({ where: { cartId: cart.id } });
+          await tx.cart.update({
+            where: { id: cart.id },
+            data: { total: 0 },
+          });
+        }
       }
-    }
+      return created;
+    });
     const parsed_payment_method = paymentNormalized;
     try {
       const saleId = (await salesServices.saveSale({
@@ -135,7 +158,8 @@ export default class OrdersServices {
           quantity: i.quantity,
           options: (i as any).options,
         })),
-      })) as any;
+        skipStockDecrement: true,
+      }));
       if (typeof saleId === "string") {
         await prisma.orders.update({
           where: { id: order.id },
@@ -145,18 +169,14 @@ export default class OrdersServices {
     } catch (err) {
       console.error("order_sale_link_failed", err);
     }
-    setImmediate(async () => {
-      await this.notify(order.id, snapshot, total, paymentMethod, customer);
-      try {
-        for (const it of snapshot) {
-          await prisma.$executeRaw`UPDATE "Products" 
-            SET stock = GREATEST(stock - ${it.quantity}, 0),
-                state = CASE WHEN GREATEST(stock - ${it.quantity}, 0) = 0 THEN 'out_stock'::"ProductState" ELSE state END
-            WHERE id = ${it.id}`;
+    setImmediate(() => {
+      void (async () => {
+        try {
+          await this.notify(order.id, snapshot, total, paymentMethod, customer);
+        } catch (err) {
+          logger.error("order_notify_failed", { err });
         }
-      } catch (err) {
-        console.error("order_stock_decrement_failed", err);
-      }
+      })();
     });
     return { ok: true, order_id: order.id, total };
   }
@@ -197,7 +217,78 @@ export default class OrdersServices {
       return { ok: false, status: 500, error: "internal_error" };
     }
   }
-  async listUserOrders(userId: number, page: number = 1, limit: number = 10) {
+  async listAdminOrders({
+    status,
+    page = 1,
+    limit = 20,
+    q,
+  }: {
+    status?: OrderStatus | "ALL";
+    page?: number;
+    limit?: number;
+    q?: string;
+  }) {
+    const take = Math.max(1, Math.min(100, Number(limit) || 20));
+    const skip = (Math.max(1, Number(page) || 1) - 1) * take;
+    const where: any = {};
+    if (status && status !== "ALL") where.status = status;
+    if (q && q.trim()) {
+      const term = q.trim();
+      where.OR = [
+        { id: { contains: term, mode: "insensitive" } },
+        { buyer_email: { contains: term, mode: "insensitive" } },
+        { buyer_name: { contains: term, mode: "insensitive" } },
+        { saleId: { contains: term, mode: "insensitive" } },
+      ];
+    }
+    const [items, total] = await Promise.all([
+      prisma.orders.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        skip,
+        take,
+        include: {
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+          sale: {
+            select: {
+              id: true,
+              source: true,
+              processed: true,
+              declined: true,
+              decline_reason: true,
+              payment_method: true,
+            },
+          },
+        },
+      }),
+      prisma.orders.count({ where }),
+    ]);
+    const totalPages = Math.ceil(total / take) || 1;
+    return {
+      ok: true,
+      orders: items,
+      pagination: {
+        total,
+        page: Math.max(1, Number(page) || 1),
+        limit: take,
+        totalPages,
+        hasNextPage: (Number(page) || 1) < totalPages,
+        hasPrevPage: (Number(page) || 1) > 1,
+      },
+    };
+  }
+  async updateStatus(id: string, status: OrderStatus) {
+    const order = await prisma.orders.findUnique({ where: { id } });
+    if (!order) return { ok: false, status: 404, error: "order_not_found" };
+    const updated = await prisma.orders.update({
+      where: { id },
+      data: { status },
+    });
+    return { ok: true, order: updated };
+  }
+  async listUserOrders(userId: number, page = 1, limit = 10) {
     const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
     const [items, total] = await Promise.all([
       prisma.orders.findMany({
@@ -239,7 +330,7 @@ export default class OrdersServices {
     }));
     if (customer.email && customer.email.trim()) {
       const business = await BusinessServices.getBusiness();
-      const palette = await PaletteServices.getActiveFor("shop");
+      const palette = await getActivePalette();
       const buyerHtml = purchase_email_html({
         payment_method: paymentMethod,
         products: productRows,
@@ -249,7 +340,7 @@ export default class OrdersServices {
         saleDate: new Date(),
         buyerName: customer.name,
         buyerEmail: customer.email,
-        business: business as any,
+        business: business,
         palette: palette as any,
       });
       await sendEmail({

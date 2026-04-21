@@ -1,11 +1,40 @@
-import { Request, Response } from "express";
-import { BusinessDataRequest } from "./schemas/business.schemas";
+import type { Request, Response } from "express";
+import type { BusinessDataRequest } from "./schemas/business.schemas";
 import businessServices from "./business.services";
 import { generateBusinessDescription } from "@/config/groq";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
 import fs from "fs";
 import { logger } from "@/utils/logger";
+import { PALETTES, isValidPaletteName } from "@/templates/palettes";
 class BusinessController {
+  async uploadBannerImage(req: Request, res: Response) {
+    try {
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) {
+        return res
+          .status(400)
+          .json({ error: "No se proporcionó ningún archivo" });
+      }
+      const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+      const timestamp = Date.now();
+      const uniqueName = `banner-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      const uploaded = await uploadToBucket(
+        buffer,
+        uniqueName,
+        "business",
+        "banner",
+        file.mimetype,
+      );
+      if (!uploaded.path) {
+        return res.status(500).json({ error: "Error al subir la imagen" });
+      }
+      const publicUrl = getPublicUrlFor("business", uploaded.path);
+      return res.json({ success: true, url: publicUrl });
+    } catch (error) {
+      logger.error("uploadBannerImage_error", error);
+      return res.status(500).json({ error: "Error al procesar la imagen" });
+    }
+  }
   async uploadImage(req: Request, res: Response) {
     try {
       const file = (req as any).file as Express.Multer.File | undefined;
@@ -16,12 +45,12 @@ class BusinessController {
       }
       const fieldRaw =
         (req.query.field as string) ||
-        (req.body as any)?.field ||
+        (req.body)?.field ||
         "business_image";
       let field: "business_image" | "favicon" | "hero_image" = "business_image";
       if (fieldRaw === "favicon") field = "favicon";
       if (fieldRaw === "hero_image") field = "hero_image";
-      const idParam = (req.query.id as string) || (req.body as any)?.id;
+      const idParam = (req.query.id as string) || (req.body)?.id;
       const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
       const timestamp = Date.now();
       const uniqueName = `business-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
@@ -67,7 +96,7 @@ class BusinessController {
       let finalType: string | undefined = type;
       if (!finalType) {
         const current = await businessServices.getBusiness();
-        finalType = (current as any)?.type || undefined;
+        finalType = (current)?.type || undefined;
       }
       const description = await generateBusinessDescription(
         name,
@@ -132,7 +161,7 @@ class BusinessController {
         .json({ error: "Error al actualizar los datos del negocio" });
     }
   }
-  async getBusiness(req: Request, res: Response) {
+  async getBusiness(_req: Request, res: Response) {
     try {
       const data = await businessServices.getBusiness();
       if (!data) {
@@ -143,6 +172,25 @@ class BusinessController {
       return res
         .status(500)
         .json({ error: "Error al obtener la información del negocio" });
+    }
+  }
+  async getActivePalette(_req: Request, res: Response) {
+    const palette = await businessServices.getActivePalette();
+    return res.status(200).json({ palette });
+  }
+  async setActivePalette(req: Request, res: Response) {
+    try {
+      const { palette } = req.body as { palette?: string };
+      if (!palette || !isValidPaletteName(palette)) {
+        return res.status(400).json({
+          error: `Paleta inválida. Valores: ${Object.keys(PALETTES).join(" | ")}`,
+        });
+      }
+      await businessServices.setActivePalette(palette);
+      return res.status(200).json({ palette });
+    } catch (error) {
+      logger.error("setActivePalette_error", error);
+      return res.status(500).json({ error: "Error al actualizar la paleta" });
     }
   }
 }

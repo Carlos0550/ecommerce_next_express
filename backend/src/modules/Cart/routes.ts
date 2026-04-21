@@ -32,7 +32,7 @@ router.get("/", async (req, res) => {
 });
 router.post("/items", ensureProductId, ensureQuantity, async (req, res) => {
   const user = (req as any).user;
-  const options = (req.body as any).options || [];
+  const options = (req.body).options || [];
   const rs = await service.addItem(
     Number(user.sub || user.id),
     (req as any).product_id,
@@ -48,7 +48,7 @@ router.patch(
   ensureQuantity,
   async (req, res) => {
     const user = (req as any).user;
-    const options = (req.body as any)?.options;
+    const options = (req.body)?.options;
     const rs = await service.updateQuantity(
       Number(user.sub || user.id),
       (req as any).product_id,
@@ -61,7 +61,7 @@ router.patch(
 );
 router.delete("/items/:product_id", ensureProductId, async (req, res) => {
   const user = (req as any).user;
-  const options = (req.body as any)?.options;
+  const options = (req.body)?.options;
   const rs = await service.removeItem(
     Number(user.sub || user.id),
     (req as any).product_id,

@@ -8,7 +8,7 @@ import {
 } from '../utils/business.utils';
 import { normalizePhoneNumber } from '../utils/phone.utils';
 import WasenderClient from './wasender.client';
-import {
+import type {
   SessionCreateResponse,
   QRCodeResponse,
   SessionStatusResponse,
@@ -145,7 +145,7 @@ class SessionService {
     phoneNumber?: string
   ): Promise<void> {
     const business = await getBusiness();
-    if (!business || business.whatsapp_session_id !== sessionId) {
+    if (business?.whatsapp_session_id !== sessionId) {
       return;
     }
     const isConnected = status === 'connected';

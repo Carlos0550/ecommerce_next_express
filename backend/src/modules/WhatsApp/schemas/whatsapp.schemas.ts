@@ -39,7 +39,7 @@ export interface ProductData {
   };
 }
 export interface WhatsAppConversationSession {
-  adminId: number;
+  userId: number;
   phone: string;
   state: ConversationState;
   productData: ProductData;
@@ -47,7 +47,7 @@ export interface WhatsAppConversationSession {
   lastActivity: Date;
   lastError?: string;
   selectedProductId?: string;
-  searchResults?: Array<{ id: string; title: string; price: number; stock: number; state: string }>;
+  searchResults?: { id: string; title: string; price: number; stock: number; state: string }[];
   userTone?: 'argentino' | 'formal' | 'neutral';
   greetingTone?: 'casual' | 'formal';
   hasGreeted?: boolean; 
@@ -97,11 +97,11 @@ export interface AIConversationResponse {
     new_images?: string[];
     product_name?: string; 
     user_context?: string; 
-    updates?: Array<{
+    updates?: {
       field: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';
       value?: string | number;
       regenerate_with_ai?: boolean;
-    }>;
+    }[];
     pending_action?: {
       action: 'update_product' | 'delete_product';
       update_field?: 'title' | 'description' | 'price' | 'stock' | 'images' | 'state';

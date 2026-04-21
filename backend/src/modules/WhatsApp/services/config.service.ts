@@ -5,7 +5,7 @@ import {
   hasWasenderApiKey,
 } from '../utils/business.utils';
 import { normalizeRemitentsList } from '../utils/phone.utils';
-import { 
+import type { 
   WhatsAppConfig, 
   WhatsAppConfigResponse 
 } from '../schemas/whatsapp.schemas';

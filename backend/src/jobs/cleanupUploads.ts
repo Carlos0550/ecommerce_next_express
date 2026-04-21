@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import cron from 'node-cron';
 import dayjs from '@/config/dayjs';
+import { logger } from '@/utils/logger';
 function resolveUploadsDir(): string {
   const dirEnv = process.env.UPLOADS_DIR || 'uploads';
   return path.resolve(process.cwd(), dirEnv);
@@ -36,13 +37,13 @@ async function emptyDirectory(dir: string): Promise<{ deleted: number; errors: n
 }
 export function initUploadsCleanupJob() {
   const uploadsDir = resolveUploadsDir();
-  emptyDirectory(uploadsDir).then(({ deleted, errors }) => {
-    console.log(`[uploads-cleanup][startup] dir=${uploadsDir} deleted=${deleted} errors=${errors}`);
+  void emptyDirectory(uploadsDir).then(({ deleted, errors }) => {
+    logger.info(`[uploads-cleanup][startup] dir=${uploadsDir} deleted=${deleted} errors=${errors}`);
   });
   cron.schedule('0 3 * * *', async () => {
     const start = dayjs().format('YYYY-MM-DD HH:mm:ss');
     const { deleted, errors } = await emptyDirectory(uploadsDir);
-    console.log(`[uploads-cleanup][${start}] dir=${uploadsDir} deleted=${deleted} errors=${errors}`);
+    logger.info(`[uploads-cleanup][${start}] dir=${uploadsDir} deleted=${deleted} errors=${errors}`);
   }, {
     timezone: process.env.APP_TZ || 'America/Argentina/Buenos_Aires',
   });

@@ -1,14 +1,16 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { uploadImage, deleteImage } from "@/config/minio";
 import fs from "fs";
 import { prisma } from "@/config/prisma";
 import { CategoryStatus, ProductState } from "@prisma/client";
-import {
+import type {
   UpdateCategoryStatusSchema,
   UpdateProductRequest,
   UpdateProductStatusSchema,
 } from "./product.zod";
 import { analyzeProductImages } from "@/config/groq";
+import { logger } from "@/utils/logger";
+import { AppError } from "@/utils/errors";
 class ProductServices {
   async enhanceProductContent(req: Request, res: Response) {
     try {
@@ -26,7 +28,7 @@ class ProductServices {
           .json({ ok: false, error: "Producto no encontrado" });
       }
       const providedUrls: string[] = Array.isArray(bodyImageUrls)
-        ? (bodyImageUrls as any[]).filter(
+        ? (bodyImageUrls).filter(
             (u) => typeof u === "string" && u.length > 0,
           )
         : [];
@@ -67,110 +69,84 @@ class ProductServices {
     }
   }
   async saveProduct(req: Request, res: Response) {
-    const {
-      title,
-      description,
-      price,
-      tags,
-      category_id,
-      fillWithAI,
-      publishAutomatically,
-      stock,
-      additionalContext,
-      options,
-    } = req.body;
+    const { title, price, stock, category_id } = req.body;
     const productImages = req.files;
-    let imageUrls: string[] = [];
+    const uploadedPaths: string[] = [];
+    const imageUrls: string[] = [];
+    const rollbackImages = async () => {
+      await Promise.all(
+        uploadedPaths.map((p) =>
+          deleteImage(p).catch((err) =>
+            logger.warn("product_image_rollback_failed", { err, path: p }),
+          ),
+        ),
+      );
+    };
     if (productImages && Array.isArray(productImages)) {
       for (const image of productImages as any[]) {
-        try {
-          const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
-          const result = await uploadImage(
-            buffer,
-            fileName,
-            "products",
-            image.mimetype,
-          );
-          if (result.url) {
-            imageUrls.push(result.url);
-          } else {
-            console.error("Error al subir imagen:", result.error);
-          }
-        } catch (error) {
-          console.error("Error al procesar imagen:", error);
+        const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
+        const result = await uploadImage(
+          buffer,
+          fileName,
+          "products",
+          image.mimetype,
+        );
+        if (!result.url) {
+          await rollbackImages();
+          throw new AppError("image_upload_failed", {
+            status: 500,
+            code: "image_upload_failed",
+          });
         }
+        uploadedPaths.push(`products/${fileName}`);
+        imageUrls.push(result.url);
       }
     }
-    let finalTitle = title;
-    let finalDescription = description ?? "";
-    let finalPrice = price ? parseFloat(price) : 0;
-    let finalTags = Array.isArray(tags) ? tags : [];
-    let productState: ProductState = ProductState.active;
-    const parsedStock =
-      typeof stock === "string"
-        ? parseInt(stock, 10)
-        : typeof stock === "number"
-          ? stock
-          : 1;
+    const finalTitle = String(title).trim();
+    const finalPrice = parseFloat(String(price));
+    const parsedStock = parseInt(String(stock), 10);
     const finalStock =
-      Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 1;
-    let finalOptions =
-      typeof options === "string"
-        ? JSON.parse(options)
-        : Array.isArray(options)
-          ? options
-          : [];
-    if (fillWithAI === true || fillWithAI === "true") {
-      if (imageUrls.length === 0) {
-        return res.status(400).json({
-          ok: false,
-          error: "Se requieren imágenes para completar con IA",
-        });
-      }
+      Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+    let finalDescription = "";
+    let finalOptions: { name: string; values: string[] }[] = [];
+    if (imageUrls.length > 0) {
       try {
         const aiResult = await analyzeProductImages(
           imageUrls,
-          additionalContext,
+          `Título del producto: ${finalTitle}`,
         );
-        finalTitle = aiResult.title;
-        finalDescription = aiResult.description;
-        finalTags = [];
-        if (aiResult.options && aiResult.options.length > 0) {
-          finalOptions = aiResult.options;
-        }
-        productState =
-          publishAutomatically === "true" || publishAutomatically === true
-            ? ProductState.active
-            : ProductState.draft;
+        finalDescription = aiResult.description || "";
+        finalOptions = Array.isArray(aiResult.options) ? aiResult.options : [];
       } catch (error) {
-        console.error("Error al procesar con IA:", error);
-        return res.status(500).json({
-          ok: false,
-          error: "Error al procesar las imágenes con IA",
-        });
+        logger.warn("ai_description_failed", { error });
       }
     }
-    const product = await prisma.products.create({
-      data: {
-        title: finalTitle,
-        description: finalDescription,
-        price: finalPrice,
-        tags: finalTags,
-        ...(category_id ? { category: { connect: { id: category_id } } } : {}),
-        images: imageUrls,
-        state: productState,
-        stock: finalStock,
-        options: finalOptions,
-      },
-    });
-    return res.status(201).json({
-      ok: true,
-      message: fillWithAI
-        ? "Producto generado con IA exitosamente"
-        : "Producto creado exitosamente",
-      product,
-    });
+    const productState: ProductState =
+      finalStock > 0 ? ProductState.active : ProductState.out_stock;
+    try {
+      const product = await prisma.products.create({
+        data: {
+          title: finalTitle,
+          description: finalDescription,
+          price: finalPrice,
+          tags: [],
+          ...(category_id ? { category: { connect: { id: category_id } } } : {}),
+          images: imageUrls,
+          state: productState,
+          stock: finalStock,
+          options: finalOptions,
+        },
+      });
+      return res.status(201).json({
+        ok: true,
+        message: "Producto creado exitosamente",
+        product,
+      });
+    } catch (error) {
+      await rollbackImages();
+      throw error;
+    }
   }
   async saveCategory(req: Request, res: Response) {
     const { title } = req.body;
@@ -188,7 +164,7 @@ class ProductServices {
           error: "Esta categoría ya existe.",
         });
       }
-      let image_url: string = "";
+      let image_url = "";
       if (image) {
         const fileName = `category-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
         const buffer: Buffer =
@@ -202,7 +178,7 @@ class ProductServices {
         if (result.url) {
           image_url = result.url;
         } else {
-          console.log("Error subiendo imagen a Supabase", result.error);
+          console.error("Error subiendo imagen", result.error);
         }
       }
       await prisma.categories.create({
@@ -216,14 +192,14 @@ class ProductServices {
         message: "Categoría creada exitosamente",
       });
     } catch (error) {
-      console.log("Error al guardar categoría", error);
+      console.error("Error al guardar categoría", error);
       return res.status(500).json({
         ok: false,
         error: "Error al guardar categoría",
       });
     }
   }
-  async getAllCategories(req: Request, res: Response) {
+  async getAllCategories(_req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
         orderBy: {
@@ -248,7 +224,7 @@ class ProductServices {
         (c: { status: CategoryStatus }) => {
           return {
             ...c,
-            status: status_to_number[c.status as CategoryStatus],
+            status: status_to_number[c.status],
           };
         },
       );
@@ -257,7 +233,7 @@ class ProductServices {
         categories: categories_with_status,
       });
     } catch (error) {
-      console.log("Error al obtener categorías", error);
+      console.error("Error al obtener categorías", error);
       return res.status(500).json({
         ok: false,
         error: "Error al obtener categorías",
@@ -266,8 +242,8 @@ class ProductServices {
   }
   async getAllProducts(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 10;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
       const skip = (page - 1) * limit;
       const title = req.query.title as string;
       const categoryId = req.query.categoryId as string;
@@ -293,11 +269,9 @@ class ProductServices {
       if (isActive !== undefined) {
         where.is_active = isActive;
       }
-      console.log(state);
       if (state) {
         where.state = state;
       }
-      console.log("Filtros:", where);
       const [totalProducts, products] = await Promise.all([
         prisma.products.count({ where }),
         prisma.products.findMany({
@@ -308,7 +282,7 @@ class ProductServices {
             category: true,
           },
           orderBy: sortBy
-            ? [{ [sortBy]: (sortOrder || "asc") as "asc" | "desc" }]
+            ? [{ [sortBy]: (sortOrder || "asc") }]
             : [{ created_at: "desc" }],
         }),
       ]);
@@ -338,12 +312,11 @@ class ProductServices {
   extractPathFromPublicUrl = (url: string): string | null => {
     try {
       const u = new URL(url);
-      const match = u.pathname.match(
-        /\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)/,
-      );
+      const match = /\/storage\/v1\/object\/(?:public|authenticated)\/([^/]+)\/(.+)/.exec(u.pathname);
       if (!match) return null;
       const bucket = match[1];
       const path = match[2];
+      if (!path) return null;
       const envBucket = process.env.SUPABASE_BUCKET || "images";
       if (bucket !== envBucket) {
         console.warn(
@@ -378,6 +351,7 @@ class ProductServices {
         where: { id: product_id },
         data: {
           state: ProductState.deleted,
+          deleted_at: new Date(),
         },
       });
       return res.status(200).json({
@@ -394,23 +368,14 @@ class ProductServices {
   }
   async updateProduct(req: Request, res: Response) {
     try {
-      const {
-        title,
-        description,
-        price,
-        tags,
-        category_id,
-        existingImageUrls,
-        deletedImageUrls,
-        state,
-        stock,
-        options,
-      } = req.body as UpdateProductRequest;
-      console.log("Estatus actual:", state);
+      const { title, price, stock, category_id, state } =
+        req.body as UpdateProductRequest;
       const rawExisting =
-        existingImageUrls ?? (req.body as any).existing_image_urls;
+        (req.body).existingImageUrls ??
+        (req.body).existing_image_urls;
       const rawDeleted =
-        deletedImageUrls ?? (req.body as any).deleted_image_urls;
+        (req.body).deletedImageUrls ??
+        (req.body).deleted_image_urls;
       const normalizedExisting: string[] = Array.isArray(rawExisting)
         ? rawExisting
         : typeof rawExisting === "string" && rawExisting.trim().length
@@ -423,7 +388,7 @@ class ProductServices {
           : [];
       const { product_id } = req.params;
       const productImages = req.files;
-      let imageUrls: string[] = [];
+      const newImageUrls: string[] = [];
       const existentProduct = await prisma.products.findFirst({
         where: { id: product_id },
       });
@@ -449,65 +414,90 @@ class ProductServices {
           }
         }
       }
+      const newImagePaths: string[] = [];
+      const rollbackNewImages = async () => {
+        await Promise.all(
+          newImagePaths.map((p) =>
+            deleteImage(p).catch((err) =>
+              logger.warn("product_image_rollback_failed", { err, path: p }),
+            ),
+          ),
+        );
+      };
       if (productImages && Array.isArray(productImages)) {
         for (const image of productImages as any[]) {
-          try {
-            const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-            const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
-            const result = await uploadImage(
-              buffer,
-              fileName,
-              "products",
-              image.mimetype,
-            );
-            if (result.url) {
-              imageUrls.push(result.url);
-            } else {
-              console.error("Error al subir imagen:", result.error);
-            }
-          } catch (error) {
-            console.error("Error al procesar imagen:", error);
+          const fileName = `product-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const buffer: Buffer = image.buffer ?? fs.readFileSync(image.path);
+          const result = await uploadImage(
+            buffer,
+            fileName,
+            "products",
+            image.mimetype,
+          );
+          if (!result.url) {
+            await rollbackNewImages();
+            throw new AppError("image_upload_failed", {
+              status: 500,
+              code: "image_upload_failed",
+            });
           }
+          newImagePaths.push(`products/${fileName}`);
+          newImageUrls.push(result.url);
         }
       }
-      const updatedImages = [...normalizedExisting, ...imageUrls];
-      const parsedStock =
-        typeof stock === "string"
-          ? parseInt(stock, 10)
-          : typeof stock === "number"
-            ? stock
-            : undefined;
+      const updatedImages = [...normalizedExisting, ...newImageUrls];
+      const imagesChanged =
+        newImageUrls.length > 0 || normalizedDeleted.length > 0;
+      const finalTitle = String(title).trim();
+      const finalPrice = parseFloat(String(price));
+      const parsedStock = parseInt(String(stock), 10);
       const finalStock =
-        parsedStock !== undefined &&
-        Number.isFinite(parsedStock) &&
-        parsedStock >= 0
-          ? parsedStock
-          : undefined;
-      const finalOptions = options
-        ? typeof options === "string"
-          ? JSON.parse(options)
-          : options
-        : undefined;
-      await prisma.products.update({
-        where: { id: product_id },
-        data: {
-          title,
-          description,
-          price: typeof price === "string" ? parseFloat(price) : price,
-          tags: Array.isArray(tags)
-            ? tags
-            : typeof tags === "string"
-              ? JSON.parse(tags)
-              : [],
-          ...(category_id
-            ? { category: { connect: { id: category_id } } }
-            : { category: { disconnect: true } }),
-          images: updatedImages,
-          state: state || ProductState.active,
-          ...(finalStock !== undefined ? { stock: finalStock } : {}),
-          ...(finalOptions !== undefined ? { options: finalOptions } : {}),
-        },
-      });
+        Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
+      let finalDescription: string | undefined = undefined;
+      let finalOptions: { name: string; values: string[] }[] | undefined =
+        undefined;
+      if (imagesChanged && updatedImages.length > 0) {
+        try {
+          const aiResult = await analyzeProductImages(
+            updatedImages,
+            `Título del producto: ${finalTitle}`,
+          );
+          finalDescription = aiResult.description || "";
+          finalOptions = Array.isArray(aiResult.options)
+            ? aiResult.options
+            : [];
+        } catch (error) {
+          logger.warn("ai_description_failed", { error });
+        }
+      }
+      const resolvedState: ProductState = state
+        ? (state as ProductState)
+        : finalStock > 0
+          ? ProductState.active
+          : ProductState.out_stock;
+      try {
+        await prisma.products.update({
+          where: { id: product_id },
+          data: {
+            title: finalTitle,
+            price: finalPrice,
+            stock: finalStock,
+            tags: [],
+            ...(category_id
+              ? { category: { connect: { id: category_id } } }
+              : { category: { disconnect: true } }),
+            images: updatedImages,
+            state: resolvedState,
+            ...(finalDescription !== undefined
+              ? { description: finalDescription }
+              : {}),
+            ...(finalOptions !== undefined ? { options: finalOptions } : {}),
+          },
+        });
+      } catch (error) {
+        await rollbackNewImages();
+        throw error;
+      }
       return res.status(200).json({
         ok: true,
         message: "Producto actualizado exitosamente",
@@ -543,7 +533,7 @@ class ProductServices {
         message: "Estado del producto actualizado exitosamente",
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al actualizar el estado del producto",
@@ -644,7 +634,7 @@ class ProductServices {
         if (result.url) {
           image_url = result.url;
         } else {
-          console.log("Error subiendo imagen a Supabase", result.error);
+          console.error("Error subiendo imagen", result.error);
           return res.status(500).json({
             ok: false,
             error: "Error al subir la imagen",
@@ -663,7 +653,7 @@ class ProductServices {
         message: "Categoría actualizada exitosamente",
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al actualizar la categoría",
@@ -675,7 +665,7 @@ class ProductServices {
       const { category_id, status } =
         req.params as unknown as UpdateCategoryStatusSchema;
       const statusNumber = parseInt(status);
-      const status_map: { [key: number]: CategoryStatus } = {
+      const status_map: Record<number, CategoryStatus> = {
         1: CategoryStatus.active,
         2: CategoryStatus.inactive,
         3: CategoryStatus.deleted,
@@ -687,10 +677,12 @@ class ProductServices {
             "Estado de categoría inválido. Debe ser activo(1), inactivo(2) o eliminado(3)",
         });
       }
+      const nextStatus = status_map[statusNumber];
       await prisma.categories.update({
         where: { id: category_id },
         data: {
-          status: status_map[statusNumber],
+          status: nextStatus,
+          deleted_at: nextStatus === CategoryStatus.deleted ? new Date() : null,
         },
       });
       const statusMessages = {
@@ -703,14 +695,14 @@ class ProductServices {
         message: `Categoría ${statusMessages[statusNumber as keyof typeof statusMessages]} exitosamente`,
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al cambiar el estado de la categoría",
       });
     }
   }
-  async getPublicCategories(req: Request, res: Response) {
+  async getPublicCategories(_req: Request, res: Response) {
     try {
       const categories = await prisma.categories.findMany({
         where: {
@@ -722,7 +714,7 @@ class ProductServices {
         data: categories,
       });
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return res.status(500).json({
         ok: false,
         error: "Error al obtener las categorías públicas",
@@ -731,14 +723,14 @@ class ProductServices {
   }
   async getPublicProducts(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 12;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 12));
       const title = (req.query.title as string) || undefined;
       const categoryId = (req.query.categoryId as string) || undefined;
       const sortBy = (req.query.sortBy as string) || undefined;
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "asc";
       const skip = (page - 1) * limit;
-      const where: any = { is_active: true, state: "active" };
+      const where: any = { is_active: true, state: "active", stock: { gt: 0 } };
       if (title) {
         const trimmed = title.trim();
         if (trimmed.length > 0) {
@@ -800,9 +792,9 @@ class ProductServices {
         include: { category: true },
       });
       if (
-        !product ||
-        product.is_active !== true ||
-        product.state !== ProductState.active
+        product?.is_active !== true ||
+        product.state !== ProductState.active ||
+        (product.stock ?? 0) <= 0
       ) {
         return res
           .status(404)
