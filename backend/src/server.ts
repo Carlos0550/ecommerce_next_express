@@ -39,7 +39,22 @@ const isProduction = process.env.NODE_ENV === "production";
 app.use(helmet());
 app.use(requestContext);
 
-const authLimiter = rateLimit({
+const getClientIp = (req: any): string => {
+  const xForwardedFor = req.headers["x-forwarded-for"];
+  if (xForwardedFor) {
+    return typeof xForwardedFor === "string" ? xForwardedFor.split(",")[0].trim() : xForwardedFor[0];
+  }
+  return req.ip || req.connection.remoteAddress || "unknown";
+};
+
+const createLimiter = (options: any) => {
+  return rateLimit({
+    keyGenerator: (req) => getClientIp(req),
+    ...options,
+  });
+};
+
+const authLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -47,7 +62,7 @@ const authLimiter = rateLimit({
   message: { ok: false, error: "too_many_requests", message: "Demasiados intentos. Esperá 15 minutos." },
 });
 
-const registerLimiter = rateLimit({
+const registerLimiter = createLimiter({
   windowMs: 60 * 60 * 1000,
   max: 3,
   standardHeaders: true,
@@ -55,7 +70,7 @@ const registerLimiter = rateLimit({
   message: { ok: false, error: "too_many_requests", message: "Demasiados registros. Esperá 1 hora." },
 });
 
-const checkoutLimiter = rateLimit({
+const checkoutLimiter = createLimiter({
   windowMs: 60 * 60 * 1000,
   max: 10,
   standardHeaders: true,
@@ -63,14 +78,14 @@ const checkoutLimiter = rateLimit({
   message: { ok: false, error: "too_many_requests", message: "Demasiados pedidos. Esperá 1 hora." },
 });
 
-const webhookLimiter = rateLimit({
+const webhookLimiter = createLimiter({
   windowMs: 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-const productUploadLimiter = rateLimit({
+const productUploadLimiter = createLimiter({
   windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
