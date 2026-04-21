@@ -42,7 +42,12 @@ app.use(requestContext);
 const getClientIp = (req: any): string => {
   const xForwardedFor = req.headers["x-forwarded-for"];
   if (xForwardedFor) {
-    return typeof xForwardedFor === "string" ? xForwardedFor.split(",")[0].trim() : xForwardedFor[0];
+    if (typeof xForwardedFor === "string") {
+      const first = xForwardedFor.split(",")[0];
+      if (first) return first.trim();
+    } else if (xForwardedFor[0]) {
+      return xForwardedFor[0];
+    }
   }
   return req.ip || req.connection.remoteAddress || "unknown";
 };
