@@ -113,7 +113,7 @@ export default function AdminBusinessPage() {
       field,
     }: {
       file: File;
-      field: "business_image" | "favicon" | "hero_image";
+      field: "business_image" | "hero_image";
     }) => {
       const fd = new FormData();
       fd.append("file", file);
@@ -129,6 +129,24 @@ export default function AdminBusinessPage() {
       toast.success("Imagen subida");
       qc.invalidateQueries({ queryKey: ["business"] });
       if (res.url) set(res.field, res.url);
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const removeImageMut = useMutation({
+    mutationFn: async (field: "business_image" | "hero_image") => {
+      if (!form.id) throw new Error("missing_business_id");
+      await api.put(`/business/${form.id}`, {
+        ...form,
+        [field]: "",
+        bankData: form.bankData ?? [],
+      });
+      return field;
+    },
+    onSuccess: (field) => {
+      toast.success("Imagen removida");
+      set(field, undefined);
+      qc.invalidateQueries({ queryKey: ["business"] });
     },
     onError: (err) => toast.error(unwrapError(err)),
   });
@@ -184,7 +202,7 @@ export default function AdminBusinessPage() {
       (form.bankData ?? []).map((b, idx) => (idx === i ? { ...b, ...patch } : b))
     );
 
-  const onPickImage = (field: "business_image" | "favicon" | "hero_image") => {
+  const onPickImage = (field: "business_image" | "hero_image") => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -345,21 +363,24 @@ export default function AdminBusinessPage() {
               <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
                 Imágenes
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2.5">
+              <div className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                El logo también se usa como favicon. La portada se muestra al
+                compartir el link de la tienda.
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
                 <ImageSlot
                   label="Logo"
                   url={form.business_image}
                   onPick={() => onPickImage("business_image")}
+                  onRemove={() => removeImageMut.mutate("business_image")}
+                  busy={removeImageMut.isPending}
                 />
                 <ImageSlot
-                  label="Favicon"
-                  url={form.favicon}
-                  onPick={() => onPickImage("favicon")}
-                />
-                <ImageSlot
-                  label="Hero"
+                  label="Portada del negocio"
                   url={form.hero_image}
                   onPick={() => onPickImage("hero_image")}
+                  onRemove={() => removeImageMut.mutate("hero_image")}
+                  busy={removeImageMut.isPending}
                 />
               </div>
             </div>
@@ -477,37 +498,67 @@ function ImageSlot({
   label,
   url,
   onPick,
+  onRemove,
+  busy,
 }: {
   label: string;
   url?: string;
   onPick: () => void;
+  onRemove: () => void;
+  busy?: boolean;
 }) {
   const src = storageUrl(url);
   return (
-    <button
-      onClick={onPick}
-      className="group flex flex-col gap-2 rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-bg-input)] p-2.5 text-left hover:border-[var(--color-accent)]"
-    >
-      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[var(--color-bg-card)]">
-        {src ? (
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-bg-input)] p-2.5">
+      {src ? (
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-[var(--color-bg-card)]">
           <Image
             src={src}
             alt={label}
             fill
-            sizes="120px"
+            sizes="160px"
             className="object-cover"
             unoptimized
           />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-[var(--color-text-muted)]">
-            <Icon name="upload" size={20} />
+        </div>
+      ) : (
+        <button
+          onClick={onPick}
+          className="flex aspect-square w-full items-center justify-center rounded-lg bg-[var(--color-bg-card)] text-[var(--color-text-muted)] transition hover:text-[var(--color-accent)]"
+        >
+          <Icon name="upload" size={22} />
+        </button>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold text-[var(--color-text)]">
+          {label}
+        </div>
+        {src ? (
+          <div className="flex gap-1.5">
+            <button
+              onClick={onPick}
+              className="rounded-md border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-bg-card)]"
+            >
+              Reemplazar
+            </button>
+            <button
+              onClick={onRemove}
+              disabled={busy}
+              className="rounded-md border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold text-[var(--color-danger)] hover:bg-[var(--color-bg-card)] disabled:opacity-60"
+            >
+              {busy ? "…" : "Quitar"}
+            </button>
           </div>
+        ) : (
+          <button
+            onClick={onPick}
+            className="rounded-md border border-[var(--color-border)] px-2 py-1 text-[10px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-bg-card)]"
+          >
+            Subir
+          </button>
         )}
       </div>
-      <div className="text-[11px] font-semibold text-[var(--color-text)]">
-        {label}
-      </div>
-    </button>
+    </div>
   );
 }
 

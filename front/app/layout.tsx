@@ -30,6 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     business?.description?.trim() ||
     "Productos seleccionados con identidad propia.";
+  const ogImage = business?.hero_image?.trim() || business?.business_image?.trim();
+  const iconSrc = business?.business_image?.trim();
   return {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
@@ -43,8 +45,11 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       locale: "es_AR",
       siteName: name,
+      title: name,
+      description,
+      images: ogImage ? [{ url: ogImage }] : undefined,
     },
-    icons: business?.favicon ? { icon: business.favicon } : undefined,
+    icons: iconSrc ? { icon: iconSrc } : undefined,
   };
 }
 
