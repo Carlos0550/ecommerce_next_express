@@ -25,7 +25,39 @@ type CartLine = {
   price: number;
   quantity: number;
   image?: string | null;
+  manual?: boolean;
 };
+
+type ParsedLine =
+  | { idx: number; empty: true }
+  | { idx: number; line: string; error: string }
+  | { idx: number; line: string; quantity: number; title: string; price: number };
+
+function parseManualLines(text: string): ParsedLine[] {
+  return text.split("\n").map((raw, idx) => {
+    const line = raw.trim();
+    if (!line) return { idx, empty: true };
+    const tokens = line.split(/\s+/);
+    if (tokens.length < 3) {
+      return { idx, line, error: "Formato: CANTIDAD NOMBRE PRECIO" };
+    }
+    const qtyStr = tokens[0];
+    const priceRaw = tokens[tokens.length - 1];
+    const titleParts = tokens.slice(1, -1);
+    const qty = Number.parseInt(qtyStr, 10);
+    if (!/^\d+$/.test(qtyStr) || qty <= 0) {
+      return { idx, line, error: "Cantidad inválida" };
+    }
+    const priceNorm = priceRaw.replace(/\./g, "").replace(",", ".");
+    const price = Number(priceNorm);
+    if (!Number.isFinite(price) || price <= 0) {
+      return { idx, line, error: "Precio inválido" };
+    }
+    const title = titleParts.join(" ").trim();
+    if (!title) return { idx, line, error: "Falta el nombre" };
+    return { idx, line, quantity: qty, title, price };
+  });
+}
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo", icon: "cash" },
@@ -50,6 +82,17 @@ export default function AdminPosPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [method, setMethod] = useState<Method>("EFECTIVO");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualText, setManualText] = useState("");
+
+  const parsedManual = useMemo(() => parseManualLines(manualText), [manualText]);
+  const validManualLines = parsedManual.filter(
+    (p): p is Extract<ParsedLine, { quantity: number }> => "quantity" in p
+  );
+  const invalidManualLines = parsedManual.filter(
+    (p): p is Extract<ParsedLine, { error: string }> => "error" in p
+  );
+  const manualHasContent = parsedManual.some((p) => !("empty" in p));
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const playBeep = (freq: number, duration = 0.08) => {
@@ -240,22 +283,51 @@ export default function AdminPosPage() {
     setCart([]);
   };
 
+  const addManualToCart = () => {
+    if (validManualLines.length === 0) return;
+    playBeep(880);
+    const stamp = Date.now();
+    const lines: CartLine[] = validManualLines.map((p, i) => ({
+      product_id: `manual:${stamp}:${i}`,
+      title: p.title,
+      price: p.price,
+      quantity: p.quantity,
+      manual: true,
+    }));
+    setCart((cur) => [...cur, ...lines]);
+    setManualText("");
+    setManualOpen(false);
+    toast.success(
+      `${lines.length} ${lines.length === 1 ? "producto agregado" : "productos agregados"}`
+    );
+  };
+
   const saveMut = useMutation({
     mutationFn: async () => {
-      const items = cart.map((l) => ({
+      const realLines = cart.filter((l) => !l.manual);
+      const manualLines = cart.filter((l) => l.manual);
+      const items = realLines.map((l) => ({
         product_id: l.product_id,
         quantity: l.quantity,
       }));
       const product_ids: string[] = [];
-      cart.forEach((l) => {
+      realLines.forEach((l) => {
         for (let i = 0; i < l.quantity; i++) product_ids.push(l.product_id);
       });
+      const manualProducts = manualLines.map((l) => ({
+        quantity: l.quantity,
+        title: l.title,
+        price: l.price,
+      }));
       const payload = {
         payment_method: method,
         source: "CAJA" as const,
         product_ids,
         items,
         user_sale: user?.id ? { user_id: String(user.id) } : undefined,
+        ...(manualProducts.length > 0
+          ? { loadedManually: true, manualProducts }
+          : {}),
       };
       const { data } = await api.post("/sales/save", payload);
       return data;
@@ -408,16 +480,27 @@ export default function AdminPosPage() {
     <AdminShell title="POS" subtitle="Ventas presenciales en caja">
       <div className="grid grid-cols-1 gap-3.5 lg:h-[calc(100vh-130px)] lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="flex min-h-0 min-w-0 flex-col gap-3 pb-24 lg:pb-0">
-          <div className="relative">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o SKU…"
-              className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] pl-9 pr-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
-            />
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
-              <Icon name="search" size={14} />
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nombre o SKU…"
+                className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] pl-9 pr-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+              />
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dim)]">
+                <Icon name="search" size={14} />
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setManualOpen(true)}
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 text-[12px] font-semibold text-[var(--color-text)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            >
+              <Icon name="plus" size={13} />
+              <span className="hidden sm:inline">Carga manual</span>
+              <span className="sm:hidden">Manual</span>
+            </button>
           </div>
 
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible">
@@ -541,6 +624,135 @@ export default function AdminPosPage() {
           />
           <div className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col rounded-t-2xl border-t border-[var(--color-border)] bg-[var(--color-bg-card)]">
             {ticket}
+          </div>
+        </div>
+      )}
+
+      {manualOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setManualOpen(false)}
+          />
+          <div className="relative flex max-h-[90vh] w-full flex-col rounded-t-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] sm:max-w-[520px] sm:rounded-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+                  Carga manual
+                </div>
+                <div className="font-grotesk text-[16px] font-semibold text-[var(--color-text)]">
+                  Agregar productos sin stock
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                aria-label="Cerrar"
+              >
+                <Icon name="close" size={14} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <p className="mb-2 text-[12px] text-[var(--color-text-dim)]">
+                Una línea por producto con el formato:
+                <span className="ml-1 font-mono text-[var(--color-text)]">
+                  CANTIDAD NOMBRE PRECIO
+                </span>
+              </p>
+              <textarea
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                rows={6}
+                placeholder={"2 Labial rojo premium 3500\n1 Base líquida 4200"}
+                className="w-full resize-y rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3 font-mono text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+              />
+
+              {manualHasContent && (
+                <div className="mt-3 flex flex-col gap-1.5">
+                  {parsedManual.map((p) => {
+                    if ("empty" in p) return null;
+                    const isOk = "quantity" in p;
+                    return (
+                      <div
+                        key={p.idx}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px]",
+                          isOk
+                            ? "border-[color-mix(in_srgb,var(--color-success)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] text-[var(--color-text)]"
+                            : "border-[color-mix(in_srgb,var(--color-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] text-[var(--color-text)]"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "font-mono text-[10px] font-bold",
+                            isOk
+                              ? "text-[var(--color-success)]"
+                              : "text-[var(--color-danger)]"
+                          )}
+                        >
+                          L{p.idx + 1}
+                        </span>
+                        {isOk ? (
+                          <>
+                            <span className="font-mono text-[11px] text-[var(--color-text-dim)]">
+                              {p.quantity}×
+                            </span>
+                            <span className="flex-1 truncate">{p.title}</span>
+                            <span className="font-grotesk font-semibold">
+                              {formatARS(p.price)}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 truncate text-[var(--color-text-dim)]">
+                              {p.line}
+                            </span>
+                            <span className="text-[var(--color-danger)]">
+                              {p.error}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-[var(--color-border)] p-3">
+              <div className="text-[11px] text-[var(--color-text-dim)]">
+                {validManualLines.length}{" "}
+                {validManualLines.length === 1 ? "válida" : "válidas"}
+                {invalidManualLines.length > 0 && (
+                  <span className="ml-1 text-[var(--color-danger)]">
+                    · {invalidManualLines.length} con error
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setManualOpen(false)}
+                  className="h-10 rounded-[10px] border border-[var(--color-border)] px-3 text-[12px] font-semibold text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={addManualToCart}
+                  disabled={
+                    validManualLines.length === 0 ||
+                    invalidManualLines.length > 0
+                  }
+                  className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-50"
+                >
+                  <Icon name="check" size={13} />
+                  Agregar al ticket
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
