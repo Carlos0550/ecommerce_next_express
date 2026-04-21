@@ -3,6 +3,7 @@ import { Hero } from "@/components/shop/hero";
 import { CategoryChips } from "@/components/shop/category-chips";
 import { ProductCard } from "@/components/shop/product-card";
 import { MobileHeader } from "@/components/shop/mobile-header";
+import { MobileSearch } from "@/components/shop/mobile-search";
 import { Icon } from "@/components/brand";
 import {
   fetchBusiness,
@@ -26,13 +27,8 @@ export default async function ShopHome() {
       </div>
       <Hero featured={products} config={business?.banner_config} />
 
-      <div className="mx-auto max-w-[1280px] px-4 pt-4 md:px-10 md:pt-6">
-        <div className="flex h-11 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3.5 md:hidden">
-          <Icon name="search" size={15} className="text-[var(--color-text-dim)]" />
-          <span className="text-[13px] text-[var(--color-text-muted)]">
-            Buscar productos…
-          </span>
-        </div>
+      <div className="mx-auto max-w-[1280px] px-4 pt-4 md:hidden md:px-10 md:pt-6">
+        <MobileSearch />
       </div>
 
       <CategoryChips categories={categories} />

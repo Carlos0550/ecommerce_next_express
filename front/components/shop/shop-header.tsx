@@ -1,17 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCartStore } from "@/stores/cart.store";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuthStore, isAdmin } from "@/stores/auth.store";
 import { BrandLogo, Icon } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
 export function ShopHeader({ categories }: { categories: Category[] }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const count = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const user = useAuthStore((s) => s.user);
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    setQ(searchParams?.get("q") ?? "");
+  }, [searchParams]);
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    router.push(term ? `/categoria?q=${encodeURIComponent(term)}` : "/categoria");
+  };
+
+  const accountHref = user ? (isAdmin(user) ? "/admin" : "/account") : "/login";
 
   const links: { href: string; label: string }[] = [
     { href: "/", label: "Inicio" },
@@ -46,14 +62,20 @@ export function ShopHeader({ categories }: { categories: Category[] }) {
             </Link>
           ))}
         </nav>
-        <div className="hidden h-9 w-[240px] items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 lg:flex">
+        <form
+          onSubmit={onSearch}
+          className="hidden h-9 w-[240px] items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 focus-within:border-[var(--color-accent)] lg:flex"
+        >
           <Icon name="search" size={14} className="text-[var(--color-text-dim)]" />
-          <span className="text-[12px] text-[var(--color-text-muted)]">
-            Buscar productos…
-          </span>
-        </div>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar productos…"
+            className="w-full bg-transparent text-[12px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)]"
+          />
+        </form>
         <Link
-          href={user ? "/account" : "/login"}
+          href={accountHref}
           className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-text)] hover:bg-[var(--color-bg-input)]"
         >
           <Icon name="user" size={15} />

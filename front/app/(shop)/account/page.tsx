@@ -1,24 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { Icon, type IconName } from "@/components/brand";
+import { RequireCustomer } from "@/components/shop/require-customer";
 import { formatARS } from "@/lib/utils";
 import type { User, Order } from "@/lib/types";
 
 export default function AccountPage() {
+  return (
+    <RequireCustomer>
+      <AccountContent />
+    </RequireCustomer>
+  );
+}
+
+function AccountContent() {
   const router = useRouter();
   const token = useAuthStore((s) => s.token);
   const storedUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-
-  useEffect(() => {
-    if (!token) router.replace("/login");
-  }, [token, router]);
 
   const meQ = useQuery({
     queryKey: ["shop", "me"],

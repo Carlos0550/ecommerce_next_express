@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { Icon } from "@/components/brand";
+import { RequireCustomer } from "@/components/shop/require-customer";
 import { formatARS, cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
@@ -30,15 +30,18 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  const router = useRouter();
+  return (
+    <RequireCustomer>
+      <OrdersContent />
+    </RequireCustomer>
+  );
+}
+
+function OrdersContent() {
   const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadOrderId, setUploadOrderId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!token) router.replace("/login");
-  }, [token, router]);
 
   const ordersQ = useQuery({
     queryKey: ["shop", "orders"],
