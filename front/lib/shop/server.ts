@@ -38,10 +38,12 @@ export async function fetchPublicProducts(params?: {
   categoryId?: number | string;
   title?: string;
   limit?: number;
+  page?: number;
 }): Promise<Product[]> {
   const qs = new URLSearchParams();
   if (params?.categoryId) qs.set("categoryId", String(params.categoryId));
   if (params?.title) qs.set("title", params.title);
+  if (params?.page) qs.set("page", String(params.page));
   qs.set("limit", String(params?.limit ?? 48));
   const data = await getJson<any>(`/products/public?${qs}`);
   const list =
@@ -50,6 +52,29 @@ export async function fetchPublicProducts(params?: {
     (Array.isArray(data?.data) ? data.data : null) ??
     [];
   return Array.isArray(list) ? (list as Product[]).map(normalizeProduct) : [];
+}
+
+export async function fetchPublicProductsPage(params?: {
+  categoryId?: number | string;
+  title?: string;
+  limit?: number;
+  page?: number;
+}): Promise<{ products: Product[]; hasNextPage: boolean; page: number; totalPages: number }> {
+  const qs = new URLSearchParams();
+  if (params?.categoryId) qs.set("categoryId", String(params.categoryId));
+  if (params?.title) qs.set("title", params.title);
+  qs.set("page", String(params?.page ?? 1));
+  qs.set("limit", String(params?.limit ?? 24));
+  const data = await getJson<any>(`/products/public?${qs}`);
+  const list = data?.data?.products ?? data?.products ?? [];
+  const pag = data?.data?.pagination ?? data?.pagination ?? {};
+  const products = Array.isArray(list) ? (list as Product[]).map(normalizeProduct) : [];
+  return {
+    products,
+    hasNextPage: Boolean(pag.hasNextPage),
+    page: Number(pag.page) || params?.page || 1,
+    totalPages: Number(pag.totalPages) || 1,
+  };
 }
 
 export async function fetchPublicProduct(id: string | number): Promise<Product | null> {

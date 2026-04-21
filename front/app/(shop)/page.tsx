@@ -1,24 +1,26 @@
 import Link from "next/link";
 import { Hero } from "@/components/shop/hero";
 import { CategoryChips } from "@/components/shop/category-chips";
-import { ProductCard } from "@/components/shop/product-card";
+import { ProductGridPaginated } from "@/components/shop/product-grid-paginated";
 import { MobileHeader } from "@/components/shop/mobile-header";
 import { MobileSearch } from "@/components/shop/mobile-search";
 import { Icon } from "@/components/brand";
 import {
   fetchBusiness,
   fetchPublicCategories,
-  fetchPublicProducts,
+  fetchPublicProductsPage,
 } from "@/lib/shop/server";
 
 export const revalidate = 10;
+const PAGE_SIZE = 24;
 
 export default async function ShopHome() {
-  const [business, categories, products] = await Promise.all([
+  const [business, categories, firstPage] = await Promise.all([
     fetchBusiness(),
     fetchPublicCategories(),
-    fetchPublicProducts({ limit: 24 }),
+    fetchPublicProductsPage({ limit: PAGE_SIZE, page: 1 }),
   ]);
+  const products = firstPage.products;
 
   return (
     <>
@@ -50,11 +52,11 @@ export default async function ShopHome() {
             Todavía no hay productos publicados.
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
-            {products.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} />
-            ))}
-          </div>
+          <ProductGridPaginated
+            initialProducts={products}
+            initialHasMore={firstPage.hasNextPage}
+            limit={PAGE_SIZE}
+          />
         )}
       </section>
     </>

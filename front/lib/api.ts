@@ -46,11 +46,13 @@ export function storageUrl(path: string | null | undefined): string {
 
 export function unwrapError(err: unknown): string {
   if (err instanceof AxiosError) {
-    const data = err.response?.data as { message?: string; error?: string } | undefined;
-    if (data?.message && data.message.length > 0 && !/^[a-z][a-z0-9_]*$/.test(data.message)) {
-      return data.message;
+    const data = err.response?.data as { message?: unknown; error?: unknown } | undefined;
+    const msg = typeof data?.message === "string" ? data.message : undefined;
+    const errCode = typeof data?.error === "string" ? data.error : undefined;
+    if (msg && msg.length > 0 && !/^[a-z][a-z0-9_]*$/.test(msg)) {
+      return msg;
     }
-    return translateError(data?.error ?? data?.message ?? err.code ?? err.message);
+    return translateError(errCode ?? msg ?? err.code ?? err.message);
   }
   if (err instanceof Error) return translateError(err.message);
   return translateError(null);

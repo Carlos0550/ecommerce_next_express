@@ -14,8 +14,8 @@ const MESSAGES: Record<string, string> = {
 
 const FALLBACK = "Algo salió mal. Intentá de nuevo en unos segundos.";
 
-export function translateError(code: string | undefined | null): string {
-  if (!code) return FALLBACK;
+export function translateError(code: unknown): string {
+  if (typeof code !== "string") return FALLBACK;
   const trimmed = code.trim();
   if (!trimmed) return FALLBACK;
   if (MESSAGES[trimmed]) return MESSAGES[trimmed];
