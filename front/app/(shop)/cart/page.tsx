@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { useCartStore } from "@/stores/cart.store";
 import { ProductImg, Icon } from "@/components/brand";
 import { formatARS } from "@/lib/utils";
@@ -59,6 +60,11 @@ export default function CartPage() {
                   <div className="mt-1 text-[12px] text-[var(--color-text-dim)]">
                     {formatARS(item.price)} c/u
                   </div>
+                  {typeof item.stock === "number" && (
+                    <div className="text-[11px] text-[var(--color-text-muted)]">
+                      Stock: {item.stock}
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <span className="font-grotesk text-[15px] font-semibold">
                       {formatARS(item.price * item.quantity)}
@@ -67,7 +73,8 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => setQty(item.product_id, Math.max(1, item.quantity - 1))}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-bg-input)]"
+                        disabled={item.quantity <= 1}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-bg-input)] disabled:opacity-40"
                       >
                         <Icon name="minus" size={12} />
                       </button>
@@ -76,8 +83,17 @@ export default function CartPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setQty(item.product_id, item.quantity + 1)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-text)] text-[var(--color-bg)]"
+                        onClick={() => {
+                          if (typeof item.stock === "number" && item.quantity >= item.stock) {
+                            toast.error(`Máximo disponible: ${item.stock}`);
+                            return;
+                          }
+                          setQty(item.product_id, item.quantity + 1);
+                        }}
+                        disabled={
+                          typeof item.stock === "number" && item.quantity >= item.stock
+                        }
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-text)] text-[var(--color-bg)] disabled:opacity-40"
                       >
                         <Icon name="plus" size={12} />
                       </button>

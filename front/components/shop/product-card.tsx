@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from "sonner";
 import { ProductImg, Icon } from "@/components/brand";
 import { formatARS } from "@/lib/utils";
 import { useCartStore } from "@/stores/cart.store";
@@ -12,10 +13,19 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const href = `/producto/${product.slug ?? product.id}`;
   const categoryLabel = product.category?.title;
   const add = useCartStore((s) => s.add);
-  const outOfStock = (product.stock ?? 0) <= 0 || product.state === "out_stock";
+  const inCart = useCartStore(
+    (s) => s.items.find((i) => i.product_id === product.id)?.quantity ?? 0,
+  );
+  const stock = Number(product.stock) || 0;
+  const outOfStock = stock <= 0 || product.state === "out_stock";
+  const reachedMax = !outOfStock && inCart >= stock;
 
   const handleAdd = () => {
     if (outOfStock) return;
+    if (reachedMax) {
+      toast.error(`Máximo disponible: ${stock}`);
+      return;
+    }
     add(product, 1);
     playAddToCartSound();
   };
@@ -54,8 +64,14 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       <button
         type="button"
         onClick={handleAdd}
-        disabled={outOfStock}
-        aria-label={outOfStock ? "Sin stock" : "Agregar al carrito"}
+        disabled={outOfStock || reachedMax}
+        aria-label={
+          outOfStock
+            ? "Sin stock"
+            : reachedMax
+              ? "Máximo alcanzado"
+              : "Agregar al carrito"
+        }
         className="absolute bottom-3.5 right-3.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-text)] text-[var(--color-bg)] shadow-sm transition hover:scale-110 active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Icon name="plus" size={13} />

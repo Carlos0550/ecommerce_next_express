@@ -11,6 +11,7 @@ export interface LocalCartItem {
   title: string;
   price: number;
   image?: string;
+  stock?: number;
 }
 
 interface CartState {
@@ -23,6 +24,9 @@ interface CartState {
   subtotal: () => number;
 }
 
+const capToStock = (qty: number, stock?: number) =>
+  typeof stock === "number" ? Math.min(qty, Math.max(0, stock)) : qty;
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
@@ -31,22 +35,29 @@ export const useCartStore = create<CartState>()(
         const items = [...get().items];
         const idx = items.findIndex((i) => i.product_id === p.id);
         const price = Number(p.price) || 0;
+        const stock = typeof p.stock === "number" ? p.stock : undefined;
         if (idx >= 0) {
-          items[idx] = { ...items[idx], quantity: items[idx].quantity + qty };
+          const nextQty = capToStock(items[idx].quantity + qty, stock);
+          items[idx] = { ...items[idx], quantity: nextQty, stock };
         } else {
           items.push({
             product_id: p.id,
-            quantity: qty,
+            quantity: capToStock(qty, stock),
             title: p.title,
             price,
             image: p.images?.[0]?.url,
+            stock,
           });
         }
-        set({ items });
+        set({ items: items.filter((i) => i.quantity > 0) });
       },
       setQty: (id, qty) => {
         const items = get()
-          .items.map((i) => (i.product_id === id ? { ...i, quantity: Math.max(1, qty) } : i))
+          .items.map((i) =>
+            i.product_id === id
+              ? { ...i, quantity: capToStock(Math.max(1, qty), i.stock) }
+              : i,
+          )
           .filter((i) => i.quantity > 0);
         set({ items });
       },
