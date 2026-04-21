@@ -64,6 +64,7 @@ export default async function ProductPage({
           image={images[0]?.url}
           tone="accent"
           rounded={24}
+          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 620px"
         />
         {images.length > 1 && (
           <div className="mt-3 hidden grid-cols-4 gap-2 md:grid">

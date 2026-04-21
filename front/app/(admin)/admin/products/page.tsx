@@ -583,6 +583,7 @@ export default function AdminProductsPage() {
                       alt={p.title}
                       fill
                       sizes="40px"
+                      quality={90}
                       className="object-cover"
                     />
                   ) : (
@@ -713,6 +714,7 @@ export default function AdminProductsPage() {
                       alt={p.title}
                       fill
                       sizes="56px"
+                      quality={90}
                       className="object-cover"
                     />
                   ) : (
@@ -814,7 +816,8 @@ export default function AdminProductsPage() {
                           src={storageUrl(u) ?? ""}
                           alt={`${viewTarget.title} ${i + 1}`}
                           fill
-                          sizes="128px"
+                          sizes="256px"
+                          quality={90}
                           className="object-cover"
                         />
                       </div>

@@ -8,9 +8,19 @@ interface Props {
   rounded?: number;
   className?: string;
   image?: string | null;
+  sizes?: string;
+  quality?: number;
 }
 
-export function ProductImg({ label, tone = "accent", rounded = 14, className, image }: Props) {
+export function ProductImg({
+  label,
+  tone = "accent",
+  rounded = 14,
+  className,
+  image,
+  sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 420px",
+  quality = 90,
+}: Props) {
   if (image) {
     return (
       <div
@@ -26,7 +36,8 @@ export function ProductImg({ label, tone = "accent", rounded = 14, className, im
           src={storageUrl(image)}
           alt={label}
           fill
-          sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 320px"
+          sizes={sizes}
+          quality={quality}
           className="object-cover"
         />
       </div>

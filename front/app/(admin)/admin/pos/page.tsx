@@ -391,6 +391,7 @@ export default function AdminPosPage() {
                   alt={l.title}
                   fill
                   sizes="44px"
+                  quality={90}
                   className="object-cover"
                 />
               ) : (
@@ -558,7 +559,8 @@ export default function AdminPosPage() {
                         src={storageUrl(img)}
                         alt={p.title}
                         fill
-                        sizes="140px"
+                        sizes="(max-width: 640px) 50vw, 280px"
+                        quality={90}
                         className="object-cover"
                       />
                     ) : (
