@@ -1,19 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth.store";
 import { BrandLogo, Icon, type IconName } from "@/components/brand";
+import { useBusiness } from "@/components/business-provider";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Bell, Menu, Search, X } from "lucide-react";
+import type { Business } from "@/lib/types";
 
 type NavItem = { href: string; label: string; icon: IconName };
 
-const PRINCIPAL: NavItem[] = [
+const PRINCIPAL_MODERN: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "chart" },
   { href: "/admin/pos", label: "POS / Caja", icon: "cash" },
   { href: "/admin/sales", label: "Historial ventas", icon: "receipt" },
+  { href: "/admin/orders", label: "Órdenes", icon: "package" },
+  { href: "/admin/products", label: "Productos", icon: "box" },
+  { href: "/admin/categories", label: "Categorías", icon: "tag" },
+  { href: "/admin/users", label: "Clientes", icon: "users" },
+];
+
+const PRINCIPAL_LEGACY: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: "chart" },
+  { href: "/admin/ventas", label: "Ventas", icon: "cash" },
   { href: "/admin/orders", label: "Órdenes", icon: "package" },
   { href: "/admin/products", label: "Productos", icon: "box" },
   { href: "/admin/categories", label: "Categorías", icon: "tag" },
@@ -42,6 +55,24 @@ export function AdminShell({
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const ssrBusiness = useBusiness();
+  const businessQ = useQuery<Business | null>({
+    queryKey: ["business"],
+    queryFn: async () => {
+      const { data } = await api.get<Business>("/business");
+      return data;
+    },
+    staleTime: 30_000,
+  });
+  const salesMode =
+    businessQ.data?.admin_layout_config?.sales ??
+    ssrBusiness?.admin_layout_config?.sales ??
+    "modern";
+  const PRINCIPAL = useMemo(
+    () => (salesMode === "legacy" ? PRINCIPAL_LEGACY : PRINCIPAL_MODERN),
+    [salesMode],
+  );
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);

@@ -1,0 +1,764 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api, unwrapError } from "@/lib/api";
+import { cn, formatARS } from "@/lib/utils";
+import { Icon } from "@/components/brand";
+import { StatCard } from "@/components/admin/stat-card";
+import { SalesModal } from "./sales-modal";
+
+export type LegacySale = {
+  id: string | number;
+  created_at?: string;
+  createdAt?: string;
+  payment_method?: string;
+  source?: string;
+  tax?: number | string;
+  total: number | string;
+  processed?: boolean;
+  declined?: boolean;
+  loadedManually?: boolean;
+  user?: { id?: string; name?: string; email?: string } | null;
+  orders?: { buyer_name?: string; buyer_email?: string; buyer_phone?: string }[];
+  products?: Array<{
+    id?: string | number;
+    title?: string;
+    price?: number | string;
+    quantity?: number;
+  }>;
+  manualProducts?: Array<{
+    title: string;
+    price: number | string;
+    quantity: number;
+  }>;
+  manual_products?: Array<{
+    title: string;
+    price: number | string;
+    quantity: number;
+  }>;
+  items?: Array<{
+    id: string;
+    title: string;
+    price: number;
+    quantity: number;
+  }>;
+  paymentMethods?: Array<{ method: string; amount: number }>;
+};
+
+type SalesResp = {
+  success: boolean;
+  sales: LegacySale[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  totalSalesByDate?: number | string;
+};
+
+type AnalyticsResp = {
+  success?: boolean;
+  timeseries?: {
+    by_day?: Array<{ date: string; revenue: number }>;
+  };
+};
+
+type Preset = "HOY" | "AYER" | "ULTIMOS_3" | "ULTIMOS_7" | "MES" | "PERSONALIZADO";
+
+const PRESETS: { id: Preset; label: string }[] = [
+  { id: "HOY", label: "Hoy" },
+  { id: "AYER", label: "Ayer" },
+  { id: "ULTIMOS_3", label: "3 días" },
+  { id: "ULTIMOS_7", label: "7 días" },
+  { id: "MES", label: "Mes" },
+  { id: "PERSONALIZADO", label: "Rango" },
+];
+
+function startOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+function endOfDay(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+}
+function addDays(d: Date, days: number) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 0, 0, 0, 0);
+}
+function toDateOnly(d: Date | null | undefined): string | undefined {
+  if (!d) return undefined;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function SalesTableLegacy({
+  onEdit,
+}: {
+  onEdit: (sale: LegacySale) => void;
+}) {
+  const qc = useQueryClient();
+
+  const [preset, setPreset] = useState<Preset>("HOY");
+  const [range, setRange] = useState<{ start: string; end: string }>(() => {
+    const today = toDateOnly(new Date())!;
+    return { start: today, end: today };
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 5;
+  const [pendingOnly, setPendingOnly] = useState(false);
+
+  const { start_date, end_date } = useMemo(() => {
+    const today = new Date();
+    switch (preset) {
+      case "AYER": {
+        const y = addDays(today, -1);
+        return {
+          start_date: toDateOnly(startOfDay(y)),
+          end_date: toDateOnly(endOfDay(y)),
+        };
+      }
+      case "ULTIMOS_3": {
+        const s = addDays(today, -2);
+        return {
+          start_date: toDateOnly(startOfDay(s)),
+          end_date: toDateOnly(endOfDay(today)),
+        };
+      }
+      case "ULTIMOS_7": {
+        const s = addDays(today, -6);
+        return {
+          start_date: toDateOnly(startOfDay(s)),
+          end_date: toDateOnly(endOfDay(today)),
+        };
+      }
+      case "MES": {
+        const s = new Date(today.getFullYear(), today.getMonth(), 1);
+        return {
+          start_date: toDateOnly(s),
+          end_date: toDateOnly(endOfDay(today)),
+        };
+      }
+      case "PERSONALIZADO": {
+        return { start_date: range.start, end_date: range.end };
+      }
+      case "HOY":
+      default: {
+        const s = toDateOnly(startOfDay(today))!;
+        return { start_date: s, end_date: s };
+      }
+    }
+  }, [preset, range]);
+
+  const salesQ = useQuery<SalesResp>({
+    queryKey: ["sales", "list", { start_date, end_date, page: currentPage, pendingOnly }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        per_page: String(perPage),
+        start_date: start_date ?? "",
+        end_date: end_date ?? "",
+      });
+      if (pendingOnly) params.set("pending", "true");
+      const { data } = await api.get<SalesResp>(`/sales?${params}`);
+      return data;
+    },
+  });
+
+  const analyticsQ = useQuery<AnalyticsResp>({
+    queryKey: ["sales", "analytics", { start_date, end_date }],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        start_date: start_date ?? "",
+        end_date: end_date ?? "",
+      });
+      const { data } = await api.get<AnalyticsResp>(`/sales/analytics?${params}`);
+      return data;
+    },
+  });
+
+  const sales = salesQ.data?.sales ?? [];
+  const pagination = salesQ.data?.pagination;
+  const totalByDate = Number(salesQ.data?.totalSalesByDate ?? 0);
+
+  const avgTicket = useMemo(() => {
+    if (!sales.length) return 0;
+    const sum = sales.reduce((acc, s) => acc + Number(s.total || 0), 0);
+    return sum / sales.length;
+  }, [sales]);
+
+  const currency = useMemo(
+    () =>
+      new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }),
+    [],
+  );
+
+  const processMut = useMutation({
+    mutationFn: (id: string | number) => api.patch(`/sales/${id}/process`),
+    onSuccess: () => {
+      toast.success("Venta procesada");
+      qc.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const declineMut = useMutation({
+    mutationFn: ({ id, reason }: { id: string | number; reason: string }) =>
+      api.patch(`/sales/${id}/decline`, { reason }),
+    onSuccess: () => {
+      toast.success("Venta declinada");
+      qc.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string | number) => api.delete(`/sales/${id}`),
+    onSuccess: () => {
+      toast.success("Venta eliminada");
+      qc.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const receiptMut = useMutation({
+    mutationFn: async (id: string | number) => {
+      const { data } = await api.get<{ url?: string } | string>(
+        `/sales/${id}/receipt`,
+      );
+      return typeof data === "string" ? { url: data } : data;
+    },
+    onSuccess: (res) => {
+      if (res?.url) {
+        setReceiptUrl(res.url);
+      } else {
+        toast.error("Sin comprobante disponible");
+      }
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const [viewProductsSale, setViewProductsSale] = useState<LegacySale | null>(null);
+  const [viewBuyerSale, setViewBuyerSale] = useState<LegacySale | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string>("");
+  const [declineTarget, setDeclineTarget] = useState<LegacySale | null>(null);
+  const [declineReason, setDeclineReason] = useState("");
+
+  const formatDate = (v?: string) => {
+    if (!v) return "—";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? String(v) : d.toLocaleString("es-AR");
+  };
+
+  const statusBadge = (s: LegacySale) => {
+    if (s.source === "WEB") {
+      if (s.processed)
+        return {
+          label: "Procesada",
+          color: "var(--color-success)",
+        };
+      if (s.declined)
+        return { label: "Declinada", color: "var(--color-danger)" };
+      return { label: "Pendiente", color: "var(--color-warn)" };
+    }
+    return { label: "Manual", color: "var(--color-text-dim)" };
+  };
+
+  const chart = useMemo(() => {
+    const pts = analyticsQ.data?.timeseries?.by_day ?? [];
+    if (!pts.length) return null;
+    const values = pts.map((p) => Number(p.revenue) || 0);
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const W = 600;
+    const H = 80;
+    const stepX = pts.length > 1 ? W / (pts.length - 1) : 0;
+    const scaleY = (v: number) =>
+      H - ((v - min) / Math.max(max - min, 1)) * H;
+    const d = pts
+      .map((p, i) => {
+        const x = i * stepX;
+        const y = scaleY(Number(p.revenue) || 0);
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+    const area = `${d} L${W},${H} L0,${H} Z`;
+    return { d, area, W, H, pts };
+  }, [analyticsQ.data]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <StatCard label="Total en rango" value={formatARS(totalByDate)} icon="cash" />
+        <StatCard
+          label="Ventas"
+          value={String(pagination?.total ?? sales.length)}
+          icon="receipt"
+        />
+        <StatCard
+          label="Ticket promedio"
+          value={formatARS(avgTicket)}
+          icon="chart"
+        />
+      </div>
+
+      {chart && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+            Ventas por día
+          </div>
+          <svg
+            viewBox={`0 0 ${chart.W} ${chart.H + 10}`}
+            className="h-[110px] w-full"
+            preserveAspectRatio="none"
+          >
+            <path
+              d={chart.area}
+              fill="color-mix(in srgb, var(--color-accent) 18%, transparent)"
+            />
+            <path
+              d={chart.d}
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeWidth={2}
+            />
+          </svg>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                setPreset(p.id);
+                setCurrentPage(1);
+              }}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-[12px] font-medium transition",
+                preset === p.id
+                  ? "bg-[var(--color-accent)] text-white"
+                  : "text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)] hover:text-[var(--color-text)]",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {preset === "PERSONALIZADO" && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={range.start}
+              onChange={(e) => {
+                setRange((r) => ({ ...r, start: e.target.value }));
+                setCurrentPage(1);
+              }}
+              className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 text-[12px] text-[var(--color-text)]"
+            />
+            <span className="text-[12px] text-[var(--color-text-dim)]">a</span>
+            <input
+              type="date"
+              value={range.end}
+              onChange={(e) => {
+                setRange((r) => ({ ...r, end: e.target.value }));
+                setCurrentPage(1);
+              }}
+              className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2 text-[12px] text-[var(--color-text)]"
+            />
+          </div>
+        )}
+
+        <label className="ml-auto inline-flex items-center gap-2 text-[12px] text-[var(--color-text-dim)]">
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={(e) => {
+              setPendingOnly(e.target.checked);
+              setCurrentPage(1);
+            }}
+            className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+          />
+          Solo pendientes
+        </label>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
+        <div className="min-w-[900px]">
+          <div
+            className="grid gap-3 border-b border-[var(--color-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]"
+            style={{ gridTemplateColumns: GRID }}
+          >
+            <div>Fecha</div>
+            <div>Origen</div>
+            <div>Método</div>
+            <div>Cliente</div>
+            <div>Estado</div>
+            <div className="text-right">Total</div>
+            <div className="text-right">Acciones</div>
+          </div>
+
+          {salesQ.isLoading && (
+            <div className="p-8 text-center text-[13px] text-[var(--color-text-dim)]">
+              Cargando ventas…
+            </div>
+          )}
+
+          {!salesQ.isLoading && sales.length === 0 && (
+            <div className="p-12 text-center text-[13px] text-[var(--color-text-dim)]">
+              Sin resultados en este rango.
+            </div>
+          )}
+
+          {sales.map((s) => {
+            const st = statusBadge(s);
+            const createdAt = s.createdAt ?? s.created_at;
+            const buyer =
+              s.user?.email ||
+              s.orders?.[0]?.buyer_email ||
+              s.orders?.[0]?.buyer_name ||
+              "—";
+            return (
+              <div
+                key={String(s.id)}
+                className="grid items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 text-[13px] last:border-b-0"
+                style={{ gridTemplateColumns: GRID }}
+              >
+                <div className="text-[var(--color-text-dim)]">
+                  {formatDate(createdAt)}
+                </div>
+                <div>
+                  <span
+                    className={cn(
+                      "rounded-md px-2 py-0.5 text-[10px] font-semibold",
+                      s.source === "CAJA"
+                        ? "bg-[var(--color-bg-input)] text-[var(--color-text-dim)]"
+                        : "bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--color-accent)]",
+                    )}
+                  >
+                    {s.source ?? "—"}
+                  </span>
+                </div>
+                <div className="text-[var(--color-text-dim)]">
+                  {s.payment_method ?? "—"}
+                </div>
+                <div className="truncate text-[var(--color-text-dim)]">
+                  {buyer}
+                </div>
+                <div>
+                  <span
+                    className="rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                    style={{
+                      background: `color-mix(in srgb, ${st.color} 18%, transparent)`,
+                      color: st.color,
+                    }}
+                  >
+                    {st.label}
+                  </span>
+                </div>
+                <div className="text-right font-grotesk font-semibold text-[var(--color-text)]">
+                  {formatARS(Number(s.total))}
+                </div>
+                <div className="flex items-center justify-end gap-1.5">
+                  <IconBtn
+                    title="Ver productos"
+                    onClick={() => setViewProductsSale(s)}
+                    color="blue"
+                    icon="box"
+                  />
+                  <IconBtn
+                    title="Ver comprador"
+                    onClick={() => setViewBuyerSale(s)}
+                    color="indigo"
+                    icon="users"
+                  />
+                  {s.source === "WEB" && (
+                    <>
+                      <button
+                        onClick={() => processMut.mutate(s.id)}
+                        disabled={
+                          !!s.processed || !!s.declined || processMut.isPending
+                        }
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-input)] px-2 text-[10px] font-semibold text-[var(--color-success)] hover:brightness-110 disabled:opacity-40"
+                        title="Marcar como procesada"
+                      >
+                        <Icon name="check" size={11} />
+                      </button>
+                      <IconBtn
+                        title="Ver comprobante"
+                        onClick={() => receiptMut.mutate(s.id)}
+                        color="teal"
+                        icon="receipt"
+                      />
+                      <IconBtn
+                        title="Declinar venta"
+                        onClick={() => {
+                          setDeclineTarget(s);
+                          setDeclineReason("");
+                        }}
+                        color="orange"
+                        icon="close"
+                        disabled={!!s.processed || !!s.declined}
+                      />
+                    </>
+                  )}
+                  {s.source !== "WEB" && (
+                    <IconBtn
+                      title="Editar"
+                      onClick={() => onEdit(s)}
+                      color="gray"
+                      icon="edit"
+                    />
+                  )}
+                  <IconBtn
+                    title="Eliminar"
+                    onClick={() => {
+                      if (window.confirm("¿Eliminar esta venta?")) {
+                        deleteMut.mutate(s.id);
+                      }
+                    }}
+                    color="red"
+                    icon="trash"
+                    disabled={deleteMut.isPending}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between text-[12px] text-[var(--color-text-dim)]">
+          <div>
+            Página {pagination.page} de {pagination.totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              disabled={pagination.page <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="rounded-[10px] border border-[var(--color-border)] px-3 py-1.5 disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() =>
+                setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
+              }
+              className="rounded-[10px] border border-[var(--color-border)] px-3 py-1.5 disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      <SalesModal
+        open={!!viewProductsSale}
+        onClose={() => setViewProductsSale(null)}
+        title="Productos de la venta"
+        size="narrow"
+      >
+        <ProductsList sale={viewProductsSale} currency={currency} />
+      </SalesModal>
+
+      <SalesModal
+        open={!!viewBuyerSale}
+        onClose={() => setViewBuyerSale(null)}
+        title="Datos del comprador"
+        size="narrow"
+      >
+        <BuyerView sale={viewBuyerSale} />
+      </SalesModal>
+
+      <SalesModal
+        open={!!receiptUrl}
+        onClose={() => setReceiptUrl("")}
+        title="Comprobante"
+        size="wide"
+      >
+        {receiptUrl && (
+          <a
+            href={receiptUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-accent)] underline"
+          >
+            <Icon name="download" size={14} /> Abrir comprobante en nueva pestaña
+          </a>
+        )}
+      </SalesModal>
+
+      <SalesModal
+        open={!!declineTarget}
+        onClose={() => setDeclineTarget(null)}
+        title="Declinar venta"
+        size="narrow"
+      >
+        <div className="space-y-3">
+          <p className="text-[13px] text-[var(--color-text-dim)]">
+            Indicá el motivo para declinar esta venta.
+          </p>
+          <textarea
+            value={declineReason}
+            onChange={(e) => setDeclineReason(e.target.value)}
+            rows={4}
+            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+            placeholder="Motivo…"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setDeclineTarget(null)}
+              className="rounded-[10px] border border-[var(--color-border)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)]"
+            >
+              Cancelar
+            </button>
+            <button
+              disabled={!declineReason.trim() || declineMut.isPending}
+              onClick={() => {
+                if (!declineTarget || !declineReason.trim()) return;
+                declineMut.mutate(
+                  { id: declineTarget.id, reason: declineReason.trim() },
+                  {
+                    onSuccess: () => setDeclineTarget(null),
+                  },
+                );
+              }}
+              className="rounded-[10px] bg-[var(--color-danger)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60"
+            >
+              Declinar
+            </button>
+          </div>
+        </div>
+      </SalesModal>
+    </div>
+  );
+}
+
+const GRID = "1.2fr 0.6fr 0.8fr 1.2fr 0.8fr 0.9fr 1.6fr";
+
+function IconBtn({
+  title,
+  onClick,
+  icon,
+  color,
+  disabled,
+}: {
+  title: string;
+  onClick: () => void;
+  icon: "box" | "users" | "receipt" | "edit" | "trash" | "close";
+  color: "blue" | "indigo" | "teal" | "orange" | "gray" | "red";
+  disabled?: boolean;
+}) {
+  const colorMap: Record<string, string> = {
+    blue: "var(--color-accent)",
+    indigo: "var(--color-accent)",
+    teal: "var(--color-success)",
+    orange: "var(--color-warn)",
+    gray: "var(--color-text-dim)",
+    red: "var(--color-danger)",
+  };
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg-input)] hover:brightness-110 disabled:opacity-40"
+      style={{ color: colorMap[color] }}
+    >
+      <Icon name={icon} size={12} />
+    </button>
+  );
+}
+
+function ProductsList({
+  sale,
+  currency,
+}: {
+  sale: LegacySale | null;
+  currency: Intl.NumberFormat;
+}) {
+  if (!sale) return null;
+  const manual = sale.manualProducts ?? sale.manual_products ?? [];
+  const cat = sale.products ?? [];
+  if (manual.length === 0 && cat.length === 0) {
+    return (
+      <div className="text-[13px] text-[var(--color-text-dim)]">
+        Esta venta no tiene productos registrados.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {cat.map((p, i) => (
+        <div
+          key={`cat-${i}`}
+          className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 py-2 text-[13px]"
+        >
+          <div className="truncate text-[var(--color-text)]">
+            {p.title ?? "Producto"}
+          </div>
+          <div className="flex items-center gap-3 text-[var(--color-text-dim)]">
+            <span>×{p.quantity ?? 1}</span>
+            <span className="font-semibold text-[var(--color-text)]">
+              {currency.format(Number(p.price ?? 0))}
+            </span>
+          </div>
+        </div>
+      ))}
+      {manual.map((m, i) => (
+        <div
+          key={`man-${i}`}
+          className="flex items-center justify-between rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-[13px]"
+        >
+          <div className="truncate text-[var(--color-text)]">{m.title}</div>
+          <div className="flex items-center gap-3 text-[var(--color-text-dim)]">
+            <span>×{m.quantity}</span>
+            <span className="font-semibold text-[var(--color-text)]">
+              {currency.format(Number(m.price))}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BuyerView({ sale }: { sale: LegacySale | null }) {
+  if (!sale) return null;
+  const u = sale.user;
+  const o = sale.orders?.[0];
+  const rows: { label: string; value: string | undefined }[] = [
+    { label: "Nombre", value: u?.name ?? o?.buyer_name ?? undefined },
+    { label: "Email", value: u?.email ?? o?.buyer_email ?? undefined },
+    { label: "Teléfono", value: o?.buyer_phone ?? undefined },
+  ];
+  const hasAny = rows.some((r) => r.value);
+  if (!hasAny)
+    return (
+      <div className="text-[13px] text-[var(--color-text-dim)]">
+        Sin datos de comprador.
+      </div>
+    );
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div
+          key={r.label}
+          className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 py-2 text-[13px]"
+        >
+          <div className="text-[var(--color-text-dim)]">{r.label}</div>
+          <div className="truncate font-medium text-[var(--color-text)]">
+            {r.value ?? "—"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
