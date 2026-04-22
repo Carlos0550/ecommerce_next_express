@@ -36,7 +36,7 @@ export function Providers({
     <QueryClientProvider client={qc}>
       {children}
       <Toaster
-        position="top-right"
+        position="bottom-right"
         theme="system"
         toastOptions={{
           style: {

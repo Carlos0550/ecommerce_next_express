@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, playNotificationSound } from "@/lib/utils";
 import { Icon, type IconName } from "@/components/brand";
 import type { Product } from "@/lib/types";
 import type { LegacySale } from "./sales-table-legacy";
@@ -174,6 +174,7 @@ export function SalesFormLegacy({ sale, onClose }: Props) {
     },
     onSuccess: () => {
       toast.success(isEdit ? "Venta actualizada" : "Venta registrada");
+      if (!isEdit) playNotificationSound();
       qc.invalidateQueries({ queryKey: ["sales"] });
       onClose();
     },

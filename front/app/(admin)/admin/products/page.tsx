@@ -5,9 +5,12 @@ import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, storageUrl, unwrapError } from "@/lib/api";
-import { formatARS, cn } from "@/lib/utils";
+import { formatARS, cn, playNotificationSound } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { ProductFormSheet } from "@/components/admin/product-form-sheet";
+import {
+  ProductFormSheet,
+  type ProductSavePayload,
+} from "@/components/admin/product-form-sheet";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Icon } from "@/components/brand";
 import {
@@ -117,6 +120,48 @@ export default function AdminProductsPage() {
   const totalPages = productsQ.data?.pagination?.totalPages ?? 1;
 
   const categoriesWithCount = useMemo(() => categories, [categories]);
+
+  const saveMut = useMutation({
+    mutationFn: async (payload: ProductSavePayload) => {
+      if (payload.isEdit && payload.productId != null) {
+        const { data } = await api.put(
+          `/products/${payload.productId}`,
+          payload.form,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        return data;
+      }
+      const { data } = await api.post(
+        "/products/save-product",
+        payload.form,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      return data;
+    },
+    onMutate: (payload) => {
+      const id = `product-save-${Date.now()}-${Math.random()}`;
+      toast.loading(
+        payload.isEdit
+          ? `Guardando "${payload.title}"…`
+          : `Subiendo "${payload.title}"…`,
+        { id }
+      );
+      return { toastId: id };
+    },
+    onSuccess: (_d, payload, ctx) => {
+      toast.success(
+        payload.isEdit
+          ? `"${payload.title}" actualizado`
+          : `"${payload.title}" creado`,
+        { id: ctx?.toastId }
+      );
+      playNotificationSound();
+      qc.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: (err, _payload, ctx) => {
+      toast.error(unwrapError(err), { id: ctx?.toastId });
+    },
+  });
 
   const deleteMut = useMutation({
     mutationFn: async (id: number | string) => {
@@ -865,6 +910,7 @@ export default function AdminProductsPage() {
         onClose={() => setSheetOpen(false)}
         product={editing}
         categories={categories}
+        onSave={(payload) => saveMut.mutate(payload)}
       />
 
       <ConfirmDialog
