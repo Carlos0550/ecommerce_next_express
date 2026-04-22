@@ -301,14 +301,30 @@ export function SalesTableLegacy({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-        <StatCard label="Total en rango" value={formatARS(totalByDate)} icon="cash" />
+        <StatCard
+          label={
+            preset === "HOY"
+              ? "Total de hoy"
+              : preset === "AYER"
+                ? "Total de ayer"
+                : preset === "ULTIMOS_3"
+                  ? "Total de los últimos 3 días"
+                  : preset === "ULTIMOS_7"
+                    ? "Total de la semana"
+                    : preset === "MES"
+                      ? "Total del mes"
+                      : "Total en rango"
+          }
+          value={formatARS(totalByDate)}
+          icon="cash"
+        />
         <StatCard
           label="Ventas"
           value={String(pagination?.total ?? sales.length)}
           icon="receipt"
         />
         <StatCard
-          label="Ticket promedio"
+          label="Promedio de ventas"
           value={formatARS(avgTicket)}
           icon="chart"
         />
