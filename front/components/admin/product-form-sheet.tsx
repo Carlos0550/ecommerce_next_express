@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { api, unwrapError, storageUrl } from "@/lib/api";
+import { storageUrl } from "@/lib/api";
 import {
   ProductFormSchema,
   type ProductFormInput,
@@ -20,18 +18,26 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 
+export type ProductSavePayload = {
+  form: FormData;
+  isEdit: boolean;
+  productId?: number | string;
+  title: string;
+};
+
 export function ProductFormSheet({
   open,
   onClose,
   product,
   categories,
+  onSave,
 }: {
   open: boolean;
   onClose: () => void;
   product?: Product | null;
   categories: Category[];
+  onSave: (payload: ProductSavePayload) => void;
 }) {
-  const qc = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const isEdit = !!product;
@@ -70,35 +76,24 @@ export function ProductFormSheet({
     }
   }, [open, product, reset]);
 
-  const mutation = useMutation({
-    mutationFn: async (values: ProductFormInput) => {
-      const form = new FormData();
-      form.append("title", String(values.title));
-      if (values.description) form.append("description", values.description);
-      form.append("price", String(values.price));
-      form.append("stock", String(values.stock));
-      form.append("category_id", String(values.category_id));
-      if (values.sku) form.append("sku", values.sku);
-      for (const f of files) form.append("productImages", f);
+  const submit = (values: ProductFormInput) => {
+    const form = new FormData();
+    form.append("title", String(values.title));
+    if (values.description) form.append("description", values.description);
+    form.append("price", String(values.price));
+    form.append("stock", String(values.stock));
+    form.append("category_id", String(values.category_id));
+    if (values.sku) form.append("sku", values.sku);
+    for (const f of files) form.append("productImages", f);
 
-      if (isEdit && product) {
-        const { data } = await api.put(`/products/${product.id}`, form, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        return data;
-      }
-      const { data } = await api.post("/products/save-product", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return data;
-    },
-    onSuccess: () => {
-      toast.success(isEdit ? "Producto actualizado" : "Producto creado");
-      qc.invalidateQueries({ queryKey: ["products"] });
-      onClose();
-    },
-    onError: (err) => toast.error(unwrapError(err)),
-  });
+    onSave({
+      form,
+      isEdit,
+      productId: product?.id,
+      title: String(values.title),
+    });
+    onClose();
+  };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const arr = Array.from(e.target.files ?? []);
@@ -116,7 +111,7 @@ export function ProductFormSheet({
         </SheetHeader>
 
         <form
-          onSubmit={handleSubmit((d) => mutation.mutate(d))}
+          onSubmit={handleSubmit(submit)}
           className="flex flex-1 flex-col gap-3.5 px-4"
         >
           <Field label="Nombre" error={errors.title?.message}>
@@ -220,14 +215,9 @@ export function ProductFormSheet({
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
-              className="flex-1 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
+              className="flex-1 rounded-[10px] bg-[var(--color-accent)] px-3.5 py-2.5 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
             >
-              {mutation.isPending
-                ? "Guardando…"
-                : isEdit
-                  ? "Guardar cambios"
-                  : "Crear producto"}
+              {isEdit ? "Guardar cambios" : "Crear producto"}
             </button>
           </SheetFooter>
         </form>

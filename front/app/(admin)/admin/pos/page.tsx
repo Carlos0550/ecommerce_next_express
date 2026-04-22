@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, storageUrl, unwrapError } from "@/lib/api";
@@ -9,7 +10,8 @@ import { cn, formatARS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth.store";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Icon } from "@/components/brand";
-import type { Category, Product } from "@/lib/types";
+import { useBusiness } from "@/components/business-provider";
+import type { Business, Category, Product } from "@/lib/types";
 
 type ProductsResp = {
   ok: boolean;
@@ -75,6 +77,28 @@ function firstImage(p: Product): string | null {
 }
 
 export default function AdminPosPage() {
+  const router = useRouter();
+  const ssrBusiness = useBusiness();
+  const businessQ = useQuery<Business | null>({
+    queryKey: ["business"],
+    queryFn: async () => {
+      const { data } = await api.get<Business>("/business");
+      return data;
+    },
+    staleTime: 30_000,
+  });
+  const salesMode =
+    businessQ.data?.admin_layout_config?.sales ??
+    ssrBusiness?.admin_layout_config?.sales ??
+    "modern";
+  useEffect(() => {
+    if (salesMode === "legacy") router.replace("/admin/ventas");
+  }, [salesMode, router]);
+  if (salesMode === "legacy") return null;
+  return <AdminPosPageInner />;
+}
+
+function AdminPosPageInner() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [search, setSearch] = useState("");

@@ -213,6 +213,7 @@ model BusinessData {
   hero_image                 String?
   active_palette             String             @default("kuromi")
   banner_config              Json?
+  admin_layout_config        Json?
   bankData                   BusinessBankData[]
 }
 

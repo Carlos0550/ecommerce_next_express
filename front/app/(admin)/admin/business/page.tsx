@@ -8,9 +8,13 @@ import { api, storageUrl, unwrapError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { BannerEditor, DEFAULT_BANNER } from "@/components/admin/banner-editor";
+import {
+  AdminLayoutToggle,
+  DEFAULT_ADMIN_LAYOUT,
+} from "@/components/admin/admin-layout-toggle";
 import { Icon } from "@/components/brand";
 import { usePaletteStore, type PaletteName } from "@/stores/palette.store";
-import type { BannerConfig } from "@/lib/types";
+import type { AdminLayoutConfig, BannerConfig } from "@/lib/types";
 
 type BankEntry = {
   id?: number | string;
@@ -36,6 +40,7 @@ type BusinessData = {
   hero_image?: string;
   active_palette?: PaletteName;
   banner_config?: BannerConfig | null;
+  admin_layout_config?: AdminLayoutConfig | null;
   bankData?: BankEntry[];
 };
 
@@ -84,6 +89,8 @@ export default function AdminBusinessPage() {
         ...businessQ.data,
         bankData: businessQ.data.bankData ?? [],
         banner_config: businessQ.data.banner_config ?? DEFAULT_BANNER,
+        admin_layout_config:
+          businessQ.data.admin_layout_config ?? DEFAULT_ADMIN_LAYOUT,
       });
     }
   }, [businessQ.data]);
@@ -395,6 +402,12 @@ export default function AdminBusinessPage() {
           <BannerEditor
             value={form.banner_config ?? DEFAULT_BANNER}
             onChange={(next) => set("banner_config", next)}
+          />
+
+          {/* Diseño del panel admin */}
+          <AdminLayoutToggle
+            value={form.admin_layout_config ?? DEFAULT_ADMIN_LAYOUT}
+            onChange={(next) => set("admin_layout_config", next)}
           />
 
           {/* Datos bancarios */}

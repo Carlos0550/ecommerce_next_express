@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
@@ -8,7 +9,8 @@ import { cn, formatARS } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { StatCard } from "@/components/admin/stat-card";
 import { Icon } from "@/components/brand";
-import type { Sale } from "@/lib/types";
+import { useBusiness } from "@/components/business-provider";
+import type { Sale, Business } from "@/lib/types";
 
 type SalesResp = {
   success: boolean;
@@ -27,6 +29,28 @@ type SalesResp = {
 };
 
 export default function AdminSalesPage() {
+  const router = useRouter();
+  const ssrBusiness = useBusiness();
+  const businessQ = useQuery<Business | null>({
+    queryKey: ["business"],
+    queryFn: async () => {
+      const { data } = await api.get<Business>("/business");
+      return data;
+    },
+    staleTime: 30_000,
+  });
+  const salesMode =
+    businessQ.data?.admin_layout_config?.sales ??
+    ssrBusiness?.admin_layout_config?.sales ??
+    "modern";
+  useEffect(() => {
+    if (salesMode === "legacy") router.replace("/admin/ventas");
+  }, [salesMode, router]);
+  if (salesMode === "legacy") return null;
+  return <AdminSalesPageInner />;
+}
+
+function AdminSalesPageInner() {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 6 * 24 * 3600 * 1000)
