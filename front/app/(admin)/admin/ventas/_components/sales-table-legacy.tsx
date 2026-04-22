@@ -3,6 +3,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { api, unwrapError } from "@/lib/api";
 import { cn, formatARS } from "@/lib/utils";
 import { Icon } from "@/components/brand";
@@ -59,11 +68,15 @@ type SalesResp = {
   totalSalesByDate?: number | string;
 };
 
-type AnalyticsResp = {
-  success?: boolean;
+type AnalyticsPayload = {
   timeseries?: {
     by_day?: Array<{ date: string; revenue: number }>;
   };
+};
+
+type AnalyticsResp = {
+  success?: boolean;
+  analytics?: AnalyticsPayload;
 };
 
 type Preset = "HOY" | "AYER" | "ULTIMOS_3" | "ULTIMOS_7" | "MES" | "PERSONALIZADO";
@@ -266,27 +279,24 @@ export function SalesTableLegacy({
     return { label: "Manual", color: "var(--color-text-dim)" };
   };
 
-  const chart = useMemo(() => {
-    const pts = analyticsQ.data?.timeseries?.by_day ?? [];
-    if (!pts.length) return null;
-    const values = pts.map((p) => Number(p.revenue) || 0);
-    const max = Math.max(...values, 1);
-    const min = Math.min(...values, 0);
-    const W = 600;
-    const H = 80;
-    const stepX = pts.length > 1 ? W / (pts.length - 1) : 0;
-    const scaleY = (v: number) =>
-      H - ((v - min) / Math.max(max - min, 1)) * H;
-    const d = pts
-      .map((p, i) => {
-        const x = i * stepX;
-        const y = scaleY(Number(p.revenue) || 0);
-        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(" ");
-    const area = `${d} L${W},${H} L0,${H} Z`;
-    return { d, area, W, H, pts };
+  const chartData = useMemo(() => {
+    const pts = analyticsQ.data?.analytics?.timeseries?.by_day ?? [];
+    return pts.map((p) => ({
+      date: p.date,
+      revenue: Number(p.revenue) || 0,
+    }));
   }, [analyticsQ.data]);
+
+  const formatChartDate = (iso: string) => {
+    const dt = new Date(`${iso}T00:00:00`);
+    if (isNaN(dt.getTime())) return iso;
+    return dt.toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
+  };
+  const formatChartMoney = (v: number) => {
+    if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+    if (v >= 1_000) return `$${Math.round(v / 1000)}k`;
+    return `$${Math.round(v)}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -304,29 +314,94 @@ export function SalesTableLegacy({
         />
       </div>
 
-      {chart && (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
-            Ventas por día
+      {(preset === "ULTIMOS_3" ||
+        preset === "ULTIMOS_7" ||
+        preset === "MES" ||
+        preset === "PERSONALIZADO") &&
+        chartData.length >= 2 && (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 md:p-6">
+            <div className="mb-4 text-[13px] font-semibold text-[var(--color-text)]">
+              Tendencia de Ingresos
+            </div>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--color-border)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatChartDate}
+                    tick={{ fontSize: 11, fill: "var(--color-text-dim)" }}
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--color-border)" }}
+                    minTickGap={24}
+                  />
+                  <YAxis
+                    tickFormatter={formatChartMoney}
+                    tick={{ fontSize: 11, fill: "var(--color-text-dim)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={56}
+                  />
+                  <Tooltip
+                    cursor={{
+                      stroke: "var(--color-accent)",
+                      strokeWidth: 1,
+                      strokeDasharray: "3 3",
+                      opacity: 0.5,
+                    }}
+                    contentStyle={{
+                      background: "var(--color-bg-card)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 10,
+                      fontSize: 12,
+                      padding: "8px 10px",
+                    }}
+                    labelStyle={{
+                      color: "var(--color-text)",
+                      fontWeight: 600,
+                      marginBottom: 2,
+                    }}
+                    itemStyle={{ color: "var(--color-accent)" }}
+                    labelFormatter={(label) => formatChartDate(String(label))}
+                    formatter={(value: number) => [formatARS(value), "Ingresos"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-accent)"
+                    strokeWidth={2}
+                    fill="url(#revenueFill)"
+                    activeDot={{
+                      r: 5,
+                      stroke: "var(--color-accent)",
+                      strokeWidth: 2,
+                      fill: "var(--color-bg-card)",
+                    }}
+                    dot={{
+                      r: 3,
+                      stroke: "var(--color-accent)",
+                      strokeWidth: 2,
+                      fill: "var(--color-bg-card)",
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <svg
-            viewBox={`0 0 ${chart.W} ${chart.H + 10}`}
-            className="h-[110px] w-full"
-            preserveAspectRatio="none"
-          >
-            <path
-              d={chart.area}
-              fill="color-mix(in srgb, var(--color-accent) 18%, transparent)"
-            />
-            <path
-              d={chart.d}
-              fill="none"
-              stroke="var(--color-accent)"
-              strokeWidth={2}
-            />
-          </svg>
-        </div>
-      )}
+        )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-1">
