@@ -26,8 +26,6 @@ export type LegacySale = {
   source?: string;
   tax?: number | string;
   total: number | string;
-  processed?: boolean;
-  declined?: boolean;
   loadedManually?: boolean;
   user?: { id?: string; name?: string; email?: string } | null;
   orders?: { buyer_name?: string; buyer_email?: string; buyer_phone?: string }[];
@@ -121,7 +119,6 @@ export function SalesTableLegacy({
   });
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 5;
-  const [pendingOnly, setPendingOnly] = useState(false);
 
   const { start_date, end_date } = useMemo(() => {
     const today = new Date();
@@ -166,7 +163,7 @@ export function SalesTableLegacy({
   }, [preset, range]);
 
   const salesQ = useQuery<SalesResp>({
-    queryKey: ["sales", "list", { start_date, end_date, page: currentPage, pendingOnly }],
+    queryKey: ["sales", "list", { start_date, end_date, page: currentPage }],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: String(currentPage),
@@ -174,7 +171,6 @@ export function SalesTableLegacy({
         start_date: start_date ?? "",
         end_date: end_date ?? "",
       });
-      if (pendingOnly) params.set("pending", "true");
       const { data } = await api.get<SalesResp>(`/sales?${params}`);
       return data;
     },
@@ -208,25 +204,6 @@ export function SalesTableLegacy({
     [],
   );
 
-  const processMut = useMutation({
-    mutationFn: (id: string | number) => api.patch(`/sales/${id}/process`),
-    onSuccess: () => {
-      toast.success("Venta procesada");
-      qc.invalidateQueries({ queryKey: ["sales"] });
-    },
-    onError: (err) => toast.error(unwrapError(err)),
-  });
-
-  const declineMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string | number; reason: string }) =>
-      api.patch(`/sales/${id}/decline`, { reason }),
-    onSuccess: () => {
-      toast.success("Venta declinada");
-      qc.invalidateQueries({ queryKey: ["sales"] });
-    },
-    onError: (err) => toast.error(unwrapError(err)),
-  });
-
   const deleteMut = useMutation({
     mutationFn: (id: string | number) => api.delete(`/sales/${id}`),
     onSuccess: () => {
@@ -256,27 +233,11 @@ export function SalesTableLegacy({
   const [viewProductsSale, setViewProductsSale] = useState<LegacySale | null>(null);
   const [viewBuyerSale, setViewBuyerSale] = useState<LegacySale | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string>("");
-  const [declineTarget, setDeclineTarget] = useState<LegacySale | null>(null);
-  const [declineReason, setDeclineReason] = useState("");
 
   const formatDate = (v?: string) => {
     if (!v) return "—";
     const d = new Date(v);
     return isNaN(d.getTime()) ? String(v) : d.toLocaleString("es-AR");
-  };
-
-  const statusBadge = (s: LegacySale) => {
-    if (s.source === "WEB") {
-      if (s.processed)
-        return {
-          label: "Procesada",
-          color: "var(--color-success)",
-        };
-      if (s.declined)
-        return { label: "Declinada", color: "var(--color-danger)" };
-      return { label: "Pendiente", color: "var(--color-warn)" };
-    }
-    return { label: "Manual", color: "var(--color-text-dim)" };
   };
 
   const chartData = useMemo(() => {
@@ -464,18 +425,6 @@ export function SalesTableLegacy({
           </div>
         )}
 
-        <label className="ml-auto inline-flex items-center gap-2 text-[12px] text-[var(--color-text-dim)]">
-          <input
-            type="checkbox"
-            checked={pendingOnly}
-            onChange={(e) => {
-              setPendingOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="h-3.5 w-3.5 accent-[var(--color-accent)]"
-          />
-          Solo pendientes
-        </label>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)]">
@@ -488,7 +437,6 @@ export function SalesTableLegacy({
             <div>Origen</div>
             <div>Método</div>
             <div>Cliente</div>
-            <div>Estado</div>
             <div className="text-right">Total</div>
             <div className="text-right">Acciones</div>
           </div>
@@ -506,7 +454,6 @@ export function SalesTableLegacy({
           )}
 
           {sales.map((s) => {
-            const st = statusBadge(s);
             const createdAt = s.createdAt ?? s.created_at;
             const buyer =
               s.user?.email ||
@@ -540,17 +487,6 @@ export function SalesTableLegacy({
                 <div className="truncate text-[var(--color-text-dim)]">
                   {buyer}
                 </div>
-                <div>
-                  <span
-                    className="rounded-md px-2 py-0.5 text-[10px] font-semibold"
-                    style={{
-                      background: `color-mix(in srgb, ${st.color} 18%, transparent)`,
-                      color: st.color,
-                    }}
-                  >
-                    {st.label}
-                  </span>
-                </div>
                 <div className="text-right font-grotesk font-semibold text-[var(--color-text)]">
                   {formatARS(Number(s.total))}
                 </div>
@@ -568,34 +504,12 @@ export function SalesTableLegacy({
                     icon="users"
                   />
                   {s.source === "WEB" && (
-                    <>
-                      <button
-                        onClick={() => processMut.mutate(s.id)}
-                        disabled={
-                          !!s.processed || !!s.declined || processMut.isPending
-                        }
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-input)] px-2 text-[10px] font-semibold text-[var(--color-success)] hover:brightness-110 disabled:opacity-40"
-                        title="Marcar como procesada"
-                      >
-                        <Icon name="check" size={11} />
-                      </button>
-                      <IconBtn
-                        title="Ver comprobante"
-                        onClick={() => receiptMut.mutate(s.id)}
-                        color="teal"
-                        icon="receipt"
-                      />
-                      <IconBtn
-                        title="Declinar venta"
-                        onClick={() => {
-                          setDeclineTarget(s);
-                          setDeclineReason("");
-                        }}
-                        color="orange"
-                        icon="close"
-                        disabled={!!s.processed || !!s.declined}
-                      />
-                    </>
+                    <IconBtn
+                      title="Ver comprobante"
+                      onClick={() => receiptMut.mutate(s.id)}
+                      color="teal"
+                      icon="receipt"
+                    />
                   )}
                   {s.source !== "WEB" && (
                     <IconBtn
@@ -685,53 +599,11 @@ export function SalesTableLegacy({
         )}
       </SalesModal>
 
-      <SalesModal
-        open={!!declineTarget}
-        onClose={() => setDeclineTarget(null)}
-        title="Declinar venta"
-        size="narrow"
-      >
-        <div className="space-y-3">
-          <p className="text-[13px] text-[var(--color-text-dim)]">
-            Indicá el motivo para declinar esta venta.
-          </p>
-          <textarea
-            value={declineReason}
-            onChange={(e) => setDeclineReason(e.target.value)}
-            rows={4}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-3 text-[13px] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
-            placeholder="Motivo…"
-          />
-          <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setDeclineTarget(null)}
-              className="rounded-[10px] border border-[var(--color-border)] px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-dim)] hover:bg-[var(--color-bg-input)]"
-            >
-              Cancelar
-            </button>
-            <button
-              disabled={!declineReason.trim() || declineMut.isPending}
-              onClick={() => {
-                if (!declineTarget || !declineReason.trim()) return;
-                declineMut.mutate(
-                  { id: declineTarget.id, reason: declineReason.trim() },
-                  {
-                    onSuccess: () => setDeclineTarget(null),
-                  },
-                );
-              }}
-              className="rounded-[10px] bg-[var(--color-danger)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60"
-            >
-              Declinar
-            </button>
-          </div>
-        </div>
-      </SalesModal>
     </div>
   );
 }
 
-const GRID = "1.2fr 0.6fr 0.8fr 1.2fr 0.8fr 0.9fr 1.6fr";
+const GRID = "1.2fr 0.6fr 0.8fr 1.4fr 1fr 1.6fr";
 
 function IconBtn({
   title,
