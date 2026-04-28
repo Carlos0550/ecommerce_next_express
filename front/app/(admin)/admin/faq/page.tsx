@@ -29,6 +29,7 @@ type FaqForm = z.input<typeof FaqSchema>;
 
 type FaqListResp = {
   ok?: boolean;
+  items?: FAQ[];
   faqs?: FAQ[];
   data?: FAQ[];
 };
@@ -42,7 +43,7 @@ export default function AdminFaqPage() {
     queryKey: ["faqs", "admin"],
     queryFn: async () => {
       const { data } = await api.get<FaqListResp>("/faq/admin?page=1&limit=100");
-      return data.faqs ?? data.data ?? [];
+      return data.items ?? data.faqs ?? data.data ?? [];
     },
   });
 
