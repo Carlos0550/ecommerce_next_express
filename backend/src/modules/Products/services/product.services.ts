@@ -368,8 +368,8 @@ class ProductServices {
   }
   async updateProduct(req: Request, res: Response) {
     try {
-      const { title, price, stock, category_id, state } =
-        req.body as UpdateProductRequest;
+      const { title, price, stock, category_id, state, description } =
+        req.body as UpdateProductRequest & { description?: string };
       const rawExisting =
         (req.body).existingImageUrls ??
         (req.body).existing_image_urls;
@@ -446,17 +446,22 @@ class ProductServices {
         }
       }
       const updatedImages = [...normalizedExisting, ...newImageUrls];
-      const imagesChanged =
-        newImageUrls.length > 0 || normalizedDeleted.length > 0;
       const finalTitle = String(title).trim();
       const finalPrice = parseFloat(String(price));
       const parsedStock = parseInt(String(stock), 10);
       const finalStock =
         Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
-      let finalDescription: string | undefined = undefined;
+      const userDescription =
+        typeof description === "string" ? description.trim() : undefined;
+      let finalDescription: string | undefined = userDescription;
       let finalOptions: { name: string; values: string[] }[] | undefined =
         undefined;
-      if (imagesChanged && updatedImages.length > 0) {
+      const shouldAutoGenerate =
+        newImageUrls.length > 0 &&
+        updatedImages.length > 0 &&
+        !userDescription &&
+        !(existentProduct.description && existentProduct.description.trim());
+      if (shouldAutoGenerate) {
         try {
           const aiResult = await analyzeProductImages(
             updatedImages,

@@ -25,6 +25,14 @@ export type ProductSavePayload = {
   title: string;
 };
 
+function extractImageUrls(images: Product["images"]): string[] {
+  const raw = images as unknown as Array<string | { url?: string }> | undefined;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((im) => (typeof im === "string" ? im : im?.url ?? ""))
+    .filter((u): u is string => !!u);
+}
+
 export function ProductFormSheet({
   open,
   onClose,
@@ -39,7 +47,8 @@ export function ProductFormSheet({
   onSave: (payload: ProductSavePayload) => void;
 }) {
   const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [newPreviews, setNewPreviews] = useState<string[]>([]);
+  const [existingUrls, setExistingUrls] = useState<string[]>([]);
   const isEdit = !!product;
 
   const {
@@ -70,21 +79,27 @@ export function ProductFormSheet({
         sku: product?.sku ?? "",
       });
       setFiles([]);
-      setPreviews(
-        (product?.images ?? []).map((i) => storageUrl(i.url)).filter(Boolean)
-      );
+      setNewPreviews([]);
+      setExistingUrls(extractImageUrls(product?.images));
     }
   }, [open, product, reset]);
 
   const submit = (values: ProductFormInput) => {
     const form = new FormData();
     form.append("title", String(values.title));
-    if (values.description) form.append("description", values.description);
+    form.append("description", values.description ?? "");
     form.append("price", String(values.price));
     form.append("stock", String(values.stock));
     form.append("category_id", String(values.category_id));
     if (values.sku) form.append("sku", values.sku);
     for (const f of files) form.append("productImages", f);
+
+    if (isEdit && product) {
+      const originalUrls = extractImageUrls(product.images);
+      const deletedUrls = originalUrls.filter((u) => !existingUrls.includes(u));
+      form.append("existingImageUrls", JSON.stringify(existingUrls));
+      form.append("deletedImageUrls", JSON.stringify(deletedUrls));
+    }
 
     onSave({
       form,
@@ -98,8 +113,11 @@ export function ProductFormSheet({
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const arr = Array.from(e.target.files ?? []);
     setFiles(arr);
-    setPreviews(arr.map((f) => URL.createObjectURL(f)));
+    setNewPreviews(arr.map((f) => URL.createObjectURL(f)));
   };
+
+  const removeExisting = (url: string) =>
+    setExistingUrls((cur) => cur.filter((u) => u !== url));
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -179,7 +197,7 @@ export function ProductFormSheet({
               <label className="flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 text-[13px] text-[var(--color-text-dim)] hover:border-[var(--color-accent)]">
                 <Icon name="upload" size={14} />
                 {files.length > 0
-                  ? `${files.length} archivo(s) seleccionados`
+                  ? `${files.length} archivo(s) nuevos`
                   : "Subir imágenes"}
                 <input
                   type="file"
@@ -189,15 +207,37 @@ export function ProductFormSheet({
                   className="hidden"
                 />
               </label>
-              {previews.length > 0 && (
+              {(existingUrls.length > 0 || newPreviews.length > 0) && (
                 <div className="grid grid-cols-4 gap-2">
-                  {previews.map((src, i) => (
+                  {existingUrls.map((u) => {
+                    const src = storageUrl(u);
+                    if (!src) return null;
+                    return (
+                      <div key={u} className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={src}
+                          alt=""
+                          className="aspect-square w-full rounded-lg border border-[var(--color-border)] object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExisting(u)}
+                          title="Quitar"
+                          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-bg-card)] text-[var(--color-danger)] shadow"
+                        >
+                          <Icon name="close" size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {newPreviews.map((src, i) => (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      key={i}
+                      key={`new-${i}`}
                       src={src}
                       alt=""
-                      className="aspect-square w-full rounded-lg border border-[var(--color-border)] object-cover"
+                      className="aspect-square w-full rounded-lg border border-[var(--color-accent)] object-cover"
                     />
                   ))}
                 </div>

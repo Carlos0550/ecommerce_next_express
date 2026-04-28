@@ -1,4 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function ensureCreatePayload(
   req: Request,
   res: Response,
@@ -16,16 +19,28 @@ export function ensureCreatePayload(
     quantity: Number(it.quantity) || 1,
     options: it?.options || [],
   }));
+  const name = String(customer?.name || "").trim();
+  const email = String(customer?.email || "").trim();
+  const street = String(customer?.street || "").trim();
+  const city = String(customer?.city || "").trim();
+  const postal_code = String(customer?.postal_code || "").trim();
+  if (
+    name.length < 2 ||
+    !EMAIL_RE.test(email) ||
+    street.length < 3 ||
+    city.length < 2 ||
+    postal_code.length < 3
+  ) {
+    return res.status(400).json({ ok: false, error: "invalid_customer_data" });
+  }
   const normalizedCustomer = {
-    name: String(customer?.name || ""),
-    email: String(customer?.email || ""),
-    phone: customer?.phone ? String(customer.phone) : undefined,
-    street: customer?.street ? String(customer.street) : undefined,
-    postal_code: customer?.postal_code
-      ? String(customer.postal_code)
-      : undefined,
-    city: customer?.city ? String(customer.city) : undefined,
-    province: customer?.province ? String(customer.province) : undefined,
+    name,
+    email,
+    phone: customer?.phone ? String(customer.phone).trim() : undefined,
+    street,
+    postal_code,
+    city,
+    province: customer?.province ? String(customer.province).trim() : undefined,
     pickup: !!customer?.pickup,
   };
   (req as any).items = normalizedItems;

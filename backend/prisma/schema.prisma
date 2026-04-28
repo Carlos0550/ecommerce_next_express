@@ -113,9 +113,6 @@ model Sales {
   loadedManually Boolean       @default(false)
   manualProducts Json?         @default("[]")
   paymentMethods Json?         @default("[]")
-  processed      Boolean       @default(false)
-  declined       Boolean       @default(false)
-  decline_reason String?
   items          Json          @default("[]")
   orders         Orders[]
   user           User?         @relation(fields: [userId], references: [id])
@@ -163,6 +160,10 @@ model Orders {
   saleId                String?
   transfer_receipt_path String?
   buyer_phone           String?
+  buyer_street          String?
+  buyer_city            String?
+  buyer_postal_code     String?
+  buyer_province        String?
   subtotal              Decimal?    @default(0.00) @db.Decimal(12, 2)
   status                OrderStatus @default(PENDING)
   sale                  Sales?      @relation(fields: [saleId], references: [id])

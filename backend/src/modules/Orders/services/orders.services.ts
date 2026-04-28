@@ -111,6 +111,10 @@ export default class OrdersServices {
       buyer_email: customer.email || undefined,
       buyer_phone: customer.phone || undefined,
       buyer_name: customer.name || undefined,
+      buyer_street: customer.street || undefined,
+      buyer_city: customer.city || undefined,
+      buyer_postal_code: customer.postal_code || undefined,
+      buyer_province: customer.province || undefined,
     };
     if (userId && Number.isInteger(userId)) {
       orderData.user = { connect: { id: userId } };
@@ -255,9 +259,6 @@ export default class OrdersServices {
             select: {
               id: true,
               source: true,
-              processed: true,
-              declined: true,
-              decline_reason: true,
               payment_method: true,
             },
           },
@@ -289,27 +290,35 @@ export default class OrdersServices {
     return { ok: true, order: updated };
   }
   async listUserOrders(userId: number, page = 1, limit = 10) {
-    const skip = (Math.max(1, page) - 1) * Math.max(1, limit);
-    const [items, total] = await Promise.all([
+    const take = Math.max(1, limit);
+    const skip = (Math.max(1, page) - 1) * take;
+    const [rows, total] = await Promise.all([
       prisma.orders.findMany({
         where: { userId },
         orderBy: { created_at: "desc" },
         skip,
-        take: Math.max(1, limit),
+        take,
         select: {
           id: true,
           items: true,
           total: true,
+          subtotal: true,
           payment_method: true,
+          status: true,
+          transfer_receipt_path: true,
           created_at: true,
         },
       }),
       prisma.orders.count({ where: { userId } }),
     ]);
-    const totalPages = Math.ceil(total / Math.max(1, limit)) || 1;
+    const orders = rows.map((o) => ({
+      ...o,
+      createdAt: o.created_at,
+    }));
+    const totalPages = Math.ceil(total / take) || 1;
     return {
       ok: true,
-      items,
+      orders,
       page,
       total,
       totalPages,

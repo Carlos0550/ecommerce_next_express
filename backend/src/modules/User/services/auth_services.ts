@@ -61,20 +61,19 @@ class AuthServices {
 
   async registerShop(req: Request, res: Response) {
     try {
-      const { email, name, asAdmin } = req.body;
-      if (!email || !name) {
+      const { email, name, password, asAdmin } = req.body;
+      if (!email || !name || !password) {
         return res.status(400).json({ ok: false, error: "missing_fields", message: "Todos los campos son obligatorios" });
       }
       if (asAdmin) {
         return res.status(403).json({ ok: false, error: "admin_registration_disabled", message: "El registro de administradores no está habilitado." });
       }
-      const secure_password = randomBytes(12).toString("base64url");
       const existingUser = await prisma.user.findUnique({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ ok: false, error: "email_already_registered", message: "El correo ya está registrado" });
       }
       const normalized_name = name.trim().toLowerCase();
-      const hashed = await hashPassword(secure_password);
+      const hashed = await hashPassword(password);
       const user = await prisma.user.create({
         data: { email, password: hashed, name: normalized_name, role: "CUSTOMER", is_active: true },
       });
@@ -83,25 +82,20 @@ class AuthServices {
         const business = await BusinessServices.getBusiness();
         const businessName = business?.name || "Tienda online";
         const palette = await getActivePalette();
-        const text_message = `
-          <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_main}};">
-          Desde hoy, estás listo/a para explorar todo nuestro catálogo de productos,
-          desde maquillaje hasta accesorios, y descubrir tu estilo único.
-          </p>`;
         const text_message_pass = `
           <p style="margin:0 0 18px; font-size:15px; line-height:1.6; color:{{color_text_muted}};">
-          Tu contraseña de acceso es: <strong>${secure_password}</strong>
+          Tu contraseña de acceso es: <strong>${password}</strong>
           </p>`;
         const html = welcomeKuromiHTML(
           capitalized_name,
-          text_message + text_message_pass,
+          text_message_pass,
           business,
           palette as any,
         );
         await sendEmail({
           to: user.email,
           subject: `Bienvenido/a a ${businessName}`,
-          text: `Hola ${capitalized_name}, tu contraseña es: ${secure_password}`,
+          text: `Hola ${capitalized_name}, tu contraseña es: ${password}`,
           html,
         });
       } catch (err) {

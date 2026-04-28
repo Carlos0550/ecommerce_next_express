@@ -14,6 +14,7 @@
     "seed:sales": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/seed-sales.ts",
     "seed:users": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/seed-users.ts",
     "seed:products": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/seed-products.ts",
+    "create:admin": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/create-admin.ts",
     "seed:promos": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/seed-promos.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",

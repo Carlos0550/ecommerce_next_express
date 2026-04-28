@@ -113,11 +113,6 @@ class BusinessController {
   }
   async createBusiness(req: Request, res: Response) {
     const payload = req.body as BusinessDataRequest;
-    if (!Array.isArray(payload.bankData) || payload.bankData.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Los datos bancarios no son válidos" });
-    }
     if (
       !payload.name ||
       !payload.email ||

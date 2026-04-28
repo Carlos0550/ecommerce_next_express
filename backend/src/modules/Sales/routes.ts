@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSales, saveSale, getSalesAnalytics, processSale, declineSale, getSaleReceipt, updateSale, deleteSale } from './router.controller';
+import { getSales, saveSale, getSalesAnalytics, getSaleReceipt, updateSale, deleteSale } from './router.controller';
 import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
 import { validate } from '@/middlewares/validate';
 import { SalesSchema } from './services/schemas/sales.zod';
@@ -7,8 +7,6 @@ const router = Router();
 router.post("/save", requireAuth,requireRole(["ADMIN"]), validate(SalesSchema), saveSale);
 router.get("/", requireAuth,requireRole(["ADMIN"]), getSales);
 router.get("/analytics", requireAuth,requireRole(["ADMIN"]), getSalesAnalytics);
-router.patch("/:id/process", requireAuth,requireRole(["ADMIN"]), ...processSale);
-router.patch("/:id/decline", requireAuth,requireRole(["ADMIN"]), ...declineSale);
 router.get("/:id/receipt", requireAuth,requireRole(["ADMIN"]), ...getSaleReceipt);
 router.put("/:id", requireAuth,requireRole(["ADMIN"]), ...updateSale);
 router.delete("/:id", requireAuth,requireRole(["ADMIN"]), ...deleteSale);

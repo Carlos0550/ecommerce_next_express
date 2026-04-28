@@ -65,8 +65,13 @@ export default function AdminBusinessPage() {
   const businessQ = useQuery({
     queryKey: ["business"],
     queryFn: async () => {
-      const { data } = await api.get<BusinessData>("/business");
-      return data;
+      try {
+        const { data } = await api.get<BusinessData>("/business");
+        return data;
+      } catch (err: any) {
+        if (err?.response?.status === 404) return null;
+        throw err;
+      }
     },
   });
 
@@ -100,11 +105,13 @@ export default function AdminBusinessPage() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      if (!form.id) throw new Error("missing_business_id");
-      const { data } = await api.put(`/business/${form.id}`, {
-        ...form,
-        bankData: form.bankData ?? [],
-      });
+      const id = form.id ?? businessQ.data?.id;
+      const payload = { ...form, bankData: form.bankData ?? [] };
+      if (id) {
+        const { data } = await api.put(`/business/${id}`, { ...payload, id });
+        return data;
+      }
+      const { data } = await api.post(`/business`, payload);
       return data;
     },
     onSuccess: () => {
@@ -226,8 +233,9 @@ export default function AdminBusinessPage() {
       subtitle="Datos públicos, imágenes, paleta y datos bancarios"
       actions={
         <button
+          type="button"
           onClick={() => saveMut.mutate()}
-          disabled={saveMut.isPending || !form.id}
+          disabled={saveMut.isPending || businessQ.isLoading}
           className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60 md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
         >
           <Icon name="check" size={14} />

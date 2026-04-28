@@ -4,6 +4,7 @@ import {
   requireAuth,
   requireRole,
   attachAuthIfPresent,
+  normalizeRole,
 } from "@/middlewares/auth.middleware";
 import {
   uploadSingleImage,
@@ -87,7 +88,7 @@ router.patch(
 );
 router.post(
   "/:id/receipt",
-  requireAuth,
+  attachAuthIfPresent,
   uploadSingleImage("file"),
   handleImageUploadError,
   validateImageMagicBytes,
@@ -100,10 +101,14 @@ router.post(
       if (!order)
         return res.status(404).json({ ok: false, error: "order_not_found" });
       const user = (req as any).user;
-      const isAdmin = Number(user.role || 2) === 1;
+      const isAdmin = !!user && normalizeRole(user.role) === "ADMIN";
       if (!isAdmin) {
-        const userId = Number(user.sub || user.id);
-        if (!order.userId || Number(order.userId) !== userId) {
+        if (user) {
+          const userId = Number(user.sub || user.id);
+          if (!order.userId || Number(order.userId) !== userId) {
+            return res.status(403).json({ ok: false, error: "forbidden" });
+          }
+        } else if (order.userId) {
           return res.status(403).json({ ok: false, error: "forbidden" });
         }
       }
@@ -129,11 +134,17 @@ router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
     if (!id)
       return res.status(400).json({ ok: false, error: "missing_order_id" });
     const user = (req as any).user;
-    const isAdmin = Number(user.role || 2) === 1;
-    if (!isAdmin)
-      return res.status(403).json({ ok: false, error: "forbidden" });
+    const isAdmin = !!user && normalizeRole(user.role) === "ADMIN";
     const order = await service.getOrderById(id);
-    if (!order?.transfer_receipt_path)
+    if (!order)
+      return res.status(404).json({ ok: false, error: "order_not_found" });
+    if (!isAdmin) {
+      const userId = Number(user.sub || user.id);
+      if (!order.userId || Number(order.userId) !== userId) {
+        return res.status(403).json({ ok: false, error: "forbidden" });
+      }
+    }
+    if (!order.transfer_receipt_path)
       return res.status(404).json({ ok: false, error: "receipt_not_found" });
     const { createSignedUrl } = await import("@/config/minio");
     const signed = await createSignedUrl(

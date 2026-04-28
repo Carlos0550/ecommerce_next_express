@@ -2,8 +2,6 @@ import { prisma } from "@/config/prisma";
 import type { SaleRequest } from "./schemas/sales.schemas";
 import { sendEmail } from "@/config/resend";
 import { sale_email_html } from "@/templates/sale_email";
-import { order_ready_email_html } from "@/templates/order_ready_email";
-import { order_declined_email_html } from "@/templates/order_declined_email";
 import dayjs, { DEFAULT_TZ, nowTz } from "@/config/dayjs";
 import BusinessServices from "@/modules/Business/business.services";
 import { getActivePalette } from "@/utils/getActivePalette";
@@ -127,7 +125,6 @@ class SalesServices {
             user: userToConnect,
             total: Number(finalTotal),
             tax: taxPercent,
-            processed: source === "CAJA",
             ...(createdAtOverride ? { created_at: createdAtOverride } : {}),
             products: !isManual
               ? {
@@ -360,7 +357,6 @@ class SalesServices {
       };
       if (pending) {
         where.source = "WEB" as any;
-        where.processed = false;
       }
       const [total, sales, totalSalesByDate] = await Promise.all([
         prisma.sales.count({ where }),
@@ -376,10 +372,7 @@ class SalesServices {
           orderBy: { created_at: "desc" },
         }),
         prisma.sales.aggregate({
-          where: {
-            ...where,
-            declined: false,
-          },
+          where,
           _sum: {
             total: true,
           },
@@ -435,7 +428,6 @@ class SalesServices {
               gte: start.toDate(),
               lte: end.toDate(),
             },
-            declined: false,
           },
           select: {
             id: true,
@@ -469,7 +461,6 @@ class SalesServices {
               gte: prevStart.toDate(),
               lte: prevEnd.toDate(),
             },
-            declined: false,
           },
           select: { id: true, total: true, tax: true, items: true },
         }),
@@ -711,79 +702,6 @@ class SalesServices {
         success: false,
         message: error_msg,
       };
-    }
-  }
-  async markProcessed(id: string) {
-    try {
-      const sale = await prisma.sales.findUnique({
-        where: { id },
-        include: { user: true, orders: true },
-      });
-      if (!sale) return { success: false, message: "sale_not_found" };
-      if ((sale as any).processed) return { success: true };
-      await prisma.sales.update({ where: { id }, data: { processed: true } });
-      const firstOrder = sale.orders[0];
-      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
-      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
-      if (buyer_email) {
-        const business = await BusinessServices.getBusiness();
-        const palette = await getActivePalette();
-        const html = order_ready_email_html({
-          saleId: sale.id,
-          buyerName,
-          payment_method: String(sale.payment_method),
-          business: business,
-          palette: palette as any,
-        });
-        await sendEmail({
-          to: buyer_email,
-          subject: `Tu orden #${sale.id} está lista`,
-          html,
-        });
-        return { success: true };
-      }
-      return { success: false, message: "email_not_found" };
-    } catch (error) {
-      const error_msg = error instanceof Error ? error.message : String(error);
-      logger.error("sales_service_error", { error });
-      return { success: false, message: error_msg };
-    }
-  }
-  async decline(id: string, reason: string) {
-    try {
-      const sale = await prisma.sales.findUnique({
-        where: { id },
-        include: { user: true, orders: true },
-      });
-      if (!sale) return { success: false, message: "sale_not_found" };
-      await prisma.sales.update({
-        where: { id },
-        data: { declined: true, decline_reason: reason, processed: false },
-      });
-      const firstOrder = sale.orders[0];
-      const buyer_email = firstOrder?.buyer_email || sale.user?.email;
-      const buyerName = firstOrder?.buyer_name || sale.user?.name || undefined;
-      if (buyer_email) {
-        const business = await BusinessServices.getBusiness();
-        const palette = await getActivePalette();
-        const html = order_declined_email_html({
-          saleId: sale.id,
-          buyerName,
-          reason,
-          business: business,
-          palette: palette as any,
-        });
-        await sendEmail({
-          to: buyer_email,
-          subject: `Tu orden #${sale.id} fue declinada`,
-          html,
-        });
-      }
-      return { success: true };
-    } catch (error) {
-      const error_msg = error instanceof Error ? error.message : String(error);
-      logger.error("sales_service_error", { error });
-      return { success: false, message: error_msg };
     }
   }
 }

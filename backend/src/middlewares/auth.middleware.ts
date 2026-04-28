@@ -14,7 +14,7 @@ export type AuthUser = JwtPayload & {
   is_active?: boolean;
 };
 
-function normalizeRole(role: AuthRole | number | undefined): AuthRole {
+export function normalizeRole(role: AuthRole | number | undefined): AuthRole {
   if (role === "ADMIN" || role === 1) return "ADMIN";
   return "CUSTOMER";
 }

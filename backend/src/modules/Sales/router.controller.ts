@@ -60,29 +60,6 @@ export const getSalesAnalytics = asyncHandler(async (req: Request, res: Response
     res.status(200).json({ success: true, analytics: response });
 });
 
-const processSaleHandler = asyncHandler(async (req: Request, res: Response) => {
-    const id = String(req.params?.id ?? "");
-    if (!id) throw new BadRequestError("missing_id");
-    const rs = await SalesServices.markProcessed(id);
-    const r = rs as { success?: boolean; message?: string };
-    if (!r?.success) throw new BadRequestError(r?.message ?? "process_failed");
-    res.status(200).json({ success: true });
-});
-export const processSale = [requireAuth, requireRole(["ADMIN"]), processSaleHandler];
-
-const declineSaleHandler = asyncHandler(async (req: Request, res: Response) => {
-    const id = String(req.params?.id ?? "");
-    const rawReason = (req.body as { reason?: unknown })?.reason;
-    const reason = typeof rawReason === "string" ? rawReason.trim() : "";
-    if (!id) throw new BadRequestError("missing_id");
-    if (!reason) throw new BadRequestError("missing_reason");
-    const rs = await SalesServices.decline(id, reason);
-    const r = rs as { success?: boolean; message?: string };
-    if (!r?.success) throw new BadRequestError(r?.message ?? "decline_failed");
-    res.status(200).json({ success: true });
-});
-export const declineSale = [requireAuth, requireRole(["ADMIN"]), declineSaleHandler];
-
 const getSaleReceiptHandler = asyncHandler(async (req: Request, res: Response) => {
     const id = String(req.params?.id ?? "");
     if (!id) throw new BadRequestError("missing_id");

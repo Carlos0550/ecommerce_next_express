@@ -40,6 +40,10 @@ type AdminOrder = {
   buyer_email?: string | null;
   buyer_name?: string | null;
   buyer_phone?: string | null;
+  buyer_street?: string | null;
+  buyer_city?: string | null;
+  buyer_postal_code?: string | null;
+  buyer_province?: string | null;
   transfer_receipt_path?: string | null;
   saleId?: string | null;
   created_at: string;
@@ -48,9 +52,6 @@ type AdminOrder = {
   sale?: {
     id: string;
     source: "CAJA" | "WEB";
-    processed: boolean;
-    declined: boolean;
-    decline_reason?: string | null;
     payment_method: string;
   } | null;
 };
@@ -367,23 +368,27 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] p-2.5 text-[12px]">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[1px] text-[var(--color-text-dim)]">
-                    Cliente
-                  </div>
-                  <div className="truncate font-medium text-[var(--color-text)]">
-                    {o.buyer_name ?? o.user?.name ?? "Invitado"}
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-[1px] text-[var(--color-text-dim)]">
-                    Email
-                  </div>
-                  <div className="truncate text-[var(--color-text-dim)]">
-                    {o.buyer_email ?? o.user?.email ?? "—"}
-                  </div>
-                </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] p-2.5 text-[12px] md:grid-cols-3">
+                <Field
+                  label="Cliente"
+                  value={o.buyer_name ?? o.user?.name ?? "Invitado"}
+                  emphasis
+                />
+                <Field
+                  label="Email"
+                  value={o.buyer_email ?? o.user?.email ?? "—"}
+                />
+                <Field label="Teléfono" value={o.buyer_phone ?? "—"} />
+                <Field
+                  label="Dirección"
+                  value={o.buyer_street ?? "—"}
+                  className="md:col-span-2"
+                />
+                <Field label="Ciudad" value={o.buyer_city ?? "—"} />
+                <Field label="Código postal" value={o.buyer_postal_code ?? "—"} />
+                {o.buyer_province && (
+                  <Field label="Provincia" value={o.buyer_province} />
+                )}
               </div>
 
               {itemsArr.length > 0 && (
@@ -397,12 +402,6 @@ export default function AdminOrdersPage() {
                     .map((it) => it.title ?? `#${it.id}`)
                     .join(", ")}
                   {itemsArr.length > 2 ? "…" : ""}
-                </div>
-              )}
-
-              {o.sale?.declined && o.sale.decline_reason && (
-                <div className="mt-2.5 rounded-md border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] p-2 text-[11px] text-[var(--color-danger)]">
-                  Venta rechazada: {o.sale.decline_reason}
                 </div>
               )}
 
@@ -420,11 +419,6 @@ export default function AdminOrdersPage() {
                   >
                     <Icon name="eye" size={12} /> Comprobante
                   </button>
-                )}
-                {isTransfer && !hasReceipt && o.status === "PENDING" && (
-                  <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-dashed border-[var(--color-border)] px-2.5 text-[11px] text-[var(--color-text-dim)]">
-                    <Icon name="clock" size={12} /> Esperando comprobante
-                  </span>
                 )}
                 <div className="flex-1" />
                 <label className="flex items-center gap-1.5 text-[11px] text-[var(--color-text-dim)]">
@@ -539,5 +533,35 @@ export default function AdminOrdersPage() {
         </DialogContent>
       </Dialog>
     </AdminShell>
+  );
+}
+
+function Field({
+  label,
+  value,
+  emphasis,
+  className,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="text-[10px] uppercase tracking-[1px] text-[var(--color-text-dim)]">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "truncate",
+          emphasis
+            ? "font-medium text-[var(--color-text)]"
+            : "text-[var(--color-text-dim)]"
+        )}
+      >
+        {value}
+      </div>
+    </div>
   );
 }

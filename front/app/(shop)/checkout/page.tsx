@@ -1,9 +1,9 @@
 "use client";
 
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +15,7 @@ import { Icon } from "@/components/brand";
 import { useBusiness } from "@/components/business-provider";
 import { BankDataDisplay } from "@/components/shop/bank-data-display";
 import { formatARS, cn } from "@/lib/utils";
+import type { User } from "@/lib/types";
 
 const Schema = z.object({
   name: z.string().min(2, "Requerido"),
@@ -29,33 +30,55 @@ type Input = z.infer<typeof Schema>;
 const PAYMENTS = [
   { k: "TRANSFERENCIA", label: "Transferencia", icon: "wallet" as const, sub: "CBU al confirmar" },
   { k: "EFECTIVO", label: "Efectivo", icon: "cash" as const, sub: "Paga al retirar" },
-  { k: "MERCADOPAGO", label: "Mercado Pago", icon: "receipt" as const, sub: "Hasta 12 cuotas" },
 ];
 
 export default function CheckoutPage() {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
   const clear = useCartStore((s) => s.clear);
-  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const storedUser = useAuthStore((s) => s.user);
   const business = useBusiness();
   const bankAccounts = business?.bankData ?? [];
   const [method, setMethod] = useState(PAYMENTS[0].k);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const subtotal = items.reduce((n, i) => n + i.price * i.quantity, 0);
-  const shipping = subtotal > 20000 ? 0 : 1200;
-  const total = subtotal + shipping;
+  const total = items.reduce((n, i) => n + i.price * i.quantity, 0);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Input>({
-    resolver: zodResolver(Schema),
-    defaultValues: {
-      name: user?.name ?? "",
-      email: user?.email ?? "",
-      phone: user?.phone ?? "",
-      street: user?.address ?? "",
-      city: "",
-      postal_code: "",
+  const meQ = useQuery({
+    queryKey: ["shop", "me"],
+    enabled: !!token,
+    queryFn: async () => {
+      const { data } = await api.get<{ user?: User } & User>("/profile/me");
+      return (data?.user ?? data) as User;
     },
   });
+  const user = meQ.data ?? storedUser;
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<Input>({
+    resolver: zodResolver(Schema),
+    defaultValues: {
+      name: storedUser?.name ?? "",
+      email: storedUser?.email ?? "",
+      phone: storedUser?.phone ?? "",
+      street: storedUser?.shipping_street ?? "",
+      city: storedUser?.shipping_city ?? "",
+      postal_code: storedUser?.shipping_postal_code ?? "",
+    },
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    reset({
+      name: user.name ?? "",
+      email: user.email ?? "",
+      phone: user.phone ?? "",
+      street: user.shipping_street ?? "",
+      city: user.shipping_city ?? "",
+      postal_code: user.shipping_postal_code ?? "",
+    });
+  }, [user, reset]);
 
   const createMut = useMutation({
     mutationFn: async (customer: Input) => {
@@ -64,17 +87,35 @@ export default function CheckoutPage() {
         payment_method: method,
         customer,
       });
+      const orderId: string | undefined = data?.order_id;
+      if (method === "TRANSFERENCIA") {
+        if (!orderId) throw new Error("missing_order_id");
+        if (!receiptFile) throw new Error("missing_receipt");
+        const form = new FormData();
+        form.append("file", receiptFile);
+        await api.post(`/orders/${orderId}/receipt`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("¡Orden creada!");
       clear();
-      router.push("/orders");
+      setShowSuccessModal(true);
     },
     onError: (err) => toast.error(unwrapError(err)),
   });
 
-  if (items.length === 0) {
+  const onSubmit = (d: Input) => {
+    if (method === "TRANSFERENCIA" && !receiptFile) {
+      toast.error("Tenés que adjuntar el comprobante de transferencia");
+      return;
+    }
+    createMut.mutate(d);
+  };
+
+  if (items.length === 0 && !showSuccessModal) {
     return (
       <div className="mx-auto max-w-[600px] px-4 pt-16 text-center">
         <p className="text-[14px] text-[var(--color-text-dim)]">
@@ -92,7 +133,7 @@ export default function CheckoutPage() {
 
   return (
     <form
-      onSubmit={handleSubmit((d) => createMut.mutate(d))}
+      onSubmit={handleSubmit(onSubmit)}
       className="mx-auto max-w-[1280px] px-4 pb-32 pt-4 md:px-10 md:pt-8"
     >
       <Link
@@ -104,6 +145,32 @@ export default function CheckoutPage() {
       <h1 className="mb-5 font-grotesk text-[24px] font-semibold tracking-[-0.5px] md:text-[28px]">
         Checkout
       </h1>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-[420px] rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-6 text-center shadow-xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent-soft)]">
+              <Icon name="check" size={24} className="text-[var(--color-accent)]" />
+            </div>
+            <h2 className="mb-2 font-grotesk text-[20px] font-semibold tracking-[-0.3px]">
+              ¡Gracias por tu compra!
+            </h2>
+            <p className="mb-1 text-[13px] leading-relaxed text-[var(--color-text-dim)]">
+              En unos momentos un administrador se pondrá en contacto para concretar tu orden.
+            </p>
+            <p className="mb-6 text-[13px] leading-relaxed text-[var(--color-text-dim)]">
+              Te invitamos a revisar tu correo electrónico para ver el resumen de tu compra.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
+            >
+              Volver a la tienda
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-5 md:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-4">
@@ -123,7 +190,7 @@ export default function CheckoutPage() {
           </Card>
 
           <Card title="2 · Método de pago">
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {PAYMENTS.map((m) => {
                 const sub =
                   m.k === "TRANSFERENCIA"
@@ -161,7 +228,29 @@ export default function CheckoutPage() {
               })}
             </div>
             {method === "TRANSFERENCIA" && (
-              <BankDataDisplay accounts={bankAccounts} />
+              <>
+                <BankDataDisplay accounts={bankAccounts} />
+                <div className="mt-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-input)] p-3.5">
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-[var(--color-text-dim)]">
+                    Comprobante de transferencia
+                  </div>
+                  <p className="mb-2 text-[11px] text-[var(--color-text-dim)]">
+                    Subí una imagen del comprobante. Es obligatorio para confirmar tu pedido.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    required
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                    className="block w-full text-[12px] text-[var(--color-text)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--color-accent)] file:px-3 file:py-1.5 file:text-[12px] file:font-semibold file:text-[var(--color-button-text)] hover:file:bg-[var(--color-accent-strong)]"
+                  />
+                  {receiptFile && (
+                    <div className="mt-2 truncate text-[11px] text-[var(--color-success)]">
+                      Archivo: {receiptFile.name}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </Card>
         </div>
@@ -186,11 +275,7 @@ export default function CheckoutPage() {
             ))}
           </div>
           <div className="my-3 h-px bg-[var(--color-border)]" />
-          <div className="flex items-center justify-between text-[13px] text-[var(--color-text-dim)]">
-            <span>Envío</span>
-            <span>{shipping === 0 ? "Gratis" : formatARS(shipping)}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-[14px] font-semibold">Total</span>
             <span className="font-grotesk text-[20px] font-semibold">
               {formatARS(total)}

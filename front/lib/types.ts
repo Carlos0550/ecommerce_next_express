@@ -13,6 +13,10 @@ export interface User {
   profileImage?: string | null;
   phone?: string | null;
   address?: string | null;
+  shipping_street?: string | null;
+  shipping_city?: string | null;
+  shipping_postal_code?: string | null;
+  shipping_province?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -80,7 +84,7 @@ export interface OrderItem {
 }
 
 export interface Order {
-  id: number;
+  id: string;
   user_id?: number | null;
   buyer_email?: string;
   buyer_name?: string;
