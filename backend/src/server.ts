@@ -62,7 +62,7 @@ const createLimiter = (options: any) => {
 
 const authLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, error: "too_many_requests", message: "Demasiados intentos. Esperá 15 minutos." },

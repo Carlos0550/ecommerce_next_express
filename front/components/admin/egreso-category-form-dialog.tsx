@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const DEFAULT_COLOR = "#a3a3a3";
+
+const isHex = (v: string) => /^#([0-9a-fA-F]{3}){1,2}$/.test(v);
+
 export function EgresoCategoryFormDialog({
   open,
   onClose,
@@ -31,25 +35,49 @@ export function EgresoCategoryFormDialog({
   const qc = useQueryClient();
   const isEdit = !!category;
 
+  return (
+    <EgresoCategoryFormInner
+      key={open ? category?.id ?? "new" : "closed"}
+      open={open}
+      qc={qc}
+      category={category ?? null}
+      isEdit={isEdit}
+      onClose={onClose}
+    />
+  );
+}
+
+function EgresoCategoryFormInner({
+  open,
+  qc,
+  category,
+  isEdit,
+  onClose,
+}: {
+  open: boolean;
+  qc: ReturnType<typeof useQueryClient>;
+  category: EgresoCategory | null;
+  isEdit: boolean;
+  onClose: () => void;
+}) {
+  const initialColor =
+    category?.color && isHex(category.color) ? category.color : DEFAULT_COLOR;
+  const [color, setColor] = useState<string>(initialColor);
+  const [colorText, setColorText] = useState<string>(initialColor);
+
   const {
     register,
     handleSubmit,
-    reset,
+    setValue,
     formState: { errors },
   } = useForm<EgresoCategoryFormInput>({
     resolver: zodResolver(EgresoCategoryFormSchema),
-    defaultValues: { title: "", description: "", color: "" },
+    defaultValues: {
+      title: category?.title ?? "",
+      description: category?.description ?? "",
+      color: initialColor,
+    },
   });
-
-  useEffect(() => {
-    if (open) {
-      reset({
-        title: category?.title ?? "",
-        description: category?.description ?? "",
-        color: category?.color ?? "",
-      });
-    }
-  }, [open, category, reset]);
 
   const mutation = useMutation({
     mutationFn: async (values: EgresoCategoryFormInput) => {
@@ -59,7 +87,7 @@ export function EgresoCategoryFormDialog({
       if (values.description && values.description.trim()) {
         payload.description = values.description.trim();
       }
-      if (values.color && /^#/.test(values.color)) {
+      if (values.color && isHex(values.color)) {
         payload.color = values.color;
       }
       if (isEdit && category) {
@@ -79,6 +107,20 @@ export function EgresoCategoryFormDialog({
     },
     onError: (err) => toast.error(unwrapError(err)),
   });
+
+  const onColorPicker = (v: string) => {
+    setColor(v);
+    setColorText(v);
+    setValue("color", v, { shouldDirty: true });
+  };
+
+  const onColorText = (v: string) => {
+    setColorText(v);
+    if (isHex(v)) {
+      setColor(v);
+      setValue("color", v, { shouldDirty: true });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -122,19 +164,34 @@ export function EgresoCategoryFormDialog({
           </label>
 
           <div className="block">
-            <div className="mb-1.5 text-[11px] font-semibold text-[var(--color-text-dim)]">
-              Color <span className="opacity-50">(opcional)</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-[var(--color-text-dim)]">
+                Color <span className="opacity-50">(opcional)</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-5 w-5 rounded-md border border-[var(--color-border)]"
+                  style={{ background: color }}
+                  aria-hidden
+                />
+                <span className="font-mono text-[11px] text-[var(--color-text-dim)]">
+                  {color}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2.5">
               <input
                 type="color"
-                {...register("color")}
-                className="h-10 w-12 cursor-pointer rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] p-1"
+                value={color}
+                onChange={(e) => onColorPicker(e.target.value)}
+                className="h-10 w-12 shrink-0 cursor-pointer rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-input)] p-1"
+                aria-label="Selector de color"
               />
               <input
                 type="text"
-                {...register("color")}
-                placeholder="#ff5577"
+                value={colorText}
+                onChange={(e) => onColorText(e.target.value)}
+                placeholder="#a3a3a3"
                 className={inputCls + " font-mono"}
               />
             </div>

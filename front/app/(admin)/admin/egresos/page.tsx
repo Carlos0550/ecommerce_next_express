@@ -128,6 +128,51 @@ export default function AdminEgresosPage() {
     [egresos],
   );
 
+  const monthRange = useMemo(() => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const toIso = (d: Date) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    return { start: toIso(first), end: toIso(last) };
+  }, []);
+
+  const monthEgresosQ = useQuery({
+    queryKey: ["egresos", "month-total", monthRange],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "100",
+        start_date: monthRange.start,
+        end_date: monthRange.end,
+      });
+      const { data } = await api.get<EgresoListResponse>(
+        `/egresos?${params.toString()}`,
+      );
+      return data;
+    },
+  });
+
+  const monthItems = useMemo(
+    () => monthEgresosQ.data?.data?.items ?? [],
+    [monthEgresosQ.data],
+  );
+  const monthTotal = useMemo(
+    () => monthItems.reduce((acc, e) => acc + Number(e.amount ?? 0), 0),
+    [monthItems],
+  );
+  const monthLabel = useMemo(() => {
+    const d = new Date();
+    return d.toLocaleDateString("es-AR", {
+      month: "long",
+      year: "numeric",
+    });
+  }, []);
+
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/egresos/${id}`);
@@ -233,6 +278,35 @@ export default function AdminEgresosPage() {
           ))}
         </div>
       </div>
+
+      {tab === "egresos" && (
+        <div className="mb-3.5 flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-danger)_14%,transparent)] text-[var(--color-danger)]">
+              <Icon name="wallet" size={18} />
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
+                Total de egresos de este mes
+              </div>
+              <div className="font-grotesk text-[22px] font-semibold leading-tight text-[var(--color-text)]">
+                {monthEgresosQ.isLoading
+                  ? "…"
+                  : formatARS(monthTotal)}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--color-text-dim)]">
+            <span className="rounded-md bg-[var(--color-bg-input)] px-2 py-1 font-mono text-[11px]">
+              {monthRange.start} → {monthRange.end}
+            </span>
+            <span className="capitalize">{monthLabel}</span>
+            <span className="rounded-md bg-[var(--color-bg-input)] px-2 py-1">
+              {monthItems.length} {monthItems.length === 1 ? "egreso" : "egresos"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {tab === "egresos" && (
         <>
@@ -599,6 +673,10 @@ export default function AdminEgresosPage() {
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {categories.map((c) => {
               const isActive = c.is_active && c.status !== "deleted";
+              const headerColor =
+                c.color && /^#([0-9a-fA-F]{3}){1,2}$/.test(c.color)
+                  ? c.color
+                  : "#d4d4d4";
               return (
                 <div
                   key={c.id}
@@ -606,7 +684,7 @@ export default function AdminEgresosPage() {
                 >
                   <div
                     className="relative h-2 w-full"
-                    style={{ background: c.color || "var(--color-accent)" }}
+                    style={{ background: headerColor }}
                   />
                   <div className="p-3.5">
                     <div className="flex items-start justify-between gap-2">
