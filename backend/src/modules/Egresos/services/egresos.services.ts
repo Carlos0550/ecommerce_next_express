@@ -83,6 +83,45 @@ export default class EgresosServices {
     return { ok: true, item };
   }
 
+  async sumEgresos(query: EgresoListQuery) {
+    const where: Prisma.EgresosWhereInput = {
+      is_active: true,
+      deleted_at: null,
+    };
+
+    if (query.category_id && query.category_id.trim().length > 0) {
+      where.categoryId = query.category_id;
+    }
+
+    if (query.start_date || query.end_date) {
+      where.egreso_date = {};
+      if (query.start_date) {
+        (where.egreso_date as Prisma.DateTimeFilter).gte = new Date(
+          `${query.start_date}T00:00:00.000Z`,
+        );
+      }
+      if (query.end_date) {
+        (where.egreso_date as Prisma.DateTimeFilter).lte = new Date(
+          `${query.end_date}T23:59:59.999Z`,
+        );
+      }
+    }
+
+    const result = await prisma.egresos.aggregate({
+      where,
+      _sum: { amount: true },
+      _count: { _all: true },
+    });
+
+    return {
+      ok: true,
+      data: {
+        total: result._sum.amount ? Number(result._sum.amount) : 0,
+        count: result._count._all,
+      },
+    };
+  }
+
   async createEgreso(data: EgresoRequest, userId?: number) {
     const category = await prisma.egresosCategories.findUnique({
       where: { id: data.category_id },

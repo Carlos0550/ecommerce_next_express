@@ -1,9 +1,6 @@
 -- CreateEnum
 CREATE TYPE "EgresoCategoryStatus" AS ENUM ('deleted', 'active', 'inactive');
 
--- DropIndex
-DROP INDEX "Products_title_trgm_idx";
-
 -- AlterTable
 ALTER TABLE "PasswordResetToken" ALTER COLUMN "expiresAt" SET DATA TYPE TIMESTAMP(3),
 ALTER COLUMN "usedAt" SET DATA TYPE TIMESTAMP(3);

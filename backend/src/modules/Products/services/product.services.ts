@@ -330,7 +330,8 @@ class ProductServices {
   };
   async deleteProduct(req: Request, res: Response) {
     try {
-      const { product_id } = req.params;
+      const raw = req.params.product_id;
+      const product_id = typeof raw === "string" ? raw : raw?.[0];
       const product_info = await prisma.products.findFirst({
         where: { id: product_id },
       });
@@ -386,7 +387,9 @@ class ProductServices {
         : typeof rawDeleted === "string" && rawDeleted.trim().length
           ? JSON.parse(rawDeleted)
           : [];
-      const { product_id } = req.params;
+      const rawProductId = req.params.product_id;
+      const product_id =
+        typeof rawProductId === "string" ? rawProductId : rawProductId?.[0];
       const productImages = req.files;
       const newImageUrls: string[] = [];
       const existentProduct = await prisma.products.findFirst({
@@ -586,7 +589,9 @@ class ProductServices {
   }
   async updateCategory(req: Request, res: Response) {
     try {
-      const { category_id } = req.params;
+      const rawCatId = req.params.category_id;
+      const category_id =
+        typeof rawCatId === "string" ? rawCatId : rawCatId?.[0];
       const { title } = req.body;
       const image = req.file;
       if (!title) {

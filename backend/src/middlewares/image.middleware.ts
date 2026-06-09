@@ -2,7 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
-import { fromFile } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
@@ -18,7 +18,20 @@ export const validateImageMagicBytes = async (req: Request, res: Response, next:
       : Object.values((req.files as Record<string, Express.Multer.File[]>) || {}).flat();
   for (const f of files) {
     if (!f?.path) continue;
-    const detected = await fromFile(f.path).catch(() => null);
+    let buffer: Buffer | undefined = f.buffer;
+    if (!buffer) {
+      try {
+        buffer = await fs.promises.readFile(f.path);
+      } catch {
+        buffer = undefined;
+      }
+    }
+    if (!buffer) {
+      await Promise.all(files.map((x) => unlinkSafe(x.path)));
+      res.status(400).json({ ok: false, error: 'invalid_file_type', message: 'No se pudo leer el archivo subido' });
+      return;
+    }
+    const detected = await fileTypeFromBuffer(buffer).catch(() => null);
     if (!detected || !ALLOWED_IMAGE_MIME.has(detected.mime)) {
       await Promise.all(files.map((x) => unlinkSafe(x.path)));
       res.status(400).json({ ok: false, error: 'invalid_file_type', message: 'El contenido del archivo no coincide con un formato de imagen permitido' });

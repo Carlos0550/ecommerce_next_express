@@ -19,14 +19,16 @@ router.post('/', requireAuth, requireRole(["ADMIN"]), ensureFaqCreate, async (re
   res.status(201).json(rs);
 });
 router.put('/:id', requireAuth, requireRole(["ADMIN"]), ensureFaqUpdate, async (req, res) => {
-  const id = req.params.id;
+  const raw = req.params.id;
+  const id = typeof raw === 'string' ? raw : raw?.[0];
   if (!id) { res.status(400).json({ ok: false, error: 'missing_id' }); return; }
   const data = (req as any).faqUpdate;
   const rs = await service.update(id, data);
   res.json(rs);
 });
 router.delete('/:id', requireAuth, requireRole(["ADMIN"]), async (req, res) => {
-  const id = req.params.id;
+  const raw = req.params.id;
+  const id = typeof raw === 'string' ? raw : raw?.[0];
   if (!id) { res.status(400).json({ ok: false, error: 'missing_id' }); return; }
   const rs = await service.softDelete(id);
   res.json(rs);

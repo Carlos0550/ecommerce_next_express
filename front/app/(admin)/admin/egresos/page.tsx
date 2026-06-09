@@ -145,26 +145,19 @@ export default function AdminEgresosPage() {
     queryKey: ["egresos", "month-total", monthRange],
     queryFn: async () => {
       const params = new URLSearchParams({
-        page: "1",
-        limit: "100",
         start_date: monthRange.start,
         end_date: monthRange.end,
       });
-      const { data } = await api.get<EgresoListResponse>(
-        `/egresos?${params.toString()}`,
-      );
-      return data;
+      const { data } = await api.get<{
+        ok: boolean;
+        data: { total: number; count: number };
+      }>(`/egresos/total?${params.toString()}`);
+      return data.data;
     },
   });
 
-  const monthItems = useMemo(
-    () => monthEgresosQ.data?.data?.items ?? [],
-    [monthEgresosQ.data],
-  );
-  const monthTotal = useMemo(
-    () => monthItems.reduce((acc, e) => acc + Number(e.amount ?? 0), 0),
-    [monthItems],
-  );
+  const monthTotal = monthEgresosQ.data?.total ?? 0;
+  const monthCount = monthEgresosQ.data?.count ?? 0;
   const monthLabel = useMemo(() => {
     const d = new Date();
     return d.toLocaleDateString("es-AR", {
@@ -302,7 +295,7 @@ export default function AdminEgresosPage() {
             </span>
             <span className="capitalize">{monthLabel}</span>
             <span className="rounded-md bg-[var(--color-bg-input)] px-2 py-1">
-              {monthItems.length} {monthItems.length === 1 ? "egreso" : "egresos"}
+              {monthCount} {monthCount === 1 ? "egreso" : "egresos"}
             </span>
           </div>
         </div>
@@ -782,10 +775,12 @@ const GRID = "100px 1.6fr 1fr 1fr 1fr 90px";
 
 function formatDate(input: string | Date): string {
   if (!input) return "—";
-  const d = new Date(input);
-  if (Number.isNaN(d.getTime())) return String(input).slice(0, 10);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
+  const raw = typeof input === "string" ? input : input.toISOString();
+  const ymd = raw.slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!match) return ymd;
+  const yyyy = match[1] ?? "";
+  const mm = match[2] ?? "";
+  const dd = match[3] ?? "";
   return `${dd}/${mm}/${yyyy}`;
 }

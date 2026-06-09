@@ -6,6 +6,7 @@ import {
   createEgreso,
   updateEgreso,
   deleteEgreso,
+  sumEgresos,
   listCategories,
   listActiveCategories,
   createCategory,
@@ -42,6 +43,7 @@ router.delete(
 );
 
 router.get("/", requireAuth, requireRole(["ADMIN"]), listEgresos);
+router.get("/total", requireAuth, requireRole(["ADMIN"]), sumEgresos);
 router.get("/:id", requireAuth, requireRole(["ADMIN"]), getEgreso);
 router.post("/save", requireAuth, requireRole(["ADMIN"]), createEgreso);
 router.put("/:id", requireAuth, requireRole(["ADMIN"]), updateEgreso);

@@ -54,6 +54,25 @@ export const getEgreso = asyncHandler(async (req: Request, res: Response) => {
   return res.json(result);
 });
 
+export const sumEgresos = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = EgresoListQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: "Parámetros inválidos",
+      details: parsed.error.flatten(),
+    });
+  }
+  const result = await egresosService.sumEgresos({
+    page: 1,
+    limit: 1,
+    category_id: parsed.data.category_id,
+    start_date: parsed.data.start_date,
+    end_date: parsed.data.end_date,
+  });
+  return res.json(result);
+});
+
 export const createEgreso = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     const parsed = EgresoCreateSchema.safeParse(req.body);
@@ -64,7 +83,9 @@ export const createEgreso = asyncHandler(
         details: parsed.error.flatten(),
       });
     }
-    const userId = (req as any).user?.id as number | undefined;
+    const userId = (req as any).user
+      ? Number((req as any).user.sub ?? (req as any).user.id)
+      : undefined;
     const result = await egresosService.createEgreso(
       {
         title: parsed.data.title,
