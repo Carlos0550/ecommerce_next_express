@@ -1,74 +1,170 @@
+name: cinnamon
+
 services:
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: cinnamon-backend
+  postgres:
+    image: postgres:16-alpine
+    container_name: cinnamon-postgres
+    env_file:
+      - docker-compose.env
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: 3000
-      DATABASE_URL: ${DATABASE_URL}
-      DIRECT_URL: ${DIRECT_URL}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM: ${RESEND_FROM:-}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_KEY: ${SUPABASE_KEY:-}
-      SUPABASE_BUCKET: ${SUPABASE_BUCKET:-images}
-      SALES_EMAIL_TO: ${SALES_EMAIL_TO:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      POSTGRES_USER: ${POSTGRES_USER:-cinnamon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cinnamon_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cinnamon}
     ports:
-      - "3000:3000"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./backend/uploads:/app/uploads
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cinnamon} -d ${POSTGRES_DB:-cinnamon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - cinnamon-network
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #     args:
-  #       VITE_API_URL: http://localhost:3000/api
-  #   container_name: cinnamon-frontend
-  #   environment:
-  #     - VITE_API_URL=http://localhost:3000/api
-  #   ports:
-  #     - "5173:4173"
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
-  #   networks:
-  #     - cinnamon-network
+  redis:
+    image: redis:7-alpine
+    container_name: cinnamon-redis
+    command: redis-server --appendonly yes
+    env_file:
+      - docker-compose.env
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cinnamon-network
 
-  # shop:
-  #   build:
-  #     context: ./shop
-  #     dockerfile: Dockerfile
-  #     args:
-  #       NEXT_PUBLIC_API_URL: http://localhost:3000/api
-  #       NEXT_PUBLIC_SITE_URL: http://localhost:3001
-  #   container_name: cinnamon-shop
-  #   environment:
-  #     - NEXT_PUBLIC_API_URL=http://localhost:3000/api
-  #     - NEXT_PUBLIC_SITE_URL=http://localhost:3001
-  #   ports:
-  #     - "3001:3000"
-  #   depends_on:
-  #     - backend
-  #   restart: unless-stopped
-  #   networks:
-  #     - cinnamon-network
+  minio:
+    image: minio/minio:latest
+    container_name: cinnamon-minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - docker-compose.env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-cinnamon_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-cinnamon_minio_secret}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - cinnamon-network
 
-# volumes:
-#   postgres_data:
-#   redis_data:
+  minio-init:
+    image: minio/mc:latest
+    container_name: cinnamon-minio-init
+    env_file:
+      - docker-compose.env
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-cinnamon_minio} ${MINIO_ROOT_PASSWORD:-cinnamon_minio_secret} &&
+      (mc mb --ignore-existing local/${MINIO_BUCKET:-images} || true) &&
+      mc anonymous set download local/${MINIO_BUCKET:-images} || true &&
+      echo '✅ MinIO bucket ${MINIO_BUCKET:-images} listo'
+      "
+    restart: "no"
+    networks:
+      - cinnamon-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ${BACKEND_DOCKERFILE:-Dockerfile}
+    container_name: cinnamon-backend
+    env_file:
+      - backend/.env
+      - docker-compose.env
+    environment:
+      # Override de vars que en backend/.env apuntan a localhost
+      # (cuando el backend corre en host); dentro de docker usamos los
+      # nombres de servicio internos.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-cinnamon_dev_password}@postgres:5432/${POSTGRES_DB:-cinnamon}
+      DIRECT_URL: postgresql://${POSTGRES_USER:-cinnamon}:${POSTGRES_PASSWORD:-cinnamon_dev_password}@postgres:5432/${POSTGRES_DB:-cinnamon}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_logs:/app/logs
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - ./backend/scripts:/app/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - cinnamon-network
+
+  frontend:
+    build:
+      context: ./front
+      dockerfile: ${FRONTEND_DOCKERFILE:-Dockerfile}
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+        NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:3000/api/storage}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
+    container_name: cinnamon-frontend
+    env_file:
+      - front/.env
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+      NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:3000/api/storage}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
+    ports:
+      - "${FRONTEND_PORT:-3001}:3001"
+    volumes:
+      - ./front/app:/app/app
+      - ./front/components:/app/components
+      - ./front/lib:/app/lib
+      - ./front/stores:/app/stores
+      - ./front/public:/app/public
+      - ./front/next.config.ts:/app/next.config.ts
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - cinnamon-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  backend_uploads:
+  backend_logs:
 
 networks:
   cinnamon-network:
     driver: bridge
-
