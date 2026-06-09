@@ -21,6 +21,7 @@ const PRINCIPAL_MODERN: NavItem[] = [
   { href: "/admin/orders", label: "Órdenes", icon: "package" },
   { href: "/admin/products", label: "Productos", icon: "box" },
   { href: "/admin/categories", label: "Categorías", icon: "tag" },
+  { href: "/admin/egresos", label: "Egresos", icon: "wallet" },
   { href: "/admin/users", label: "Clientes", icon: "users" },
 ];
 
@@ -30,6 +31,7 @@ const PRINCIPAL_LEGACY: NavItem[] = [
   { href: "/admin/orders", label: "Órdenes", icon: "package" },
   { href: "/admin/products", label: "Productos", icon: "box" },
   { href: "/admin/categories", label: "Categorías", icon: "tag" },
+  { href: "/admin/egresos", label: "Egresos", icon: "wallet" },
   { href: "/admin/users", label: "Clientes", icon: "users" },
 ];
 

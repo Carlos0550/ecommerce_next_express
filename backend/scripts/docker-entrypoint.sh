@@ -26,10 +26,12 @@ done
 
 echo "✅ PostgreSQL está listo"
 
-# Ejecutar migraciones
-echo "📦 Ejecutando migraciones de Prisma..."
 # Asegurar que DATABASE_URL esté disponible para Prisma
 export DATABASE_URL="${DATABASE_URL:-postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon}"
+export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+
+# Ejecutar migraciones
+echo "📦 Ejecutando migraciones de Prisma..."
 # Usar DATABASE_URL directamente para prisma migrate deploy
 # ya que prisma.config.ts no es reconocido por migrate deploy
 npx prisma migrate deploy --schema=./prisma/schema.prisma
@@ -39,6 +41,9 @@ if [ $? -eq 0 ]; then
 else
   echo "⚠️  Advertencia: Error al ejecutar migraciones (puede ser normal si ya están aplicadas)"
 fi
+
+echo "🔧 Regenerando cliente de Prisma..."
+npx prisma generate --schema=./prisma/schema.prisma > /dev/null 2>&1 || echo "⚠️  prisma generate falló"
 
 # Iniciar el servidor
 echo "🎯 Iniciando servidor..."

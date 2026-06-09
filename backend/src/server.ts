@@ -19,6 +19,7 @@ import ProfileRouter from "@/modules/Profile/routes";
 import BusinessRouter from "@/modules/Business/router";
 import FaqRouter from "@/modules/FAQ/routes";
 import WhatsAppRouter from "@/modules/WhatsApp/routes";
+import EgresosRouter from "@/modules/Egresos/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import swaggerUi from "swagger-ui-express";
 import spec from "./docs/openapi";
@@ -186,6 +187,7 @@ app.use("/api/cart", CartRouter);
 app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
+app.use("/api/egresos", EgresosRouter);
 app.get(
   /^\/api\/storage\/([^/]+)\/(.+)$/,
   asyncHandler(async (req, res) => {

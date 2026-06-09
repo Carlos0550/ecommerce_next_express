@@ -22,6 +22,13 @@ import {
   FaqCreateSchema,
   FaqUpdateSchema,
 } from "@/modules/FAQ/services/faq.zod";
+import {
+  EgresoCreateSchema,
+  EgresoUpdateSchema,
+  EgresoListQuerySchema,
+  EgresoCategoryCreateSchema,
+  EgresoCategoryUpdateSchema,
+} from "@/modules/Egresos/services/schemas/egresos.zod";
 extendZodWithOpenApi(z);
 const registry = new OpenAPIRegistry();
 registry.registerComponent("securitySchemes", "bearerAuth", {
@@ -41,6 +48,11 @@ registry.register("SalesSaveRequest", SalesSchema);
 registry.register("ProfileUpdateRequest", ProfileUpdateSchema);
 registry.register("FaqCreateRequest", FaqCreateSchema);
 registry.register("FaqUpdateRequest", FaqUpdateSchema);
+registry.register("EgresoCreateRequest", EgresoCreateSchema);
+registry.register("EgresoUpdateRequest", EgresoUpdateSchema);
+registry.register("EgresoListQuery", EgresoListQuerySchema);
+registry.register("EgresoCategoryCreateRequest", EgresoCategoryCreateSchema);
+registry.register("EgresoCategoryUpdateRequest", EgresoCategoryUpdateSchema);
 registry.registerPath({
   method: "get",
   path: "/health",
@@ -412,5 +424,119 @@ registry.registerPath({
   responses: {
     200: { description: "FAQ eliminada" },
     401: { description: "No autenticado" },
+  },
+});
+registry.registerPath({
+  method: "get",
+  path: "/egresos",
+  summary: "Listar egresos con paginación y filtros",
+  security: [{ bearerAuth: [] }],
+  request: { query: EgresoListQuerySchema },
+  responses: {
+    200: { description: "Egresos listados" },
+    400: { description: "Parámetros inválidos" },
+  },
+});
+registry.registerPath({
+  method: "post",
+  path: "/egresos/save",
+  summary: "Crear egreso",
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: { content: { "application/json": { schema: EgresoCreateSchema } } },
+  },
+  responses: {
+    201: { description: "Egreso creado" },
+    400: { description: "Datos inválidos" },
+  },
+});
+registry.registerPath({
+  method: "put",
+  path: "/egresos/{id}",
+  summary: "Actualizar egreso",
+  security: [{ bearerAuth: [] }],
+  parameters: [
+    { name: "id", in: "path", required: true, schema: { type: "string" } },
+  ],
+  request: {
+    body: { content: { "application/json": { schema: EgresoUpdateSchema } } },
+  },
+  responses: {
+    200: { description: "Egreso actualizado" },
+    400: { description: "Datos inválidos" },
+    404: { description: "Egreso no encontrado" },
+  },
+});
+registry.registerPath({
+  method: "delete",
+  path: "/egresos/{id}",
+  summary: "Eliminar egreso (soft-delete)",
+  security: [{ bearerAuth: [] }],
+  parameters: [
+    { name: "id", in: "path", required: true, schema: { type: "string" } },
+  ],
+  responses: {
+    200: { description: "Egreso eliminado" },
+    404: { description: "Egreso no encontrado" },
+  },
+});
+registry.registerPath({
+  method: "get",
+  path: "/egresos/categories",
+  summary: "Listar categorías de egresos",
+  security: [{ bearerAuth: [] }],
+  responses: { 200: { description: "Categorías listadas" } },
+});
+registry.registerPath({
+  method: "post",
+  path: "/egresos/categories",
+  summary: "Crear categoría de egreso",
+  security: [{ bearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: EgresoCategoryCreateSchema },
+      },
+    },
+  },
+  responses: {
+    201: { description: "Categoría creada" },
+    400: { description: "Datos inválidos" },
+    409: { description: "Ya existe una categoría con ese título" },
+  },
+});
+registry.registerPath({
+  method: "put",
+  path: "/egresos/categories/{id}",
+  summary: "Actualizar categoría de egreso",
+  security: [{ bearerAuth: [] }],
+  parameters: [
+    { name: "id", in: "path", required: true, schema: { type: "string" } },
+  ],
+  request: {
+    body: {
+      content: {
+        "application/json": { schema: EgresoCategoryUpdateSchema },
+      },
+    },
+  },
+  responses: {
+    200: { description: "Categoría actualizada" },
+    400: { description: "Datos inválidos" },
+    404: { description: "Categoría no encontrada" },
+  },
+});
+registry.registerPath({
+  method: "delete",
+  path: "/egresos/categories/{id}",
+  summary: "Eliminar categoría de egreso (soft-delete)",
+  security: [{ bearerAuth: [] }],
+  parameters: [
+    { name: "id", in: "path", required: true, schema: { type: "string" } },
+  ],
+  responses: {
+    200: { description: "Categoría eliminada" },
+    404: { description: "Categoría no encontrada" },
+    409: { description: "Categoría con egresos activos" },
   },
 });

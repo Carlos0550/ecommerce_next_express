@@ -191,6 +191,57 @@ export interface FAQ {
   is_active: boolean;
 }
 
+export type EgresoPaymentMethod =
+  | "TARJETA"
+  | "EFECTIVO"
+  | "QR"
+  | "NINGUNO"
+  | "TRANSFERENCIA";
+
+export interface EgresoCategory {
+  id: string;
+  title: string;
+  description?: string | null;
+  color?: string | null;
+  is_active: boolean;
+  status?: string;
+  created_at?: string;
+}
+
+export interface Egreso {
+  id: string;
+  title: string;
+  description?: string | null;
+  amount: string | number;
+  payment_method: EgresoPaymentMethod;
+  categoryId: string;
+  category?: EgresoCategory;
+  egreso_date: string;
+  created_at: string;
+  updated_at?: string;
+  userId?: number | null;
+}
+
+export interface EgresoListResponse {
+  ok: true;
+  data: {
+    items: Egreso[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
+export interface EgresoCategoryListResponse {
+  ok: true;
+  items: EgresoCategory[];
+}
+
 export interface ApiOk<T = unknown> {
   ok: true;
   [key: string]: unknown;

@@ -29,6 +29,7 @@ model User {
   cart                 Cart?
   orders               Orders[]
   sales                Sales[]
+  egresos              Egresos[]
   passwordResetTokens  PasswordResetToken[]
   whatsAppSessions     WhatsAppSession[]
 
@@ -287,4 +288,51 @@ enum PaymentMethod {
   QR
   NINGUNO
   TRANSFERENCIA
+}
+
+enum EgresoCategoryStatus {
+  deleted
+  active
+  inactive
+}
+
+model EgresosCategories {
+  id          String               @id @default(cuid())
+  title       String
+  description String?
+  color       String?
+  created_at  DateTime             @default(now()) @db.Timestamptz(3)
+  is_active   Boolean              @default(true)
+  status      EgresoCategoryStatus @default(active)
+  deleted_at  DateTime?
+  egresos     Egresos[]
+
+  @@index([status, is_active])
+  @@index([created_at])
+  @@index([title])
+  @@index([deleted_at])
+}
+
+model Egresos {
+  id             String            @id @default(cuid())
+  title          String
+  description    String?
+  amount         Decimal           @default(0.00) @db.Decimal(12, 2)
+  payment_method PaymentMethod
+  categoryId     String
+  egreso_date    DateTime          @db.Date
+  created_at     DateTime          @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime          @updatedAt @db.Timestamptz(3)
+  is_active      Boolean           @default(true)
+  deleted_at     DateTime?
+  userId         Int?
+  user           User?             @relation(fields: [userId], references: [id])
+  category       EgresosCategories @relation(fields: [categoryId], references: [id])
+
+  @@index([created_at])
+  @@index([egreso_date])
+  @@index([categoryId])
+  @@index([userId])
+  @@index([deleted_at])
+  @@index([payment_method, egreso_date])
 }
