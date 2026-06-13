@@ -162,7 +162,8 @@ export interface Business {
     | "sage"
     | "ocean"
     | "sunset"
-    | "midnight";
+    | "midnight"
+    | "argentina";
   banner_config?: BannerConfig | null;
   admin_layout_config?: AdminLayoutConfig | null;
   bankData?: BankData[];

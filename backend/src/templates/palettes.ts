@@ -5,7 +5,8 @@ export type PaletteName =
   | "sage"
   | "ocean"
   | "sunset"
-  | "midnight";
+  | "midnight"
+  | "argentina";
 
 export interface PaletteTokens {
   name: string;
@@ -193,6 +194,30 @@ export const PALETTES: Record<PaletteName, PaletteTokens> = {
     heroGradient: "linear-gradient(180deg, #0F1422 0%, #07090F 100%)",
     buttonText: "#07090F",
     isDark: true,
+  },
+  argentina: {
+    name: "Mundial Argentina",
+    bg: "#E8F1F9",
+    bgElev: "#FFFFFF",
+    bgCard: "#FFFFFF",
+    bgInput: "#D9E7F2",
+    border: "rgba(58, 110, 165, 0.18)",
+    borderStrong: "rgba(58, 110, 165, 0.32)",
+    text: "#0F2A45",
+    textDim: "#4A6680",
+    textMuted: "#8AA3B8",
+    accent: "#3A7CB8",
+    accentStrong: "#2A5F95",
+    accentSoft: "rgba(58, 124, 184, 0.14)",
+    pink: "#F6B40E",
+    pinkSoft: "rgba(246, 180, 14, 0.20)",
+    success: "#2E8B57",
+    warn: "#D69434",
+    danger: "#C84A36",
+    heroGradient:
+      "linear-gradient(135deg, #DDE9F5 0%, #F4F8FC 45%, #FFF6DA 100%)",
+    buttonText: "#FFFFFF",
+    isDark: false,
   },
 };
 

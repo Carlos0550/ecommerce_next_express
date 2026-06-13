@@ -4,11 +4,19 @@
 @custom-variant dark (&:is([data-palette="kuromi"], [data-palette="kuromi"] *, [data-palette="midnight"], [data-palette="midnight"] *));
 
 /* ─────────────────────────────────────────────────────────────
-   Cinnamon — 3 paletas como CSS vars en :root + data-palette.
-   Tomadas 1:1 del mockup (entry_21_asset.js).
+   Cinnamon — Paletas como CSS vars en [data-palette="..."].
+   El <html> siempre lleva data-palette (server o cliente), por
+   lo que cada selector matchea y la cascada decide por orden.
    ───────────────────────────────────────────────────────────── */
 
-:root,
+/*
+ * Importante: NO agrupar :root con [data-palette="kuromi"].
+ * El <html> siempre lleva data-palette (set por SSR o por el cliente),
+ * así que cada paleta debe tener su propio selector de atributo único
+ * y la cascada decide por orden de declaración. Si :root se agrupa
+ * con una paleta, esa paleta termina aplicándose a TODO el documento
+ * aunque haya otra data-palette declarada más abajo.
+ */
 [data-palette="kuromi"] {
   --color-bg: #0b0a0d;
   --color-bg-elev: #141118;
@@ -186,6 +194,32 @@
     radial-gradient(80% 60% at 90% 100%, rgba(79, 227, 214, 0.18), transparent 60%),
     #07090f;
   color-scheme: dark;
+}
+
+[data-palette="argentina"] {
+  --color-bg: #e8f1f9;
+  --color-bg-elev: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #d9e7f2;
+  --color-border: rgba(58, 110, 165, 0.18);
+  --color-border-strong: rgba(58, 110, 165, 0.32);
+  --color-text: #0f2a45;
+  --color-text-dim: #4a6680;
+  --color-text-muted: #8aa3b8;
+  --color-accent: #3a7cb8;
+  --color-accent-strong: #2a5f95;
+  --color-accent-soft: rgba(58, 124, 184, 0.14);
+  --color-pink: #f6b40e;
+  --color-pink-soft: rgba(246, 180, 14, 0.20);
+  --color-success: #2e8b57;
+  --color-warn: #d69434;
+  --color-danger: #c84a36;
+  --color-button-text: #ffffff;
+  --hero-gradient:
+    radial-gradient(120% 80% at 10% 0%, rgba(58, 124, 184, 0.22), transparent 55%),
+    radial-gradient(100% 70% at 100% 100%, rgba(246, 180, 14, 0.18), transparent 60%),
+    #e8f1f9;
+  color-scheme: light;
 }
 
 /* Tailwind v4 theme: exponer tokens como utilidades */
