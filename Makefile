@@ -32,10 +32,6 @@ up-build: ## Levantar el stack reconstruyendo imágenes
 	FRONTEND_DOCKERFILE=Dockerfile.dev \
 		$(COMPOSE) up -d --build
 
-build: ## Construir imágenes de producción
-	@echo "🔨 Construyendo imágenes de producción..."
-	NODE_ENV=production $(COMPOSE) build
-
 down: ## Detener el stack (conserva volúmenes)
 	@echo "🛑 Deteniendo stack..."
 	$(COMPOSE) down
@@ -46,74 +42,8 @@ stop: ## Detener servicios sin removerlos
 restart: ## Reiniciar todos los servicios
 	$(COMPOSE) restart
 
-ps: ## Ver estado de los servicios
-	$(COMPOSE) ps
-
 logs: ## Ver logs de todos los servicios
 	$(COMPOSE) logs -f --tail=100
-
-logs-backend: ## Ver logs del backend
-	$(COMPOSE) logs -f --tail=100 backend
-
-logs-frontend: ## Ver logs del frontend
-	$(COMPOSE) logs -f --tail=100 frontend
-
-logs-db: ## Ver logs de postgres
-	$(COMPOSE) logs -f --tail=100 postgres
-
-logs-redis: ## Ver logs de redis
-	$(COMPOSE) logs -f --tail=100 redis
-
-logs-minio: ## Ver logs de minio
-	$(COMPOSE) logs -f --tail=100 minio
-
-migrate: ## Ejecutar migraciones de Prisma (deploy) en el backend local
-	@echo "📦 Ejecutando migraciones de Prisma..."
-	cd backend && npx prisma migrate deploy
-
-migrate-create: ## Crear nueva migración (uso: make migrate-create NAME=migration_name)
-	@if [ -z "$(NAME)" ]; then \
-		echo "❌ Debes pasar un nombre: make migrate-create NAME=mi_migracion"; \
-		exit 1; \
-	fi
-	cd backend && npx prisma migrate dev --name $(NAME)
-
-migrate-reset: ## Resetear la base de datos (⚠️ borra todos los datos)
-	@echo "⚠️  Esto borrará todos los datos. Presiona Ctrl-C para abortar en 5s..."
-	@sleep 5
-	cd backend && npx prisma migrate reset --force
-
-migrate-status: ## Ver estado de las migraciones
-	cd backend && npx prisma migrate status
-
-prisma-generate: ## Regenerar cliente de Prisma
-	cd backend && npx prisma generate
-
-seed: ## Ejecutar todos los seeds
-	@echo "🌱 Ejecutando seeds..."
-	cd backend && npm run seed:users
-	cd backend && npm run seed:products
-	cd backend && npm run seed:sales
-	cd backend && npm run seed:promos
-
-shell-backend: ## Abrir shell en el contenedor del backend
-	$(COMPOSE) exec backend sh
-
-shell-frontend: ## Abrir shell en el contenedor del frontend
-	$(COMPOSE) exec frontend sh
-
-shell-db: ## Abrir psql en postgres
-	$(COMPOSE) exec postgres psql -U cinnamon -d cinnamon
-
-shell-redis: ## Abrir redis-cli
-	$(COMPOSE) exec redis redis-cli
-
-shell-minio: ## Abrir shell en minio
-	$(COMPOSE) exec minio sh
-
-minio-ls: ## Listar objetos del bucket en minio
-	$(COMPOSE) run --rm minio-init \
-		/bin/sh -c "mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD && mc ls local/$${MINIO_BUCKET:-images}"
 
 clean: ## Detener y remover contenedores y red (conserva volúmenes)
 	@echo "🧹 Limpiando contenedores y red..."

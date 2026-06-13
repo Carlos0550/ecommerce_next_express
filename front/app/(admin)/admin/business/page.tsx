@@ -56,6 +56,11 @@ const PALETTES: { id: PaletteName; label: string; swatch: string[] }[] = [
     label: "Midnight",
     swatch: ["#07090f", "#6fa4ff", "#4fe3d6"],
   },
+  {
+    id: "argentina",
+    label: "Mundial Argentina",
+    swatch: ["#e8f1f9", "#3a7cb8", "#f6b40e"],
+  },
 ];
 
 export default function AdminBusinessPage() {
