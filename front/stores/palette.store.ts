@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export type PaletteName =
   | "kuromi"
@@ -24,7 +23,9 @@ export const PALETTE_META: Record<PaletteName, { label: string; swatch: string; 
   argentina: { label: "Mundial Argentina", swatch: "#3a7cb8", isDark: false },
 };
 
-const STORAGE_KEY = "cinnamon-palette";
+export const STORAGE_KEY = "cinnamon-palette";
+export const DEFAULT_PALETTE: PaletteName = "kuromi";
+
 const VALID_PALETTES = new Set<PaletteName>([
   "kuromi",
   "mono",
@@ -36,55 +37,85 @@ const VALID_PALETTES = new Set<PaletteName>([
   "argentina",
 ]);
 
-function isPaletteName(v: unknown): v is PaletteName {
+export function isPaletteName(v: unknown): v is PaletteName {
   return typeof v === "string" && VALID_PALETTES.has(v as PaletteName);
 }
 
 /**
  * Lee la paleta persistida de localStorage de forma síncrona en el cliente.
- * Se usa como initial state del store para que el primer render del cliente
- * ya tenga el valor correcto y no se produzca un flash a la paleta default.
- * En SSR / Node devuelve undefined y zustand cae al default ("kuromi"),
- * que es el mismo que el server layout usa como fallback.
+ * Devuelve undefined si no hay valor, si el JSON es inválido, o si el
+ * valor guardado no es una paleta válida.
  */
-function readPersistedPalette(): PaletteName | undefined {
+export function readPersistedPalette(): PaletteName | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
-    const candidate = parsed?.state?.palette;
+    const candidate = parsed?.state?.palette ?? parsed?.palette;
     return isPaletteName(candidate) ? candidate : undefined;
   } catch {
     return undefined;
   }
 }
 
-interface PaletteState {
-  palette: PaletteName;
-  setPalette: (p: PaletteName) => void;
+/**
+ * Escribe la paleta en localStorage. Silencioso en SSR o si el storage
+ * no está disponible (modo privado, etc.).
+ */
+function writePersistedPalette(p: PaletteName): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ state: { palette: p }, version: 0 }),
+    );
+  } catch {
+    // storage lleno / deshabilitado — ignorar
+  }
 }
 
-function applyPaletteAttr(p: PaletteName) {
+function applyPaletteToDom(p: PaletteName): void {
   if (typeof document !== "undefined") {
     document.documentElement.dataset.palette = p;
   }
 }
 
-export const usePaletteStore = create<PaletteState>()(
-  persist(
-    (set) => ({
-      palette: readPersistedPalette() ?? "kuromi",
-      setPalette: (p) => {
-        applyPaletteAttr(p);
-        set({ palette: p });
-      },
-    }),
-    {
-      name: STORAGE_KEY,
-      onRehydrateStorage: () => (state) => {
-        if (state?.palette) applyPaletteAttr(state.palette);
-      },
-    }
-  )
-);
+interface PaletteState {
+  palette: PaletteName;
+  /**
+   * Override explícito del usuario desde el admin de paleta.
+   * Aplica al DOM y persiste en localStorage.
+   */
+  setPalette: (p: PaletteName) => void;
+  /**
+   * Sincronización interna desde el server. Aplica al DOM pero NO
+   * persiste: si el admin del negocio cambia la paleta, los visitantes
+   * sin override explícito deben ver el cambio aunque tengan basura
+   * previa en localStorage.
+   */
+  _setFromServer: (p: PaletteName) => void;
+}
+
+/**
+ * Store de paleta SIN middleware persist: la persistencia se hace a
+ * mano en `setPalette` (acción del usuario) y NO en `_setFromServer`
+ * (sincronización con backend). Esto evita que un valor del server
+ * contamine el localStorage del visitante.
+ *
+ * La lectura inicial de localStorage se hace en Providers vía
+ * `readPersistedPalette()` en useLayoutEffect, no acá, para mantener
+ * SSR/CSR consistentes y evitar el flash a la paleta default.
+ */
+export const usePaletteStore = create<PaletteState>()((set) => ({
+  palette: DEFAULT_PALETTE,
+  setPalette: (p) => {
+    applyPaletteToDom(p);
+    writePersistedPalette(p);
+    set({ palette: p });
+  },
+  _setFromServer: (p) => {
+    applyPaletteToDom(p);
+    set({ palette: p });
+  },
+}));
