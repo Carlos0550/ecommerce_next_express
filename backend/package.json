@@ -17,6 +17,12 @@
     "create:admin": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/create-admin.ts",
     "seed:promos": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/seed-promos.ts",
     "typecheck": "tsc --noEmit",
+    "migrate:extract": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/migrate-bootstrap.ts --extract",
+    "migrate:storage": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/migrate-bootstrap.ts --storage",
+    "migrate:load": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/migrate-bootstrap.ts --load",
+    "migrate:verify": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/migrate-bootstrap.ts --verify",
+    "migrate:all": "ts-node-dev --transpile-only -r tsconfig-paths/register scripts/migrate-bootstrap.ts --all",
+    "migrate:typecheck": "tsc --noEmit -p tsconfig.scripts.json",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\""

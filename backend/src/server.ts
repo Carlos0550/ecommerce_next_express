@@ -231,8 +231,8 @@ if (!isProduction) {
 }
 app.use(notFoundHandler);
 app.use(errorHandler);
-app.listen(PORT, () => {
-  logger.info(`API listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  logger.info(`API listening on http://0.0.0.0:${PORT}`);
   if (process.env.NODE_ENV === "production") {
     exec("npx prisma migrate deploy", (error, stdout, stderr) => {
       if (error) {
