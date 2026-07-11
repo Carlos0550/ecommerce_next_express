@@ -47,6 +47,5 @@ RUN mkdir -p /app/uploads /app/uploads/storage
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health >/dev/null || exit 1
+
 CMD ["./docker-entrypoint.sh"]
