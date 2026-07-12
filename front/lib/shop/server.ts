@@ -1,6 +1,8 @@
 import { cache } from "react";
-import { API_URL } from "@/lib/api";
 import type { Business, Category, Product, FAQ } from "@/lib/types";
+
+const SSR_API_URL =
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://backend:3000/api";
 
 function normalizeProduct<T extends { images?: unknown }>(p: T): T {
   const raw = (p as any)?.images;
@@ -14,7 +16,7 @@ function normalizeProduct<T extends { images?: unknown }>(p: T): T {
 
 async function getJson<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${SSR_API_URL}${path}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

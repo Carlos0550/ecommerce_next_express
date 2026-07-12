@@ -22,8 +22,6 @@ const PRINCIPAL: NavItem[] = [
 
 const CONFIG: NavItem[] = [
   { href: "/admin/business", label: "Negocio", icon: "settings" },
-  { href: "/admin/whatsapp", label: "WhatsApp", icon: "whatsapp" },
-  { href: "/admin/faq", label: "FAQ", icon: "bell" },
 ];
 
 export function AdminShell({

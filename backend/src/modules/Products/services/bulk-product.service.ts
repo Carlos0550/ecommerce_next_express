@@ -10,6 +10,7 @@ import { BadRequestError, errors } from "@/utils/errors";
 export interface BulkSlotInput {
   title?: unknown;
   price?: unknown;
+  stock?: unknown;
   category_id?: unknown;
   description?: unknown;
 }
@@ -38,6 +39,12 @@ function asNumber(v: unknown): number | undefined {
     return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
+}
+
+function asInteger(v: unknown): number | undefined {
+  const n = asNumber(v);
+  if (n === undefined) return undefined;
+  return Number.isInteger(n) ? n : Math.trunc(n);
 }
 
 export async function bulkSaveProducts(req: Request, _res: Response) {
@@ -83,6 +90,7 @@ export async function bulkSaveProducts(req: Request, _res: Response) {
 
     const title = asString(slot.title);
     const price = asNumber(slot.price);
+    const stock = asInteger(slot.stock);
     const category_id = asString(slot.category_id);
     const description = asString(slot.description);
 
@@ -99,6 +107,14 @@ export async function bulkSaveProducts(req: Request, _res: Response) {
         index: i,
         status: "error",
         message: "Precio inválido",
+      });
+      continue;
+    }
+    if (stock === undefined || stock < 0) {
+      results.push({
+        index: i,
+        status: "error",
+        message: "Stock inválido",
       });
       continue;
     }
@@ -137,7 +153,6 @@ export async function bulkSaveProducts(req: Request, _res: Response) {
         });
       }
 
-      const stock = 1;
       const productState: ProductState = ProductState.active;
 
       const product = await prisma.products.create({

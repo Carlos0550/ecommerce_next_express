@@ -8,7 +8,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Icon } from "@/components/brand";
 import {
   Dialog,
@@ -17,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import type { FAQ } from "@/lib/types";
 
 const FaqSchema = z.object({
@@ -34,10 +34,14 @@ type FaqListResp = {
   data?: FAQ[];
 };
 
-export default function AdminFaqPage() {
+const inputCls =
+  "h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-[13px] text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]";
+
+export function FaqSection() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FAQ | null>(null);
+  const [deleting, setDeleting] = useState<FAQ | null>(null);
 
   const listQ = useQuery({
     queryKey: ["faqs", "admin"],
@@ -110,20 +114,26 @@ export default function AdminFaqPage() {
   };
 
   return (
-    <AdminShell
-      title="FAQ"
-      subtitle={`${faqs.length} preguntas frecuentes`}
-      actions={
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="font-grotesk text-[14px] font-semibold text-[var(--color-text)]">
+            {faqs.length} {faqs.length === 1 ? "pregunta" : "preguntas"} frecuentes
+          </div>
+          <div className="mt-0.5 text-[12px] text-[var(--color-text-dim)]">
+            Se muestran en la home pública de tu tienda.
+          </div>
+        </div>
         <button
+          type="button"
           onClick={openNew}
-          className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
+          className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
         >
-          <Icon name="plus" size={14} />
-          <span className="hidden sm:inline">Nueva pregunta</span>
-          <span className="sm:hidden">Nueva</span>
+          <Icon name="plus" size={12} />
+          Nueva pregunta
         </button>
-      }
-    >
+      </div>
+
       {listQ.isLoading && (
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center text-sm text-[var(--color-text-dim)]">
           Cargando…
@@ -131,17 +141,25 @@ export default function AdminFaqPage() {
       )}
 
       {!listQ.isLoading && faqs.length === 0 && (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-12 text-center">
-          <div className="font-grotesk text-[16px] font-semibold text-[var(--color-text)]">
+        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-card)] p-10 text-center">
+          <div className="font-grotesk text-[15px] font-semibold text-[var(--color-text)]">
             Sin preguntas cargadas
           </div>
-          <div className="mt-1 text-[13px] text-[var(--color-text-dim)]">
+          <div className="mt-1 text-[12px] text-[var(--color-text-dim)]">
             Armá la primera para acompañar a tus clientes.
           </div>
+          <button
+            type="button"
+            onClick={openNew}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-accent)] px-3 py-1.5 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)]"
+          >
+            <Icon name="plus" size={12} />
+            Crear primera pregunta
+          </button>
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         {faqs.map((f) => (
           <div
             key={f.id}
@@ -164,15 +182,16 @@ export default function AdminFaqPage() {
                     {f.is_active ? "Visible" : "Oculta"}
                   </span>
                 </div>
-                <div className="mt-1.5 font-grotesk text-[15px] font-semibold text-[var(--color-text)]">
+                <div className="mt-1.5 font-grotesk text-[14px] font-semibold text-[var(--color-text)]">
                   {f.question}
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--color-text-dim)]">
+                <div className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-[var(--color-text-dim)]">
                   {f.answer}
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex shrink-0 flex-col gap-1.5">
                 <button
+                  type="button"
                   onClick={() => {
                     setEditing(f);
                     setOpen(true);
@@ -183,9 +202,8 @@ export default function AdminFaqPage() {
                   <Icon name="edit" size={13} />
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm(`Eliminar "${f.question}"?`)) deleteMut.mutate(f.id);
-                  }}
+                  type="button"
+                  onClick={() => setDeleting(f)}
                   className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-danger)] hover:bg-[var(--color-bg-input)]"
                   title="Eliminar"
                 >
@@ -198,13 +216,14 @@ export default function AdminFaqPage() {
       </div>
 
       <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
-        <DialogContent className="sm:max-w-[520px] bg-[var(--color-bg-elev)] text-[var(--color-text)]">
+        <DialogContent className="bg-[var(--color-bg-elev)] text-[var(--color-text)] sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle className="font-grotesk text-[18px]">
               {editing ? "Editar pregunta" : "Nueva pregunta"}
             </DialogTitle>
           </DialogHeader>
           <form
+            id="faq-form"
             onSubmit={handleSubmit((d) => saveMut.mutate(d))}
             className="flex flex-col gap-3"
           >
@@ -278,9 +297,22 @@ export default function AdminFaqPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </AdminShell>
+
+      <ConfirmDialog
+        open={!!deleting}
+        title="Eliminar pregunta"
+        description={deleting ? `¿Eliminar "${deleting.question}"?` : ""}
+        confirmLabel="Eliminar"
+        tone="danger"
+        loading={deleteMut.isPending}
+        onConfirm={() => {
+          if (deleting) {
+            deleteMut.mutate(deleting.id);
+            setDeleting(null);
+          }
+        }}
+        onCancel={() => setDeleting(null)}
+      />
+    </div>
   );
 }
-
-const inputCls =
-  "h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-[13px] text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]";

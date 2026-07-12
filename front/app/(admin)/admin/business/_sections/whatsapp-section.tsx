@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, unwrapError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Icon } from "@/components/brand";
 import { useBusinessName } from "@/components/business-provider";
 
@@ -27,7 +26,10 @@ type QRResponse = {
   status?: string;
 };
 
-export default function AdminWhatsAppPage() {
+const inputCls =
+  "h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-[13px] text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]";
+
+export function WhatsappSection() {
   const qc = useQueryClient();
   const businessName = useBusinessName();
   const [enabled, setEnabled] = useState(false);
@@ -35,12 +37,14 @@ export default function AdminWhatsAppPage() {
   const [sessionName, setSessionName] = useState("session");
   const [sessionPhone, setSessionPhone] = useState("");
   const [testTo, setTestTo] = useState("");
-  const [testMsg, setTestMsg] = useState(`Hola desde ${businessName} 👋`);
+  const [testMsg, setTestMsg] = useState(`Hola desde ${businessName} `);
 
   const configQ = useQuery({
     queryKey: ["wa", "config"],
     queryFn: async () => {
-      const { data } = await api.get<{ ok: boolean; data: Config }>("/whatsapp/config");
+      const { data } = await api.get<{ ok: boolean; data: Config }>(
+        "/whatsapp/config"
+      );
       return data.data;
     },
   });
@@ -70,6 +74,7 @@ export default function AdminWhatsAppPage() {
 
   useEffect(() => {
     if (configQ.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync server config to local form
       setEnabled(!!configQ.data.whatsapp_enabled);
       setAllowed(configQ.data.whatsapp_allowed_remitents ?? "");
     }
@@ -140,10 +145,7 @@ export default function AdminWhatsAppPage() {
     : "";
 
   return (
-    <AdminShell
-      title="WhatsApp"
-      subtitle="Sesión, mensajes y reglas"
-    >
+    <div className="flex flex-col gap-4">
       <div className="grid gap-3.5 lg:grid-cols-[1.2fr_1fr]">
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
           <div className="flex items-center justify-between gap-2">
@@ -198,6 +200,7 @@ export default function AdminWhatsAppPage() {
                 </label>
               </div>
               <button
+                type="button"
                 onClick={() => createMut.mutate()}
                 disabled={createMut.isPending || !sessionPhone}
                 className="mt-3 inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
@@ -224,6 +227,7 @@ export default function AdminWhatsAppPage() {
 
           {connected && (
             <button
+              type="button"
               onClick={() => {
                 if (confirm("Desconectar sesión de WhatsApp?"))
                   disconnectMut.mutate();
@@ -268,6 +272,7 @@ export default function AdminWhatsAppPage() {
             />
           </label>
           <button
+            type="button"
             onClick={() => saveConfigMut.mutate()}
             disabled={saveConfigMut.isPending}
             className="mt-4 inline-flex h-10 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
@@ -278,7 +283,7 @@ export default function AdminWhatsAppPage() {
         </div>
       </div>
 
-      <div className="mt-3.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-5">
         <div className="text-[11px] font-semibold uppercase tracking-[1px] text-[var(--color-text-dim)]">
           Mensaje de prueba
         </div>
@@ -305,6 +310,7 @@ export default function AdminWhatsAppPage() {
             />
           </label>
           <button
+            type="button"
             onClick={() => testMut.mutate()}
             disabled={testMut.isPending || !connected || !testTo}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-4 text-[13px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60"
@@ -314,9 +320,6 @@ export default function AdminWhatsAppPage() {
           </button>
         </div>
       </div>
-    </AdminShell>
+    </div>
   );
 }
-
-const inputCls =
-  "h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-input)] px-3 text-[13px] text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)]";

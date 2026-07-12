@@ -22,6 +22,7 @@ import WhatsAppRouter from "@/modules/WhatsApp/routes";
 import EgresosRouter from "@/modules/Egresos/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import { initTempUploadsCleanupJob } from "./jobs/cleanupTempUploads";
+import { initPurgeDeletedProductsJob } from "./jobs/purgeDeletedProducts";
 import swaggerUi from "swagger-ui-express";
 import spec from "./docs/openapi";
 import { httpLogger } from "@/middlewares/httpLogger";
@@ -242,6 +243,7 @@ app.listen(PORT, "0.0.0.0", () => {
   }
   initUploadsCleanupJob();
   initTempUploadsCleanupJob();
+  initPurgeDeletedProductsJob();
   import("./modules/WhatsApp/services/whatsapp.services")
     .then(({ whatsAppServices }) => {
       whatsAppServices.startTimeoutWorker();

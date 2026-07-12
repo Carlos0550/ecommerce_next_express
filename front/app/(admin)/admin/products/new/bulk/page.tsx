@@ -41,8 +41,8 @@ export default function BulkNewProductPage() {
 
         <div className="rounded-2xl border border-[var(--color-accent)]/30 bg-[color-mix(in_srgb,var(--color-accent)_6%,var(--color-bg-card))] p-3.5 text-[12px] text-[var(--color-text-dim)]">
           <span className="font-semibold text-[var(--color-text)]">Cómo funciona: </span>
-          cada slot es un producto. Solo necesitás imagen, título y precio (el
-          stock se fija en 1). Agregá tantos slots como quieras y al final
+          cada slot es un producto. Solo necesitás imagen, título, precio y
+          stock (default 1). Agregá tantos slots como quieras y al final
           subilos todos juntos.
         </div>
 

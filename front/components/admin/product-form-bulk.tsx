@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Icon } from "@/components/brand";
 
 export type BulkSlot = {
@@ -11,6 +12,7 @@ export type BulkSlot = {
   previewUrl?: string;
   title: string;
   price: string;
+  stock: string;
   error?: string;
 };
 
@@ -31,7 +33,6 @@ export function BulkProductForm() {
   const [slots, setSlots] = useState<BulkSlot[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [finalResult, setFinalResult] = useState<BulkSubmitResult | null>(null);
   const counterRef = useRef(0);
 
   useEffect(() => {
@@ -44,7 +45,14 @@ export function BulkProductForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const validCount = slots.filter((s) => s.file && s.title.trim() && parseFloat(s.price) >= 0).length;
+  const validCount = slots.filter(
+    (s) =>
+      s.file &&
+      s.title.trim() &&
+      parseFloat(s.price) >= 0 &&
+      Number.isFinite(parseInt(s.stock, 10)) &&
+      parseInt(s.stock, 10) >= 0,
+  ).length;
 
   const addSlot = () => {
     setSlots((cur) => [...cur, makeSlot(counterRef)]);
@@ -92,12 +100,17 @@ export function BulkProductForm() {
     });
   };
 
-  const submit = async () => {
+  const submit = () => {
     setGlobalError(null);
-    setFinalResult(null);
 
     const ready = slots.filter(
-      (s) => s.file && s.title.trim().length > 0 && Number.isFinite(parseFloat(s.price)) && parseFloat(s.price) >= 0,
+      (s) =>
+        s.file &&
+        s.title.trim().length > 0 &&
+        Number.isFinite(parseFloat(s.price)) &&
+        parseFloat(s.price) >= 0 &&
+        Number.isFinite(parseInt(s.stock, 10)) &&
+        parseInt(s.stock, 10) >= 0,
     );
     if (ready.length === 0) {
       setGlobalError("Agregá al menos un slot con imagen, título y precio.");
@@ -112,6 +125,7 @@ export function BulkProductForm() {
         ready.map((s) => ({
           title: s.title.trim(),
           price: parseFloat(s.price),
+          stock: parseInt(s.stock, 10),
         })),
       ),
     );
@@ -119,74 +133,61 @@ export function BulkProductForm() {
       if (s.file) form.append("productImages", s.file);
     }
 
+    slots.forEach((s) => {
+      if (s.previewUrl) URL.revokeObjectURL(s.previewUrl);
+    });
+    setSlots([makeSlot(counterRef)]);
     setSubmitting(true);
-    try {
-      const { default: api } = await import("@/lib/api").then((m) => ({ default: m.api }));
-      const { data } = await api.post<BulkSubmitResult>(
-        "/products/bulk",
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } },
-      );
-      setFinalResult(data);
+    setTimeout(() => setSubmitting(false), 800);
 
-      const failedIndices = new Set(
-        data.results.filter((r) => r.status === "error").map((r) => r.index),
-      );
-      const readyIds = ready.map((s) => s.id);
-      const failedIds = new Set(
-        Array.from(failedIndices).map((i) => readyIds[i]).filter((x): x is string => !!x),
-      );
-      setSlots((cur) =>
-        cur.map((s) =>
-          failedIds.has(s.id)
-            ? {
-                ...s,
-                error:
-                  data.results.find((r) => r.status === "error")?.message ??
-                  "Error al crear",
-              }
-            : s,
-        ),
-      );
+    const total = ready.length;
+    const toastId = toast.loading(`Subiendo ${total} producto(s) en segundo plano…`, {
+      description: "Podés seguir trabajando. Te avisamos cuando termine.",
+      duration: Infinity,
+    });
 
-      if (data.created > 0) {
-        setTimeout(() => router.push("/admin/products"), 1500);
-      } else {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+    void (async () => {
+      try {
+        const { api } = await import("@/lib/api");
+        const { data } = await api.post<BulkSubmitResult>(
+          "/products/bulk",
+          form,
+          { headers: { "Content-Type": "multipart/form-data" } },
+        );
+
+        if (data.failed === 0) {
+          toast.success(`${data.created} producto(s) creado(s)`, {
+            id: toastId,
+            description: "Carga masiva finalizada.",
+          });
+        } else if (data.created > 0) {
+          const firstErr = data.results.find((r) => r.status === "error")?.message;
+          toast.warning(
+            `${data.created} creados, ${data.failed} con error`,
+            {
+              id: toastId,
+              description: firstErr ?? "Revisá el listado para más detalles.",
+            },
+          );
+        } else {
+          const firstErr = data.results.find((r) => r.status === "error")?.message;
+          toast.error(`No se pudo crear ningún producto`, {
+            id: toastId,
+            description: firstErr ?? "Revisá los datos e intentá de nuevo.",
+          });
+        }
+      } catch (err) {
+        const msg =
+          err && typeof err === "object" && "response" in err
+            ? (err as { response?: { data?: { message?: unknown } } }).response?.data?.message
+            : undefined;
+        toast.error(typeof msg === "string" ? msg : "No se pudo procesar la carga masiva", {
+          id: toastId,
+          description: "La carga se canceló.",
+        });
       }
-    } catch (err) {
-      const msg =
-        err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { message?: unknown } } }).response?.data?.message
-          : undefined;
-      setGlobalError(typeof msg === "string" ? msg : "No se pudo procesar la carga masiva");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } finally {
-      setSubmitting(false);
-    }
+    })();
   };
-
-  if (finalResult && finalResult.created > 0) {
-    return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-[var(--color-success)] bg-[color-mix(in_srgb,var(--color-success)_8%,var(--color-bg-card))] p-10 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-success)]/20 text-[var(--color-success)]">
-          <Icon name="check" size={26} />
-        </div>
-        <div className="font-grotesk text-[18px] font-semibold">
-          ¡{finalResult.created} producto(s) creado(s)!
-        </div>
-        {finalResult.failed > 0 && (
-          <div className="text-[12px] text-[var(--color-warning)]">
-            {finalResult.failed} no pudieron crearse. Quedan marcados en el
-            formulario para que los corrijas.
-          </div>
-        )}
-        <div className="text-[11px] text-[var(--color-text-dim)]">
-          Redirigiendo al listado…
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -280,9 +281,13 @@ function SlotCard({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const priceValid = Number.isFinite(parseFloat(slot.price)) && parseFloat(slot.price) >= 0;
+  const stockValid =
+    slot.stock.trim() !== "" &&
+    Number.isFinite(parseInt(slot.stock, 10)) &&
+    parseInt(slot.stock, 10) >= 0;
   const titleValid = slot.title.trim().length > 0;
   const fileValid = !!slot.file;
-  const isReady = fileValid && titleValid && priceValid;
+  const isReady = fileValid && titleValid && priceValid && stockValid;
 
   return (
     <div
@@ -385,8 +390,21 @@ function SlotCard({
               className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-input)] pl-6 pr-2 text-[13px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] disabled:opacity-60"
             />
           </div>
-          <div className="flex h-9 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-input)] px-2.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-dim)]">
-            Stock: 1
+          <div className="relative w-[88px] shrink-0">
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={slot.stock}
+              onChange={(e) => onUpdate({ stock: e.target.value })}
+              disabled={disabled}
+              placeholder="1"
+              aria-label="Stock"
+              className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-input)] px-2 text-right text-[13px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-accent)] disabled:opacity-60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-dim)]">
+              Stock
+            </span>
           </div>
         </div>
         {slot.error && (
@@ -417,5 +435,6 @@ function makeSlot(counterRef: React.MutableRefObject<number>) {
     id: `slot-${Date.now()}-${counterRef.current}`,
     title: "",
     price: "",
+    stock: "1",
   };
 }
