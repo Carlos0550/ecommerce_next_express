@@ -4,6 +4,17 @@ import { loggerStorage } from "@/utils/loggerContext";
 
 const { combine, timestamp, printf, colorize, align, errors } = winston.format;
 
+const RESERVED_KEYS = new Set([
+  "level",
+  "message",
+  "timestamp",
+  "stack",
+  "splat",
+  "Symbol(level)",
+  "Symbol(message)",
+  "Symbol(splat)",
+]);
+
 const logLevels = {
   error: 0,
   warn: 1,
@@ -29,9 +40,19 @@ function defaultLevel(): keyof typeof logLevels {
   return isProduction ? "info" : "debug";
 }
 
+function extractMeta(info: Record<string, unknown>): Record<string, unknown> {
+  const meta: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(info)) {
+    if (RESERVED_KEYS.has(k)) continue;
+    if (typeof k === "string" && k.startsWith("Symbol(")) continue;
+    meta[k] = v;
+  }
+  return meta;
+}
+
 const contextFormat = printf((info) => {
   const ctx = loggerStorage.get();
-  const meta: Record<string, unknown> = { ...(info.metadata ?? {}) };
+  const meta = extractMeta(info as Record<string, unknown>);
   if (ctx) {
     if (ctx.requestId) meta.requestId = ctx.requestId;
     if (ctx.userId !== undefined) meta.userId = ctx.userId;
@@ -63,13 +84,12 @@ const jsonFormat = winston.format.combine(
   winston.format.errors({ stack: true }),
   winston.format.printf((info) => {
     const ctx = loggerStorage.get();
+    const meta = extractMeta(info as Record<string, unknown>);
     const payload: Record<string, unknown> = {
       ts: info.timestamp,
       level: info.level,
       msg: info.message,
-      ...(info.metadata && Object.keys(info.metadata).length
-        ? (info.metadata as Record<string, unknown>)
-        : {}),
+      ...meta,
     };
     if (info.stack && typeof info.stack === "string") payload.stack = info.stack;
     if (ctx) {

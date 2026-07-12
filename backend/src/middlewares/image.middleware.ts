@@ -1,5 +1,6 @@
 import multer from 'multer';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import { fileTypeFromBuffer } from 'file-type';
@@ -82,8 +83,39 @@ export const imageUpload = multer({
   }
 });
 export const uploadSingleImage = (fieldName = 'image') => imageUpload.single(fieldName);
-export const uploadMultipleImages = (fieldName = 'images', maxCount = 5) => 
+export const uploadMultipleImages = (fieldName = 'images', maxCount = 5) =>
   imageUpload.array(fieldName, maxCount);
+
+const TEMP_UPLOADS_DIR = '/tmp/uploads';
+if (!fs.existsSync(TEMP_UPLOADS_DIR)) {
+  fs.mkdirSync(TEMP_UPLOADS_DIR, { recursive: true });
+}
+const tempImageStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    try {
+      if (!fs.existsSync(TEMP_UPLOADS_DIR)) {
+        fs.mkdirSync(TEMP_UPLOADS_DIR, { recursive: true });
+      }
+      cb(null, TEMP_UPLOADS_DIR);
+    } catch (err) {
+      cb(err as Error, TEMP_UPLOADS_DIR);
+    }
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const safeExt = /^\.[a-zA-Z0-9]{1,6}$/.test(ext) ? ext : '.bin';
+    cb(null, `${randomUUID()}${safeExt}`);
+  },
+});
+export const tempImageUpload = multer({
+  storage: tempImageStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 30 * 1024 * 1024 },
+});
+export const uploadTempImages = (fieldName = 'productImages', maxCount = 1) =>
+  tempImageUpload.array(fieldName, maxCount);
+export const uploadBulkImages = (fieldName = 'productImages', maxCount = 100) =>
+  tempImageUpload.array(fieldName, maxCount);
 export const handleImageUploadError = (err: unknown, _req: Request, res: Response, next: NextFunction): void => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {

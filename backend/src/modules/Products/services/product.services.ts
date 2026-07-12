@@ -107,6 +107,7 @@ class ProductServices {
       Number.isFinite(parsedStock) && parsedStock >= 0 ? parsedStock : 0;
     let finalDescription = "";
     let finalOptions: { name: string; values: string[] }[] = [];
+    let aiFailed = false;
     if (imageUrls.length > 0) {
       try {
         const aiResult = await analyzeProductImages(
@@ -118,6 +119,7 @@ class ProductServices {
         finalDescription = aiResult.description || "";
         finalOptions = Array.isArray(aiResult.options) ? aiResult.options : [];
       } catch (error) {
+        aiFailed = true;
         logger.warn("ai_description_failed", {
           err: error instanceof Error ? error.message : String(error),
         });
@@ -139,7 +141,7 @@ class ProductServices {
           options: finalOptions,
         },
       });
-      return { product };
+      return { product, aiFailed };
     } catch (error) {
       await rollbackImages();
       throw error;

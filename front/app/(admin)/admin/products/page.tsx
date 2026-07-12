@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, storageUrl, unwrapError } from "@/lib/api";
-import { formatARS, cn, playNotificationSound } from "@/lib/utils";
+import { formatARS, cn } from "@/lib/utils";
 import { AdminShell } from "@/components/admin/admin-shell";
 import {
-  ProductFormSheet,
-  type ProductSavePayload,
-} from "@/components/admin/product-form-sheet";
+  type ProductDraftSeed,
+} from "@/components/admin/product-form";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Icon } from "@/components/brand";
 import {
@@ -31,19 +31,18 @@ function productImages(p: Product): string[] {
 
 type ProductsResponse = {
   ok: boolean;
-  data: {
-    products: Product[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
+  products: Product[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
 };
 
 export default function AdminProductsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [status, setStatus] = useState<
@@ -52,8 +51,6 @@ export default function AdminProductsPage() {
   const [trashView, setTrashView] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
   const [viewTarget, setViewTarget] = useState<Product | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
@@ -94,11 +91,11 @@ export default function AdminProductsPage() {
       const { data } = await api.get<ProductsResponse>(
         `/products?${params.toString()}`
       );
-      const list = data.data.products ?? [];
+      const list = data.products ?? [];
       const filtered = trashView
         ? list
         : list.filter((p) => p.state !== "deleted");
-      return { ...data.data, products: filtered };
+      return { products: filtered, pagination: data.pagination };
     },
   });
 
@@ -110,7 +107,8 @@ export default function AdminProductsPage() {
         data?: Category[];
         categories?: Category[];
       }>("/products/categories");
-      return data.data ?? data.categories ?? [];
+      const list = data.data ?? data.categories ?? [];
+      return Array.isArray(list) ? list : [];
     },
   });
 
@@ -120,48 +118,6 @@ export default function AdminProductsPage() {
   const totalPages = productsQ.data?.pagination?.totalPages ?? 1;
 
   const categoriesWithCount = useMemo(() => categories, [categories]);
-
-  const saveMut = useMutation({
-    mutationFn: async (payload: ProductSavePayload) => {
-      if (payload.isEdit && payload.productId != null) {
-        const { data } = await api.put(
-          `/products/${payload.productId}`,
-          payload.form,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
-        return data;
-      }
-      const { data } = await api.post(
-        "/products/save-product",
-        payload.form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      return data;
-    },
-    onMutate: (payload) => {
-      const id = `product-save-${Date.now()}-${Math.random()}`;
-      toast.loading(
-        payload.isEdit
-          ? `Guardando "${payload.title}"…`
-          : `Subiendo "${payload.title}"…`,
-        { id }
-      );
-      return { toastId: id };
-    },
-    onSuccess: (_d, payload, ctx) => {
-      toast.success(
-        payload.isEdit
-          ? `"${payload.title}" actualizado`
-          : `"${payload.title}" creado`,
-        { id: ctx?.toastId }
-      );
-      playNotificationSound();
-      qc.invalidateQueries({ queryKey: ["products"] });
-    },
-    onError: (err, _payload, ctx) => {
-      toast.error(unwrapError(err), { id: ctx?.toastId });
-    },
-  });
 
   const deleteMut = useMutation({
     mutationFn: async (id: number | string) => {
@@ -238,7 +194,7 @@ export default function AdminProductsPage() {
       const { data } = await api.get<ProductsResponse>(
         `/products?page=1&limit=10000`
       );
-      const ids = (data.data.products ?? []).map((p) => String(p.id));
+      const ids = (data.products ?? []).map((p) => String(p.id));
       if (ids.length === 0) return 0;
       await Promise.all(
         ids.map((id) => api.patch(`/products/status/${id}/deleted`))
@@ -253,14 +209,61 @@ export default function AdminProductsPage() {
     onError: (err) => toast.error(unwrapError(err)),
   });
 
-  const openNew = () => {
-    setEditing(null);
-    setSheetOpen(true);
-  };
-  const openEdit = (p: Product) => {
-    setEditing(p);
-    setSheetOpen(true);
-  };
+  const openNew = () => router.push("/admin/products/new");
+  const openEdit = (p: Product) =>
+    router.push(`/admin/products/${p.id}/edit`);
+
+  const draftsQ = useQuery({
+    queryKey: ["product-drafts"],
+    queryFn: async () => {
+      const { data } = await api.get<{ ok: boolean; drafts: ProductDraftSeed[] }>(
+        "/products/drafts"
+      );
+      return data.drafts ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const [draftAgesMin, setDraftAgesMin] = useState<number[]>([]);
+  useEffect(() => {
+    const compute = () => {
+      const now = Date.now();
+      setDraftAgesMin(
+        (draftsQ.data ?? []).map((d) =>
+          Math.max(1, Math.round((now - (d.createdAt ?? now)) / 60000)),
+        ),
+      );
+    };
+    compute();
+    const id = setInterval(compute, 30_000);
+    return () => clearInterval(id);
+  }, [draftsQ.data, draftsQ.dataUpdatedAt]);
+
+  const recoverDraftMut = useMutation({
+    mutationFn: async (tempId: string) => {
+      await api.get(`/products/draft/${tempId}`);
+      return tempId;
+    },
+    onSuccess: (tempId) => {
+      router.push(`/admin/products/new?draft=${tempId}`);
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
+
+  const discardDraftMut = useMutation({
+    mutationFn: async (tempId: string) => {
+      await api.delete(`/products/draft/${tempId}`);
+      return tempId;
+    },
+    onSuccess: (tempId) => {
+      toast.success("Borrador descartado");
+      qc.setQueryData<ProductDraftSeed[]>(["product-drafts"], (cur) =>
+        (cur ?? []).filter((d) => d.tempId !== tempId)
+      );
+      qc.invalidateQueries({ queryKey: ["product-drafts"] });
+    },
+    onError: (err) => toast.error(unwrapError(err)),
+  });
 
   return (
     <AdminShell
@@ -299,6 +302,14 @@ export default function AdminProductsPage() {
             </span>
           </button>
           <button
+            onClick={() => router.push("/admin/products/new/bulk")}
+            className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-3 text-[12px] font-semibold text-[var(--color-text)] hover:bg-[var(--color-bg-input)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
+          >
+            <Icon name="upload" size={14} />
+            <span className="hidden sm:inline">Carga masiva</span>
+            <span className="sm:hidden">Masiva</span>
+          </button>
+          <button
             onClick={openNew}
             className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[var(--color-accent)] px-3 text-[12px] font-semibold text-[var(--color-button-text)] hover:bg-[var(--color-accent-strong)] md:h-auto md:px-3.5 md:py-2.5 md:text-[13px]"
           >
@@ -310,6 +321,53 @@ export default function AdminProductsPage() {
       }
     >
       <div className="flex flex-col gap-3.5 lg:h-[calc(100vh-130px)]">
+      {(draftsQ.data?.length ?? 0) > 0 && (
+        <div className="rounded-[12px] border border-[var(--color-warning)]/40 bg-[color-mix(in_srgb,var(--color-warning)_8%,var(--color-bg-card))] p-3">
+          <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[1px] text-[var(--color-warning)]">
+            <Icon name="alert" size={14} />
+            Borradores sin guardar
+            <span className="text-[10px] font-normal normal-case text-[var(--color-text-dim)]">
+              expiran en 30 minutos
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {draftsQ.data!.map((d, idx) => (
+              <div
+                key={d.tempId}
+                className="flex items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-bg-card)] px-2.5 py-1.5 text-[12px]"
+              >
+                <span className="font-medium text-[var(--color-text)]">
+                  {d.title || "(sin título)"}
+                </span>
+                {d.sku && (
+                  <span className="rounded bg-[var(--color-bg-input)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-dim)]">
+                    {d.sku}
+                  </span>
+                )}
+                <span className="text-[10px] text-[var(--color-text-dim)]">
+                  {draftAgesMin[idx] ?? 1} min
+                </span>
+                <button
+                  type="button"
+                  onClick={() => recoverDraftMut.mutate(d.tempId)}
+                  disabled={recoverDraftMut.isPending}
+                  className="rounded bg-[var(--color-accent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-button-text)] disabled:opacity-60"
+                >
+                  Recuperar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => discardDraftMut.mutate(d.tempId)}
+                  disabled={discardDraftMut.isPending}
+                  className="rounded border border-[var(--color-border)] px-2 py-0.5 text-[11px] text-[var(--color-danger)] disabled:opacity-60"
+                >
+                  Descartar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative w-full min-w-[200px] sm:w-auto sm:flex-1">
@@ -904,14 +962,6 @@ export default function AdminProductsPage() {
           })()}
         </DialogContent>
       </Dialog>
-
-      <ProductFormSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        product={editing}
-        categories={categories}
-        onSave={(payload) => saveMut.mutate(payload)}
-      />
 
       <ConfirmDialog
         open={!!confirmState?.open}

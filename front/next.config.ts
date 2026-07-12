@@ -8,9 +8,14 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "3001", pathname: "/api/storage/**" },
+      { protocol: "http", hostname: "localhost", port: "9000", pathname: "/images/**" },
+      { protocol: "http", hostname: "127.0.0.1", port: "9000", pathname: "/images/**" },
+      { protocol: "http", hostname: "192.168.18.6", port: "9000", pathname: "/images/**" },
       { protocol: "https", hostname: "**.railway.app", pathname: "/api/storage/**" },
       { protocol: "https", hostname: "**.railway.app", pathname: "/images/**" },
       { protocol: "https", hostname: "**.up.railway.app", pathname: "/**" },
+      { protocol: "http", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
+      { protocol: "https", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
     ],
   },
   output: "standalone",

@@ -4,6 +4,15 @@ import { logger } from "@/utils/logger";
 import { aiChatCompletion } from "@/config/aiClient";
 import type { ChatParams } from "@/config/aiClient";
 import { AIInvalidResponseError, BadRequestError } from "@/utils/errors";
+import { downloadFile } from "@/config/minio";
+
+const MIME_BY_EXT: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
 
 const TEXT_MODEL = "minimax/minimax-m3";
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -183,26 +192,51 @@ function isWhatsAppUrl(url: string): boolean {
 }
 
 async function convertLocalUrlToBase64(url: string): Promise<string | null> {
-  try {
-    const urlMatch = /\/api\/storage\/(.+)$/.exec(url);
-    if (!urlMatch) {
+  const legacyMatch = /\/api\/storage\/(.+)$/.exec(url);
+  if (legacyMatch && legacyMatch[1]) {
+    try {
+      const filePath = legacyMatch[1];
+      const fullPath = path.join(process.cwd(), "uploads", "storage", filePath);
+      const fileBuffer = await fs.readFile(fullPath);
+      const ext = path.extname(fullPath).toLowerCase();
+      const mimeType = MIME_BY_EXT[ext] || "image/jpeg";
+      const base64 = fileBuffer.toString("base64");
+      logger.debug("ai.image.local.ok", { filePath, mimeType, sizeBytes: fileBuffer.length });
+      return `data:${mimeType};base64,${base64}`;
+    } catch (error) {
+      logger.error("ai.image.local.error", {
+        url,
+        err: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
-    const filePath = urlMatch[1];
-    if (!filePath) return null;
-    const fullPath = path.join(process.cwd(), "uploads", "storage", filePath);
-    const fileBuffer = await fs.readFile(fullPath);
-    const ext = path.extname(fullPath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-      ".gif": "image/gif",
-      ".webp": "image/webp",
-    };
-    const mimeType = mimeTypes[ext] || "image/jpeg";
-    const base64 = fileBuffer.toString("base64");
-    logger.debug("ai.image.local.ok", { filePath, mimeType, sizeBytes: fileBuffer.length });
+  }
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+    const [bucket, ...rest] = segments;
+    if (!bucket || rest.length === 0) return null;
+    const filePath = rest.join("/");
+    const { data, error } = await downloadFile(bucket, filePath);
+    if (!data || error) {
+      logger.error("ai.image.minio.error", {
+        url,
+        bucket,
+        filePath,
+        err: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeType = MIME_BY_EXT[ext] || "image/jpeg";
+    const base64 = data.toString("base64");
+    logger.debug("ai.image.minio.ok", {
+      bucket,
+      filePath,
+      mimeType,
+      sizeBytes: data.length,
+    });
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
     logger.error("ai.image.local.error", {
