@@ -165,14 +165,7 @@ export interface Business {
     | "midnight"
     | "argentina";
   banner_config?: BannerConfig | null;
-  admin_layout_config?: AdminLayoutConfig | null;
   bankData?: BankData[];
-}
-
-export type AdminLayoutMode = "legacy" | "modern";
-
-export interface AdminLayoutConfig {
-  sales?: AdminLayoutMode;
 }
 
 export interface BankData {

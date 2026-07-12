@@ -1,7 +1,6 @@
 import { prisma } from "@/config/prisma";
 import { NotFoundError } from "@/utils/errors";
 import type {
-  AdminLayoutConfig,
   BannerConfig,
   BusinessDataRequest,
 } from "./schemas/business.schemas";
@@ -59,20 +58,6 @@ function sanitizeBannerConfig(
   };
 }
 
-const VALID_ADMIN_LAYOUT_MODES = new Set(["legacy", "modern"]);
-
-function sanitizeAdminLayoutConfig(
-  raw: unknown,
-): AdminLayoutConfig | null {
-  if (!raw || typeof raw !== "object") return null;
-  const input = raw as Record<string, unknown>;
-  const result: AdminLayoutConfig = {};
-  if (VALID_ADMIN_LAYOUT_MODES.has(input.sales as string)) {
-    result.sales = input.sales as AdminLayoutConfig["sales"];
-  }
-  return Object.keys(result).length > 0 ? result : null;
-}
-
 function resolveBannerImageUrls(cfg: BannerConfig | null): BannerConfig | null {
   if (!cfg) return null;
   const isHttp = (s: string) => /^https?:\/\//.test(s);
@@ -99,9 +84,6 @@ class BusinessServices {
       hero_image: payload.hero_image || "",
       banner_config:
         (sanitizeBannerConfig(payload.banner_config) as unknown as Prisma.InputJsonValue) ??
-        undefined,
-      admin_layout_config:
-        (sanitizeAdminLayoutConfig(payload.admin_layout_config) as unknown as Prisma.InputJsonValue) ??
         undefined,
       bankData:
         Array.isArray(payload.bankData) && payload.bankData.length > 0
@@ -151,12 +133,6 @@ class BusinessServices {
               : payload.banner_config === null
                 ? Prisma.DbNull
                 : (sanitizeBannerConfig(payload.banner_config) as unknown as Prisma.InputJsonValue),
-          admin_layout_config:
-            payload.admin_layout_config === undefined
-              ? undefined
-              : payload.admin_layout_config === null
-                ? Prisma.DbNull
-                : (sanitizeAdminLayoutConfig(payload.admin_layout_config) as unknown as Prisma.InputJsonValue),
           bankData:
             Array.isArray(payload.bankData) && payload.bankData.length > 0
               ? {
