@@ -5,12 +5,12 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ${BACKEND_DOCKERFILE:-Dockerfile}
+      dockerfile: Dockerfile.dev
     container_name: cinnamon-backend
     env_file:
       - backend/.env
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: development
       PORT: 3000
     ports:
       - "${BACKEND_PORT:-3000}:3000"
@@ -20,6 +20,10 @@ services:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
       - ./backend/scripts:/app/scripts
+      - ./backend/package.json:/app/package.json
+      - ./backend/package-lock.json:/app/package-lock.json
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/prisma.config.ts:/app/prisma.config.ts
     restart: unless-stopped
     networks:
       - cinnamon-network
@@ -27,7 +31,7 @@ services:
   frontend:
     build:
       context: ./front
-      dockerfile: ${FRONTEND_DOCKERFILE:-Dockerfile}
+      dockerfile: Dockerfile.dev
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
         NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:3000/api/storage}
@@ -36,6 +40,7 @@ services:
     env_file:
       - front/.env
     environment:
+      NODE_ENV: development
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
       NEXT_PUBLIC_STORAGE_URL: ${NEXT_PUBLIC_STORAGE_URL:-http://localhost:3000/api/storage}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
@@ -47,7 +52,12 @@ services:
       - ./front/lib:/app/lib
       - ./front/stores:/app/stores
       - ./front/public:/app/public
+      - ./front/package.json:/app/package.json
+      - ./front/package-lock.json:/app/package-lock.json
       - ./front/next.config.ts:/app/next.config.ts
+      - ./front/tsconfig.json:/app/tsconfig.json
+      - ./front/tailwind.config.ts:/app/tailwind.config.ts
+      - ./front/postcss.config.mjs:/app/postcss.config.mjs
       - /app/node_modules
       - /app/.next
     depends_on:

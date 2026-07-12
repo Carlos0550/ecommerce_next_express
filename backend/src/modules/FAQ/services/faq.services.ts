@@ -1,4 +1,6 @@
 import { prisma } from '@/config/prisma';
+import { NotFoundError } from '@/utils/errors';
+
 export default class FaqServices {
   async listPublic() {
     const items = await prisma.fAQ.findMany({
@@ -24,10 +26,14 @@ export default class FaqServices {
     return { ok: true, item };
   }
   async update(id: string, data: Partial<{ question: string; answer: string; position: number; is_active: boolean }>) {
+    const existing = await prisma.fAQ.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("FAQ no encontrada", "faq_not_found");
     const item = await prisma.fAQ.update({ where: { id }, data });
     return { ok: true, item };
   }
   async softDelete(id: string) {
+    const existing = await prisma.fAQ.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError("FAQ no encontrada", "faq_not_found");
     await prisma.fAQ.update({ where: { id }, data: { deleted_at: new Date(), is_active: false } });
     return { ok: true };
   }

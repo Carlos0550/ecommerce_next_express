@@ -1,42 +1,14 @@
-import OpenAI from 'openai';
+import { aiChatCompletion } from '@/config/aiClient';
 import { prisma } from '@/config/prisma';
+import { logger } from '@/utils/logger';
 import type {
   WhatsAppConversationSession,
   AIConversationResponse,
 } from '../../schemas/whatsapp.schemas';
 import { buildSystemPrompt, buildStateContext } from './prompt.builder';
 import { getBusinessEmojis } from './tone.detector';
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const TEXT_MODEL = 'openai/gpt-oss-120b';
-const WHISPER_MODEL = 'whisper-large-v3';
-const groq = new OpenAI({
-  apiKey: GROQ_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1',
-});
+const TEXT_MODEL = 'minimax/minimax-m3';
 class AIProcessor {
-  async transcribeAudio(audioUrl: string): Promise<string> {
-    try {
-      console.log('🎤 Descargando audio desde:', audioUrl);
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error(`Error descargando audio: ${audioResponse.status}`);
-      }
-      const audioBuffer = await audioResponse.arrayBuffer();
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
-      const audioFile = new File([audioBlob], 'audio.ogg', { type: 'audio/ogg' });
-      console.log('🎤 Enviando audio a Groq Whisper...');
-      const transcription = await groq.audio.transcriptions.create({
-        file: audioFile,
-        model: WHISPER_MODEL,
-        language: 'es',
-      });
-      console.log('🎤 Transcripción completada:', transcription.text);
-      return transcription.text;
-    } catch (error) {
-      console.error('Error transcribiendo audio:', error);
-      throw new Error('No se pudo transcribir el audio');
-    }
-  }
   async getCategoriesForPrompt(): Promise<{ formatted: string; list: { id: string; title: string }[] }> {
     const categories = await prisma.categories.findMany({
       where: { status: 'active' },
@@ -55,12 +27,12 @@ class AIProcessor {
     mediaUrl?: string
   ): string {
     if (messageType === 'image') {
-      return mediaUrl 
+      return mediaUrl
         ? `[Usuario envió una imagen${text ? ` con caption: "${text}"` : ''}]`
         : `[Usuario envió una imagen sin URL válida${text ? `, caption: "${text}"` : ''}]`;
     }
     if (messageType === 'audio') {
-      return `[Usuario envió un audio, transcripción: "${text}"]`;
+      return `[Usuario envió un audio. Pedirle que lo reenvíe como texto.]`;
     }
     return text;
   }
@@ -76,9 +48,9 @@ class AIProcessor {
     const businessName = business?.name || 'la tienda';
     const businessEmojis = getBusinessEmojis(business?.type, business?.description);
     const systemPrompt = buildSystemPrompt(
-      stateContext, 
-      categories, 
-      businessName, 
+      stateContext,
+      categories,
+      businessName,
       businessEmojis,
       session.greetingTone
     );
@@ -88,20 +60,32 @@ class AIProcessor {
     }));
     const formattedUserMessage = this.formatUserMessage(userMessage, messageType, mediaUrl);
     try {
-      const response = await groq.chat.completions.create({
-        model: TEXT_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...conversationHistory,
-          { role: 'user', content: formattedUserMessage },
-        ],
-        temperature: 0.7
-      });
+      const response = await aiChatCompletion(
+        {
+          model: TEXT_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory,
+            { role: 'user', content: formattedUserMessage },
+          ],
+          temperature: 0.7,
+        },
+        {
+          operation: 'whatsapp_conversation_response',
+          userId: session.userId,
+        },
+      );
       const content = response.choices[0]?.message?.content || '';
-      console.log('🤖 Respuesta IA:', content);
+      logger.debug('whatsapp.ai.response_raw', {
+        contentLength: content.length,
+        contentPreview: content.length > 500 ? content.slice(0, 500) + '…' : content,
+      });
       return this.parseResponse(content, categoryList);
     } catch (error) {
-      console.error('Error generando respuesta IA:', error);
+      logger.error('whatsapp.ai.response_failed', {
+        err: error instanceof Error ? error.message : String(error),
+        userId: session.userId,
+      });
       return {
         message: '❌ Ocurrió un error procesando tu mensaje. Por favor intenta de nuevo.',
         action: 'none',
@@ -138,7 +122,11 @@ class AIProcessor {
         next_state: parsed.next_state,
       };
     } catch (error) {
-      console.error('Error parseando respuesta IA:', error, 'Contenido:', content);
+      logger.warn('whatsapp.ai.parse_failed', {
+        err: error instanceof Error ? error.message : String(error),
+        contentLength: content.length,
+        contentPreview: content.length > 300 ? content.slice(0, 300) + '…' : content,
+      });
       return {
         message: content || 'No pude procesar esa solicitud. ¿Podrías intentar de nuevo?',
         action: 'none',
@@ -149,7 +137,7 @@ class AIProcessor {
   }
   async findCategoryId(categoryName: string): Promise<string | null> {
     const category = await prisma.categories.findFirst({
-      where: { 
+      where: {
         title: { contains: categoryName, mode: 'insensitive' },
         status: 'active',
       },

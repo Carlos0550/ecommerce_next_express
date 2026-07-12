@@ -1,135 +1,13 @@
-import OpenAI from "openai";
 import fs from "fs/promises";
 import path from "path";
 import { logger } from "@/utils/logger";
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-if (!GROQ_API_KEY) {
-  console.error(
-    "❌ GROQ_API_KEY no está configurada. Las funciones de IA estarán deshabilitadas.",
-  );
-} else {
-  console.log("🚀 Groq AI configurado correctamente");
-}
-if (!GEMINI_API_KEY) {
-  console.warn(
-    "⚠️ GEMINI_API_KEY no está configurada. Se usará Groq como fallback de visión.",
-  );
-} else {
-  console.log("🚀 Gemini (visión) configurado correctamente");
-}
-const groq = new OpenAI({
-  apiKey: GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
-const gemini = GEMINI_API_KEY
-  ? new OpenAI({
-      apiKey: GEMINI_API_KEY,
-      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-    })
-  : null;
-const GROQ_VISION_FALLBACK_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
-const GEMINI_VISION_MODEL = "gemini-2.5-flash";
-const TEXT_MODEL = "llama-3.3-70b-versatile";
+import { aiChatCompletion } from "@/config/aiClient";
+import type { ChatParams } from "@/config/aiClient";
+import { AIInvalidResponseError, BadRequestError } from "@/utils/errors";
+
+const TEXT_MODEL = "minimax/minimax-m3";
 const isDevelopment = process.env.NODE_ENV === "development";
-function detectImageMimeType(buffer: Buffer): string | null {
-  const signatures: { bytes: number[]; mime: string }[] = [
-    { bytes: [0xff, 0xd8, 0xff], mime: "image/jpeg" },
-    { bytes: [0x89, 0x50, 0x4e, 0x47], mime: "image/png" },
-    { bytes: [0x47, 0x49, 0x46, 0x38], mime: "image/gif" },
-    { bytes: [0x52, 0x49, 0x46, 0x46], mime: "image/webp" },
-  ];
-  const firstBytes = Array.from(buffer.slice(0, 10))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join(" ");
-  console.log("🔢 Primeros 10 bytes (hex):", firstBytes);
-  for (const sig of signatures) {
-    let match = true;
-    for (let i = 0; i < sig.bytes.length; i++) {
-      if (buffer[i] !== sig.bytes[i]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) {
-      return sig.mime;
-    }
-  }
-  console.warn("⚠️ No se reconoció el formato de imagen");
-  return null;
-}
-async function downloadAndConvertToBase64(url: string): Promise<string | null> {
-  try {
-    console.log(
-      "📥 Descargando imagen desde URL externa:",
-      url.substring(0, 100) + "...",
-    );
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Accept: "image/*",
-      },
-    });
 
-    if (!response.ok) {
-      throw new Error(`Error al descargar imagen: ${response.statusText}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-    const headers = response.headers;
-    const contentType = headers.get("content-type");
-    const mimeType =
-      contentType || detectImageMimeType(Buffer.from(buffer)) || "image/jpeg";
-    const base64 = Buffer.from(buffer).toString("base64");
-    return `data:${mimeType};base64,${base64}`;
-  } catch (error) {
-    console.error("Error downloading image", error);
-    return null;
-  }
-}
-function isWhatsAppUrl(url: string): boolean {
-  return url.includes("whatsapp.net") || url.includes("whatsapp.com");
-}
-async function convertLocalUrlToBase64(url: string): Promise<string | null> {
-  try {
-    const urlMatch = /\/api\/storage\/(.+)$/.exec(url);
-    if (!urlMatch) {
-      return null;
-    }
-    const filePath = urlMatch[1];
-    if (!filePath) return null;
-    const fullPath = path.join(process.cwd(), "uploads", "storage", filePath);
-    const fileBuffer = await fs.readFile(fullPath);
-    const ext = path.extname(fullPath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-      ".gif": "image/gif",
-      ".webp": "image/webp",
-    };
-    const mimeType = mimeTypes[ext] || "image/jpeg";
-    const base64 = fileBuffer.toString("base64");
-    return `data:${mimeType};base64,${base64}`;
-  } catch (error) {
-    console.error("Error convirtiendo URL local a base64:", error);
-    return null;
-  }
-}
-function isLocalhostUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    return (
-      urlObj.hostname === "localhost" ||
-      urlObj.hostname === "127.0.0.1" ||
-      urlObj.hostname.startsWith("192.168.") ||
-      urlObj.hostname.startsWith("10.")
-    );
-  } catch {
-    return false;
-  }
-}
 export interface ProductAnalysisResult {
   title: string;
   description: string;
@@ -205,7 +83,7 @@ const toneStyles = [
 const closingStyles = [
   { name: "URGENCIA", example: "¡No esperes más, hazlo tuyo!" },
   { name: "ASPIRACIONAL", example: "Dale a tu estilo el upgrade que merece" },
-  { name: "EMOCIONAL", example: "Porque vos lo vales, date ese gusto" },
+  { name: "EMOCIONAL", example: "Porque vos lo valés, date ese gusto" },
   { name: "PRÁCTICO", example: "Una inversión que vale cada peso" },
   { name: "EXCLUSIVO", example: "Sé parte de quienes ya lo disfrutan" },
 ];
@@ -238,13 +116,124 @@ const structureFormats = [
   },
 ];
 
+function detectImageMimeType(buffer: Buffer): string | null {
+  const signatures: { bytes: number[]; mime: string }[] = [
+    { bytes: [0xff, 0xd8, 0xff], mime: "image/jpeg" },
+    { bytes: [0x89, 0x50, 0x4e, 0x47], mime: "image/png" },
+    { bytes: [0x47, 0x49, 0x46, 0x38], mime: "image/gif" },
+    { bytes: [0x52, 0x49, 0x46, 0x46], mime: "image/webp" },
+  ];
+  const firstBytes = Array.from(buffer.slice(0, 10))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join(" ");
+  logger.debug("ai.image.detect", { firstBytes });
+  for (const sig of signatures) {
+    let match = true;
+    for (let i = 0; i < sig.bytes.length; i++) {
+      if (buffer[i] !== sig.bytes[i]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) {
+      return sig.mime;
+    }
+  }
+  logger.warn("ai.image.unknown_format");
+  return null;
+}
+
+async function downloadAndConvertToBase64(url: string): Promise<string | null> {
+  try {
+    logger.debug("ai.image.download.start", {
+      urlPrefix: url.substring(0, 100),
+    });
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "image/*",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`Error al descargar imagen: ${response.statusText}`);
+    }
+    const buffer = await response.arrayBuffer();
+    const headers = response.headers;
+    const contentType = headers.get("content-type");
+    const mimeType =
+      contentType || detectImageMimeType(Buffer.from(buffer)) || "image/jpeg";
+    const base64 = Buffer.from(buffer).toString("base64");
+    logger.debug("ai.image.download.ok", {
+      mimeType,
+      sizeBytes: buffer.byteLength,
+    });
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    logger.error("ai.image.download.error", {
+      urlPrefix: url.substring(0, 100),
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function isWhatsAppUrl(url: string): boolean {
+  return url.includes("whatsapp.net") || url.includes("whatsapp.com");
+}
+
+async function convertLocalUrlToBase64(url: string): Promise<string | null> {
+  try {
+    const urlMatch = /\/api\/storage\/(.+)$/.exec(url);
+    if (!urlMatch) {
+      return null;
+    }
+    const filePath = urlMatch[1];
+    if (!filePath) return null;
+    const fullPath = path.join(process.cwd(), "uploads", "storage", filePath);
+    const fileBuffer = await fs.readFile(fullPath);
+    const ext = path.extname(fullPath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+    const mimeType = mimeTypes[ext] || "image/jpeg";
+    const base64 = fileBuffer.toString("base64");
+    logger.debug("ai.image.local.ok", { filePath, mimeType, sizeBytes: fileBuffer.length });
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    logger.error("ai.image.local.error", {
+      url,
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    return (
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1" ||
+      urlObj.hostname.startsWith("192.168.") ||
+      urlObj.hostname.startsWith("10.")
+    );
+  } catch {
+    return false;
+  }
+}
+
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 
 function safeJsonParse(raw: string): Record<string, unknown> {
   let content = raw.trim();
-  content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const match = /\{[\s\S]*\}/.exec(content);
   if (match) content = match[0];
   try {
@@ -269,6 +258,7 @@ function asStringArray(v: unknown): string[] {
 async function extractProductFeatures(
   imageMessages: ImageMessage[],
   additionalContext: string | undefined,
+  meta: { userId?: string | number; businessId?: string | number },
 ): Promise<VisionFeatures> {
   const contextBlock = additionalContext
     ? `\n\nContexto del usuario (puede nombrar el producto o hacer correcciones): ${additionalContext}`
@@ -289,13 +279,8 @@ REGLAS:
 - Si el usuario dice que algo NO existe, no lo incluyas.
 - Nunca digas "cabello humano" ni "uñas humanas".`;
 
-  const visionClient = gemini ?? groq;
-  const visionModel = gemini ? GEMINI_VISION_MODEL : GROQ_VISION_FALLBACK_MODEL;
-  const visionProvider = gemini ? "Gemini" : "Groq";
-  console.log(`👁️ Visión: ${visionProvider} (${visionModel})`);
-
-  const response = await visionClient.chat.completions.create({
-    model: visionModel,
+  const params: ChatParams = {
+    model: TEXT_MODEL,
     messages: [
       { role: "system", content: systemPrompt },
       {
@@ -310,13 +295,28 @@ REGLAS:
       },
     ],
     temperature: 0.3,
-    max_tokens: 800,
     response_format: { type: "json_object" },
+  };
+
+  logger.debug("ai.vision.start", {
+    model: TEXT_MODEL,
+    imageCount: imageMessages.length,
+    userId: meta.userId,
+    businessId: meta.businessId,
+  });
+
+  const response = await aiChatCompletion(params, {
+    operation: "extract_product_features",
+    userId: meta.userId,
+    businessId: meta.businessId,
   });
 
   const content = response.choices[0]?.message?.content;
   if (!content)
-    throw new Error(`Sin respuesta del modelo de visión (${visionModel})`);
+    throw new AIInvalidResponseError(
+      `Sin respuesta del modelo de visión (${TEXT_MODEL})`,
+      { model: TEXT_MODEL, operation: "extract_product_features" },
+    );
   const parsed = safeJsonParse(content);
 
   const variants = Array.isArray(parsed.variants)
@@ -354,15 +354,21 @@ async function generateCopyFromFeatures(
   features: VisionFeatures,
   additionalContext: string | undefined,
   availableCategories: { id: string; title: string }[] | undefined,
+  meta: { userId?: string | number; businessId?: string | number },
 ): Promise<ProductAnalysisResult> {
   const intro = pickRandom(introStyles);
   const tone = pickRandom(toneStyles);
   const closing = pickRandom(closingStyles);
   const structure = pickRandom(structureFormats);
 
-  console.log(
-    `🎨 Estilos: Apertura=${intro.name}, Tono=${tone.name}, Cierre=${closing.name}, Estructura=${structure.name}`,
-  );
+  logger.debug("ai.copy.styles_picked", {
+    intro: intro.name,
+    tone: tone.name,
+    closing: closing.name,
+    structure: structure.name,
+    userId: meta.userId,
+    businessId: meta.businessId,
+  });
 
   const isCorrection = additionalContext?.includes("CORRECCIONES DEL USUARIO");
   const hasCategories = !!availableCategories?.length;
@@ -418,19 +424,30 @@ ${JSON.stringify(features, null, 2)}${contextBlock}
 
 Generá el JSON con title, description${hasCategories ? ", options y suggestedCategory" : " y options"}.`;
 
-  const response = await groq.chat.completions.create({
-    model: TEXT_MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: isCorrection ? 0.3 : 0.6,
-    max_tokens: 1500,
-    response_format: { type: "json_object" },
-  });
+  const response = await aiChatCompletion(
+    {
+      model: TEXT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: isCorrection ? 0.3 : 0.6,
+      response_format: { type: "json_object" },
+    },
+    {
+      operation: "generate_copy",
+      userId: meta.userId,
+      businessId: meta.businessId,
+      isCorrection,
+    },
+  );
 
   const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("Sin respuesta del modelo de texto");
+  if (!content)
+    throw new AIInvalidResponseError("Sin respuesta del modelo de texto", {
+      model: TEXT_MODEL,
+      operation: "generate_copy",
+    });
   const parsed = safeJsonParse(content);
 
   const title = (typeof parsed.title === "string"
@@ -467,9 +484,12 @@ Generá el JSON con title, description${hasCategories ? ", options y suggestedCa
       name: sc.name.toLowerCase().trim(),
       confidence,
     };
-    console.log(
-      `📂 Categoría sugerida: ${suggestedCategory.name} (confianza: ${suggestedCategory.confidence})`,
-    );
+    logger.debug("ai.category.suggested", {
+      name: suggestedCategory.name,
+      confidence: suggestedCategory.confidence,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
   }
 
   return { title, description, options, suggestedCategory };
@@ -479,7 +499,18 @@ export const analyzeProductImages = async (
   imageUrls: string[],
   additionalContext?: string,
   availableCategories?: { id: string; title: string }[],
+  meta: { userId?: string | number; businessId?: string | number } = {},
 ): Promise<ProductAnalysisResult> => {
+  logger.info("ai.analyze.start", {
+    feature: "ai",
+    operation: "analyze_product_images",
+    imageCount: imageUrls.length,
+    hasContext: !!additionalContext,
+    categoryCount: availableCategories?.length ?? 0,
+    userId: meta.userId,
+    businessId: meta.businessId,
+  });
+
   try {
     const imageMessagesRaw = await Promise.all(
       imageUrls.map(async (url): Promise<ImageMessage | null> => {
@@ -491,10 +522,9 @@ export const analyzeProductImages = async (
               image_url: { url: base64Image, detail: "high" },
             };
           }
-          console.warn(
-            "❌ No se pudo descargar imagen de WhatsApp:",
-            url.substring(0, 50),
-          );
+          logger.warn("ai.image.whatsapp_failed", {
+            urlPrefix: url.substring(0, 50),
+          });
           return null;
         }
         if (isDevelopment && isLocalhostUrl(url)) {
@@ -516,49 +546,80 @@ export const analyzeProductImages = async (
     const imageMessages = imageMessagesRaw.filter(
       (msg): msg is ImageMessage => msg !== null,
     );
-    console.log(
-      `🖼️ Imágenes válidas: ${imageMessages.length}/${imageUrls.length}`,
-    );
+    logger.info("ai.analyze.images_resolved", {
+      valid: imageMessages.length,
+      total: imageUrls.length,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
     if (imageMessages.length === 0) {
-      throw new Error(
+      throw new BadRequestError(
         "No se pudieron procesar las imágenes. Por favor intenta con otras imágenes.",
+        undefined,
+        "invalid_images",
       );
     }
 
     const features = await extractProductFeatures(
       imageMessages,
       additionalContext,
+      meta,
     );
-    console.log(
-      `🔍 Features: ${features.productType} | colores: ${features.colors.join(", ") || "—"} | variants: ${features.variants.length}`,
-    );
+    logger.info("ai.analyze.features_extracted", {
+      productType: features.productType,
+      colorCount: features.colors.length,
+      variantCount: features.variants.length,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
 
-    return await generateCopyFromFeatures(
+    const result = await generateCopyFromFeatures(
       features,
       additionalContext,
       availableCategories,
+      meta,
     );
+    logger.info("ai.analyze.complete", {
+      titleLength: result.title.length,
+      descriptionLength: result.description.length,
+      optionCount: result.options.length,
+      suggestedCategory: result.suggestedCategory,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
+    return result;
   } catch (error) {
-    console.error("Error al analizar imágenes con Groq:", error);
+    logger.error("ai.analyze.failed", {
+      err: error instanceof Error ? error.message : String(error),
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
     throw error instanceof Error ? error : new Error(String(error));
   }
 };
+
 export const regenerateDescriptionWithCorrections = async (
   currentDescription: string,
   productTitle: string,
   userCorrections: string,
+  meta: { userId?: string | number; businessId?: string | number } = {},
 ): Promise<string> => {
+  logger.info("ai.regenerate.start", {
+    feature: "ai",
+    operation: "regenerate_description",
+    userId: meta.userId,
+    businessId: meta.businessId,
+    correctionsLength: userCorrections.length,
+  });
+
   try {
-    console.log(
-      `🔧 Regenerando descripción con correcciones (modelo de texto)`,
-    );
-    console.log(`📝 Correcciones: ${userCorrections}`);
-    const response = await groq.chat.completions.create({
-      model: TEXT_MODEL,
-      messages: [
-        {
-          role: "system",
-          content: `Sos copywriter de e-commerce. Tu tarea es CORREGIR una descripción existente según el usuario.
+    const response = await aiChatCompletion(
+      {
+        model: TEXT_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: `Sos copywriter de e-commerce. Tu tarea es CORREGIR una descripción existente según el usuario.
 
 REGLAS:
 1. El usuario indicó errores en la descripción.
@@ -570,10 +631,10 @@ FORMATO:
 - Devolvé SOLO la descripción corregida, sin explicaciones.
 - Mantené el formato markdown: saltos de línea reales ("\\n"), secciones con título en **negrita** (ej: **Destacados:**, **Lo que te encantará:**, **Detalles:**, **¿Por qué elegirlo?**), listas con "-".
 - No pongas todo en una sola línea.`,
-        },
-        {
-          role: "user",
-          content: `PRODUCTO: ${productTitle}
+          },
+          {
+            role: "user",
+            content: `PRODUCTO: ${productTitle}
 DESCRIPCIÓN ACTUAL (mantené este formato):
 ${currentDescription}
 
@@ -581,26 +642,50 @@ CORRECCIONES DEL USUARIO:
 ${userCorrections}
 
 Generá la descripción corregida manteniendo el formato markdown.`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 1500,
-    });
+          },
+        ],
+        temperature: 0.3,
+      },
+      {
+        operation: "regenerate_description",
+        userId: meta.userId,
+        businessId: meta.businessId,
+      },
+    );
     const correctedDescription = response.choices[0]?.message?.content?.trim();
     if (!correctedDescription) {
-      throw new Error("No se recibió respuesta del modelo");
+      throw new AIInvalidResponseError("No se recibió respuesta del modelo", {
+        model: TEXT_MODEL,
+        operation: "regenerate_description",
+      });
     }
-    console.log(`✅ Descripción corregida exitosamente`);
+    logger.info("ai.regenerate.complete", {
+      outputLength: correctedDescription.length,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
     return correctedDescription;
   } catch (error) {
-    console.error("Error regenerando descripción con correcciones:", error);
+    logger.error("ai.regenerate.failed", {
+      err: error instanceof Error ? error.message : String(error),
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
     throw error instanceof Error ? error : new Error(String(error));
   }
 };
-export { groq };
+
 export const generatePaletteFromPrompt = async (
   prompt: string,
+  meta: { userId?: string | number; businessId?: string | number } = {},
 ): Promise<{ name: string; colors: string[] }> => {
+  logger.info("ai.palette.start", {
+    feature: "ai",
+    operation: "generate_palette",
+    userId: meta.userId,
+    businessId: meta.businessId,
+  });
+
   const systemPrompt = `
 Eres un diseñador experto en color y sistemas de diseño UI.
 Tu tarea es generar una paleta de 10 colores HEX (shades 0 a 9) compatible con Mantine, basada en la descripción del usuario.
@@ -625,46 +710,73 @@ FORMATO DE SALIDA:
 Formato EXACTO:
 {"name":"...","colors":["#......","#......","#......","#......","#......","#......","#......","#......","#......","#......"]}
 `;
-  const response = await groq.chat.completions.create({
-    model: TEXT_MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Genera una paleta según: ${prompt}` },
-    ],
-    temperature: 0.7,
-    max_tokens: 400,
-  });
-  const content = response.choices[0]?.message?.content?.trim();
-  if (!content) throw new Error("No se recibió respuesta de Groq");
-  let jsonContent = content;
-  if (jsonContent.startsWith("```json")) {
-    jsonContent = jsonContent.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-  } else if (jsonContent.startsWith("```")) {
-    jsonContent = jsonContent.replace(/^```\s*/, "").replace(/\s*```$/, "");
+
+  try {
+    const response = await aiChatCompletion(
+      {
+        model: TEXT_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Genera una paleta según: ${prompt}` },
+        ],
+        temperature: 0.7,
+      },
+      {
+        operation: "generate_palette",
+        userId: meta.userId,
+        businessId: meta.businessId,
+      },
+    );
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content)
+      throw new AIInvalidResponseError("No se recibió respuesta de OpenRouter", {
+        model: TEXT_MODEL,
+        operation: "generate_palette",
+      });
+    let jsonContent = content;
+    if (jsonContent.startsWith("```json")) {
+      jsonContent = jsonContent.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+    } else if (jsonContent.startsWith("```")) {
+      jsonContent = jsonContent.replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+    const parsed = JSON.parse(jsonContent);
+    const name =
+      typeof parsed.name === "string" && parsed.name.length
+        ? parsed.name.slice(0, 30)
+        : "generated";
+    const colors = Array.isArray(parsed.colors) ? parsed.colors : [];
+    if (
+      colors.length !== 10 ||
+      !colors.every(
+        (c: any) =>
+          typeof c === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c),
+      )
+    ) {
+      throw new Error("La paleta generada no es válida");
+    }
+    logger.info("ai.palette.complete", {
+      name,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
+    return { name, colors };
+  } catch (error) {
+    logger.error("ai.palette.failed", {
+      err: error instanceof Error ? error.message : String(error),
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
+    throw error instanceof Error ? error : new Error(String(error));
   }
-  const parsed = JSON.parse(jsonContent);
-  const name =
-    typeof parsed.name === "string" && parsed.name.length
-      ? parsed.name.slice(0, 30)
-      : "generated";
-  const colors = Array.isArray(parsed.colors) ? parsed.colors : [];
-  if (
-    colors.length !== 10 ||
-    !colors.every(
-      (c: any) =>
-        typeof c === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c),
-    )
-  ) {
-    throw new Error("La paleta generada no es válida");
-  }
-  return { name, colors };
 };
+
 export const generateBusinessDescription = async (
   name: string,
   city: string,
   province: string,
   type = "e-commerce",
   description = "",
+  meta: { userId?: string | number; businessId?: string | number } = {},
 ): Promise<string> => {
   const systemPrompt = `
     Eres un especialista senior en SEO local y redacción comercial para negocios digitales.
@@ -688,21 +800,51 @@ export const generateBusinessDescription = async (
     Descripción actual: ${description || "No especificada"}
     Genera la descripción cumpliendo estrictamente las reglas indicadas.
     `;
-  const response = await groq.chat.completions.create({
-    model: TEXT_MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.8,
-    max_tokens: 500,
+
+  logger.info("ai.business_description.start", {
+    feature: "ai",
+    operation: "generate_business_description",
+    name,
+    type,
+    userId: meta.userId,
+    businessId: meta.businessId,
   });
-  logger.info("generateBusinessDescription_response", JSON.stringify(response));
-  const content = response.choices[0]?.message?.content?.trim();
-  if (!content) {
-    logger.error("generateBusinessDescription_error", JSON.stringify(response));
-    throw new Error("No se recibió respuesta de Groq");
+
+  try {
+    const response = await aiChatCompletion(
+      {
+        model: TEXT_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.8,
+      },
+      {
+        operation: "generate_business_description",
+        userId: meta.userId,
+        businessId: meta.businessId,
+      },
+    );
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) {
+      throw new AIInvalidResponseError("No se recibió respuesta de OpenRouter", {
+        model: TEXT_MODEL,
+        operation: "generate_business_description",
+      });
+    }
+    logger.info("ai.business_description.complete", {
+      outputLength: content.length,
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
+    return content;
+  } catch (error) {
+    logger.error("ai.business_description.failed", {
+      err: error instanceof Error ? error.message : String(error),
+      userId: meta.userId,
+      businessId: meta.businessId,
+    });
+    throw error instanceof Error ? error : new Error(String(error));
   }
-  logger.info("generateBusinessDescription_response", content);
-  return content;
 };

@@ -1,11 +1,8 @@
 FROM node:20-alpine
 
+RUN apk add --no-cache postgresql-client tini
+
 WORKDIR /app
-
-RUN apk add --no-cache postgresql-client
-
-ARG DIRECT_URL=postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon
-ENV DIRECT_URL=$DIRECT_URL
 
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -14,10 +11,12 @@ RUN npm ci --legacy-peer-deps --ignore-scripts && npx prisma generate
 
 COPY tsconfig.json ./
 COPY prisma.config.ts ./
-COPY src ./src
 COPY scripts ./scripts
 
-RUN mkdir -p /app/uploads /app/uploads/storage /app/logs
+RUN mkdir -p /app/uploads /app/uploads/storage /app/logs && \
+    addgroup -S app -g 1001 && \
+    adduser -S app -u 1001 -G app && \
+    chown -R app:app /app
 
 ENV NODE_ENV=development
 ENV PORT=3000
@@ -27,4 +26,7 @@ EXPOSE 3000
 COPY scripts/docker-entrypoint.dev.sh ./docker-entrypoint.dev.sh
 RUN chmod +x ./docker-entrypoint.dev.sh
 
+USER app
+
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["./docker-entrypoint.dev.sh"]

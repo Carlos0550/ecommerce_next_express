@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
-import { AppError } from "@/utils/errors";
+import { AppError, AIError } from "@/utils/errors";
 import { logger } from "@/utils/logger";
+import { loggerStorage } from "@/utils/loggerContext";
 
 interface ErrorResponse {
   ok: false;
@@ -31,33 +32,26 @@ function mapPrismaError(err: Prisma.PrismaClientKnownRequestError): {
   }
 }
 
- 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   const requestId = req.requestId;
-  const baseLog = {
-    requestId,
-    method: req.method,
-    url: req.originalUrl,
-    userId: (req as Request & { user?: { sub?: string | number; id?: string | number } }).user?.sub,
-  };
+  const userId = (req as Request & { user?: { sub?: string | number; id?: string | number } }).user?.sub;
+  const route = (req as Request & { route?: { path?: string } }).route?.path;
+  loggerStorage.set({ requestId, userId, route, method: req.method });
 
-  // CORS
   if (err instanceof Error && err.message.includes("CORS")) {
-    logger.warn("CORS rejected", { ...baseLog, message: err.message });
-    const body: ErrorResponse = {
+    logger.warn("CORS rejected", { message: err.message });
+    res.status(403).json({
       ok: false,
       error: "cors_not_allowed",
       message: isProd ? "Origen no permitido" : err.message,
       requestId,
-    };
-    res.status(403).json(body);
+    } satisfies ErrorResponse);
     return;
   }
 
-  // Zod
   if (err instanceof ZodError) {
-    logger.warn("Validation failed", { ...baseLog, issues: err.issues });
-    const body: ErrorResponse = {
+    logger.warn("Validation failed", { issues: err.issues });
+    res.status(400).json({
       ok: false,
       error: "validation_error",
       message: "Datos de entrada inválidos",
@@ -67,66 +61,79 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         code: i.code,
       })),
       requestId,
-    };
-    res.status(400).json(body);
+    } satisfies ErrorResponse);
     return;
   }
 
-  // Prisma known
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     const { status, code, message } = mapPrismaError(err);
-    logger.warn("Prisma known error", { ...baseLog, code: err.code, meta: err.meta });
-    const body: ErrorResponse = {
+    logger.warn("Prisma known error", { code: err.code, meta: err.meta });
+    res.status(status).json({
       ok: false,
       error: code,
       message,
       requestId,
-    };
-    res.status(status).json(body);
+    } satisfies ErrorResponse);
     return;
   }
 
-  // Prisma validation
   if (err instanceof Prisma.PrismaClientValidationError) {
-    logger.warn("Prisma validation error", { ...baseLog, message: err.message });
-    const body: ErrorResponse = {
+    logger.warn("Prisma validation error", { message: err.message });
+    res.status(400).json({
       ok: false,
       error: "database_validation_error",
       message: isProd ? "Datos inválidos para la base de datos" : err.message,
       requestId,
-    };
-    res.status(400).json(body);
+    } satisfies ErrorResponse);
     return;
   }
 
-  // AppError (domain)
+  if (err instanceof AIError) {
+    const logFn = err.status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
+    logFn(`AI error: ${err.code}`, {
+      code: err.code,
+      status: err.status,
+      message: err.message,
+      details: err.details,
+    });
+    res.status(err.status).json({
+      ok: false,
+      error: err.code,
+      message: err.message,
+      ...(err.details ? { details: err.details } : {}),
+      requestId,
+    } satisfies ErrorResponse);
+    return;
+  }
+
   if (err instanceof AppError) {
     const logFn = err.status >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
-    logFn("AppError", { ...baseLog, code: err.code, status: err.status, message: err.message });
-    const body: ErrorResponse = {
+    logFn(`AppError: ${err.code}`, {
+      code: err.code,
+      status: err.status,
+      message: err.message,
+      details: err.details,
+    });
+    res.status(err.status).json({
       ok: false,
       error: err.code,
       message: err.expose || !isProd ? err.message : "Error en el procesamiento",
       ...(err.details ? { details: err.details } : {}),
       requestId,
-    };
-    res.status(err.status).json(body);
+    } satisfies ErrorResponse);
     return;
   }
 
-  // Unknown
   const e = err instanceof Error ? err : new Error(typeof err === "string" ? err : "Unknown error");
   logger.error("Unhandled error", {
-    ...baseLog,
     name: e.name,
     message: e.message,
     stack: e.stack,
   });
-  const body: ErrorResponse = {
+  res.status(500).json({
     ok: false,
     error: "internal_error",
     message: isProd ? "Error interno del servidor" : e.message,
     requestId,
-  };
-  res.status(500).json(body);
+  } satisfies ErrorResponse);
 }

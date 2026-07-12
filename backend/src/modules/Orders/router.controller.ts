@@ -1,19 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
+import { errors } from "@/utils/errors";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function ensureCreatePayload(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export const ensureCreatePayload = (req: Request, _res: Response, next: NextFunction): void => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   const payment = String(req.body?.payment_method || "").trim();
   const customer = req.body?.customer || {};
-  if (items.length === 0)
-    return res.status(400).json({ ok: false, error: "missing_items" });
-  if (!payment)
-    return res.status(400).json({ ok: false, error: "missing_payment_method" });
+  if (items.length === 0) throw errors.missingFields(["items"]);
+  if (!payment) throw errors.missingFields(["payment_method"]);
   const normalizedItems = items.map((it: any) => ({
     product_id: String(it.product_id),
     quantity: Number(it.quantity) || 1,
@@ -31,7 +26,7 @@ export function ensureCreatePayload(
     city.length < 2 ||
     postal_code.length < 3
   ) {
-    return res.status(400).json({ ok: false, error: "invalid_customer_data" });
+    throw errors.invalidCustomerData();
   }
   const normalizedCustomer = {
     name,
@@ -47,4 +42,4 @@ export function ensureCreatePayload(
   (req as any).payment_method = payment;
   (req as any).customer = normalizedCustomer;
   next();
-}
+};

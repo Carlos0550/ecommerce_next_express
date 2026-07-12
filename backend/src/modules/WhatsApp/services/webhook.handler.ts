@@ -1,4 +1,5 @@
 import { prisma } from "@/config/prisma";
+import { logger } from "@/utils/logger";
 import {
   getBusiness,
   getWasenderApiKey,
@@ -16,7 +17,10 @@ class WebhookHandler {
   async handleWebhook(event: WebhookEvent, _signature?: string): Promise<void> {
     const business = await getBusiness();
     if (!business) {
-      console.warn("Webhook recibido pero no hay negocio configurado");
+      logger.warn("Webhook recibido pero no hay negocio configurado", {
+        feature: "whatsapp",
+        eventType: event.event,
+      });
       return;
     }
     const eventType = event.event;
@@ -28,10 +32,10 @@ class WebhookHandler {
         await this.handleMessageUpsertEvent(event);
         break;
       case "qr.updated":
-        console.log("QR actualizado para sesión:", event.session_id);
+        logger.debug("QR actualizado", { sessionId: event.session_id });
         break;
       default:
-        console.log("Evento no manejado:", eventType);
+        logger.debug("Evento WhatsApp no manejado", { eventType });
     }
   }
   private async handleSessionStatusEvent(
@@ -48,7 +52,9 @@ class WebhookHandler {
   ): Promise<void> {
     const messages = (event.data as any)?.messages;
     if (!messages) {
-      console.error("Estructura de mensaje inválida:", event);
+      logger.error("Estructura de mensaje WhatsApp inválida", {
+        eventType: event.event,
+      });
       return;
     }
     const key = messages.key;
@@ -60,10 +66,9 @@ class WebhookHandler {
       key?.senderPn?.split("@")[0] ||
       messages.remoteJid?.split("@")[0];
     if (!fromPhone) {
-      console.error(
-        "No se pudo obtener el número de teléfono del mensaje:",
-        event,
-      );
+      logger.error("No se pudo obtener el número de teléfono del mensaje", {
+        feature: "whatsapp",
+      });
       return;
     }
     const messageId = key?.id || messages.id;
@@ -72,27 +77,25 @@ class WebhookHandler {
         where: { id: messageId },
       });
       if (alreadyProcessed) {
-        console.log(
-          `⏭️ Mensaje ${messageId} ya procesado, ignorando duplicado`,
-        );
+        logger.debug("Mensaje WhatsApp ya procesado, ignorando duplicado", {
+          messageId,
+        });
         return;
       }
       await prisma.processedMessage
-        .create({
-          data: { id: messageId },
-        })
-        .catch(() => {}); 
+        .create({ data: { id: messageId } })
+        .catch(() => {});
     }
-    console.log(`📱 Mensaje recibido de: ${fromPhone}`);
+    logger.info("Mensaje WhatsApp recibido", { feature: "whatsapp", fromPhone });
     const msgContent = messages.message;
     if (
       msgContent?.albumMessage &&
       !msgContent?.imageMessage &&
       !msgContent?.videoMessage
     ) {
-      console.log(
-        `⏭️ Ignorando anuncio de álbum (expectedImageCount: ${msgContent.albumMessage.expectedImageCount})`,
-      );
+      logger.debug("Ignorando anuncio de álbum", {
+        expectedImageCount: msgContent.albumMessage.expectedImageCount,
+      });
       return;
     }
     const msgContextInfo = msgContent?.messageContextInfo;
@@ -104,7 +107,7 @@ class WebhookHandler {
     const apiKey = business?.whatsapp_api_key;
     const wasenderToken = hasWasenderApiKey() ? getWasenderApiKey() : undefined;
     if (isPartOfAlbum && albumParentId && msgContent?.imageMessage) {
-      console.log(`📸 Imagen parte de álbum (parent: ${albumParentId})`);
+      logger.debug("Imagen parte de álbum", { albumParentId });
       const alternativeCaption =
         messages.messageBody || msgContent.imageMessage?.caption;
       await albumService.handleAlbumImage(
@@ -127,9 +130,10 @@ class WebhookHandler {
       apiKey,
       wasenderToken,
     );
-    console.log(
-      `📝 Mensaje procesado: tipo=${messageData.type}, body="${messageData.body?.substring(0, 50)}..."`,
-    );
+    logger.debug("Mensaje WhatsApp parseado", {
+      type: messageData.type,
+      bodyPreview: messageData.body?.substring(0, 50),
+    });
     const { conversationProcessor } =
       await import("./conversation/conversation.processor");
     await conversationProcessor.processMessage(0, fromPhone, messageData);
@@ -208,10 +212,14 @@ class WebhookHandler {
         key: { id: messageId },
         message: messageData,
       });
-      console.log("✅ Media desencriptada:", decrypted.publicUrl);
+      logger.debug("Media WhatsApp desencriptada", { url: decrypted.publicUrl });
       return decrypted.publicUrl;
     } catch (error) {
-      console.error("❌ Error desencriptando media:", error);
+      logger.error("Error desencriptando media WhatsApp", {
+        feature: "whatsapp",
+        messageId,
+        err: error instanceof Error ? error.message : String(error),
+      });
       return undefined;
     }
   }

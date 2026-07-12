@@ -1,117 +1,97 @@
 import type { Request, Response } from "express";
 import type { BusinessDataRequest } from "./schemas/business.schemas";
 import businessServices from "./business.services";
-import { generateBusinessDescription } from "@/config/groq";
+import { generateBusinessDescription } from "@/config/openrouter";
 import { uploadToBucket, getPublicUrlFor } from "@/config/minio";
 import fs from "fs";
 import { logger } from "@/utils/logger";
 import { PALETTES, isValidPaletteName } from "@/templates/palettes";
+import {
+  BadRequestError,
+  errors,
+  NotFoundError,
+  StorageError,
+} from "@/utils/errors";
+
 class BusinessController {
-  async uploadBannerImage(req: Request, res: Response) {
-    try {
-      const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) {
-        return res
-          .status(400)
-          .json({ error: "No se proporcionó ningún archivo" });
-      }
-      const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
-      const timestamp = Date.now();
-      const uniqueName = `banner-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      const uploaded = await uploadToBucket(
-        buffer,
-        uniqueName,
-        "business",
-        "banner",
-        file.mimetype,
-      );
-      if (!uploaded.path) {
-        return res.status(500).json({ error: "Error al subir la imagen" });
-      }
-      const publicUrl = getPublicUrlFor("business", uploaded.path);
-      return res.json({ success: true, url: publicUrl });
-    } catch (error) {
-      logger.error("uploadBannerImage_error", error);
-      return res.status(500).json({ error: "Error al procesar la imagen" });
+  uploadBannerImage = async (req: Request, _res: Response): Promise<unknown> => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) throw new BadRequestError("No se proporcionó ningún archivo", undefined, "missing_file");
+    const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+    const timestamp = Date.now();
+    const uniqueName = `banner-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const uploaded = await uploadToBucket(
+      buffer,
+      uniqueName,
+      "business",
+      "banner",
+      file.mimetype,
+    );
+    if (!uploaded.path) throw new StorageError("Error al subir la imagen", "image_upload_failed");
+    const publicUrl = getPublicUrlFor("business", uploaded.path);
+    return { success: true, url: publicUrl };
+  };
+
+  uploadImage = async (req: Request, _res: Response): Promise<unknown> => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) throw new BadRequestError("No se proporcionó ningún archivo", undefined, "missing_file");
+    const fieldRaw =
+      (req.query.field as string) || (req.body)?.field || "business_image";
+    let field: "business_image" | "favicon" | "hero_image" = "business_image";
+    if (fieldRaw === "favicon") field = "favicon";
+    if (fieldRaw === "hero_image") field = "hero_image";
+    const idParam = (req.query.id as string) || (req.body)?.id;
+    const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+    const timestamp = Date.now();
+    const uniqueName = `business-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const uploaded = await uploadToBucket(
+      buffer,
+      uniqueName,
+      "business",
+      "images",
+      file.mimetype,
+    );
+    if (!uploaded.path) throw new StorageError("Error al subir la imagen", "image_upload_failed");
+    const publicUrl = getPublicUrlFor("business", uploaded.path);
+    let id = idParam;
+    if (!id) {
+      const current = await businessServices.getBusiness();
+      id = current?.id;
     }
-  }
-  async uploadImage(req: Request, res: Response) {
-    try {
-      const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) {
-        return res
-          .status(400)
-          .json({ error: "No se proporcionó ningún archivo" });
-      }
-      const fieldRaw =
-        (req.query.field as string) ||
-        (req.body)?.field ||
-        "business_image";
-      let field: "business_image" | "favicon" | "hero_image" = "business_image";
-      if (fieldRaw === "favicon") field = "favicon";
-      if (fieldRaw === "hero_image") field = "hero_image";
-      const idParam = (req.query.id as string) || (req.body)?.id;
-      const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
-      const timestamp = Date.now();
-      const uniqueName = `business-${timestamp}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-      const uploaded = await uploadToBucket(
-        buffer,
-        uniqueName,
-        "business",
-        "images",
-        file.mimetype,
-      );
-      if (!uploaded.path) {
-        return res.status(500).json({ error: "Error al subir la imagen" });
-      }
-      let id = idParam;
-      if (!id) {
-        const current = await businessServices.getBusiness();
-        id = current?.id;
-      }
-      const publicUrl = getPublicUrlFor("business", uploaded.path);
-      if (id) {
-        await businessServices.updateImageField(id, field as any, publicUrl);
-      }
-      return res.json({
-        success: true,
-        url: publicUrl,
-        field,
-        id,
-      });
-    } catch (error) {
-      logger.error("uploadImage_error", error);
-      return res.status(500).json({ error: "Error al procesar la imagen" });
+    if (id) {
+      await businessServices.updateImageField(id, field, publicUrl);
     }
-  }
-  async generateDescription(req: Request, res: Response) {
-    try {
-      const { name, city, province, type, actualDescription } = req.body;
-      logger.info("generateDescription_body", req.body);
-      if (!name || !city) {
-        return res
-          .status(400)
-          .json({ error: "Nombre y ciudad son requeridos" });
-      }
-      let finalType: string | undefined = type;
-      if (!finalType) {
-        const current = await businessServices.getBusiness();
-        finalType = (current)?.type || undefined;
-      }
-      const description = await generateBusinessDescription(
-        name,
-        city,
-        province,
-        finalType,
-        actualDescription,
-      );
-      return res.json({ description });
-    } catch (error) {
-      logger.error("generateDescription_error", error);
-      return res.status(500).json({ error: "Error generando descripción" });
+    return { success: true, url: publicUrl, field, id };
+  };
+
+  generateDescription = async (req: Request, _res: Response): Promise<unknown> => {
+    const { name, city, province, type, actualDescription } = req.body as {
+      name?: string;
+      city?: string;
+      province?: string;
+      type?: string;
+      actualDescription?: string;
+    };
+    logger.debug("generateDescription_body", req.body);
+    if (!name || !city) throw errors.missingFields(["name", "city"]);
+    let finalType: string | undefined = type;
+    if (!finalType) {
+      const current = await businessServices.getBusiness();
+      finalType = (current)?.type || undefined;
     }
-  }
-  async createBusiness(req: Request, res: Response) {
+    const userId = (req as Request & { user?: { sub?: string | number } }).user?.sub;
+    const description = await generateBusinessDescription(
+      name,
+      city,
+      province ?? "",
+      finalType,
+      actualDescription,
+      { userId },
+    );
+    return { description };
+  };
+
+  createBusiness = async (req: Request, _res: Response): Promise<unknown> => {
     const payload = req.body as BusinessDataRequest;
     if (
       !payload.name ||
@@ -120,73 +100,49 @@ class BusinessController {
       !payload.city ||
       !payload.state
     ) {
-      return res.status(400).json({
-        error:
-          "Todos los campos son requeridos: Nombre del negocio, email, teléfono, ciudad y estado/provincia",
-      });
+      throw errors.missingFields(["name", "email", "phone", "city", "state"]);
     }
-    const business = await businessServices.createBusiness(payload);
-    res.status(201).json(business);
-  }
-  async updateBusiness(req: Request, res: Response) {
-    try {
-      const { id } = req.params as { id: string };
-      const payload = req.body as BusinessDataRequest;
-      if (
-        !payload.name ||
-        !payload.email ||
-        !payload.phone ||
-        !payload.city ||
-        !payload.state
-      ) {
-        return res.status(400).json({
-          error:
-            "Todos los campos son requeridos: Nombre del negocio, email, teléfono, ciudad y estado/provincia",
-        });
-      }
-      const business = await businessServices.updateBusiness(id, payload);
-      return res.status(200).json(business);
-    } catch (error) {
-      logger.error("updateBusiness_error", error);
-      if (error instanceof Error && error.message === "BUSINESS_NOT_FOUND") {
-        return res.status(404).json({ error: "Negocio no encontrado" });
-      }
-      return res
-        .status(500)
-        .json({ error: "Error al actualizar los datos del negocio" });
+    return businessServices.createBusiness(payload);
+  };
+
+  updateBusiness = async (req: Request, _res: Response): Promise<unknown> => {
+    const { id } = req.params as { id: string };
+    const payload = req.body as BusinessDataRequest;
+    if (
+      !payload.name ||
+      !payload.email ||
+      !payload.phone ||
+      !payload.city ||
+      !payload.state
+    ) {
+      throw errors.missingFields(["name", "email", "phone", "city", "state"]);
     }
-  }
-  async getBusiness(_req: Request, res: Response) {
-    try {
-      const data = await businessServices.getBusiness();
-      if (!data) {
-        return res.status(404).json({ error: "Negocio no configurado" });
-      }
-      return res.status(200).json(data);
-    } catch {
-      return res
-        .status(500)
-        .json({ error: "Error al obtener la información del negocio" });
-    }
-  }
-  async getActivePalette(_req: Request, res: Response) {
+    return businessServices.updateBusiness(id, payload);
+  };
+
+  getBusiness = async (_req: Request, _res: Response): Promise<unknown> => {
+    const data = await businessServices.getBusiness();
+    if (!data) throw new NotFoundError("Negocio no configurado", "business_not_configured");
+    return data;
+  };
+
+  getActivePalette = async (_req: Request, _res: Response): Promise<unknown> => {
     const palette = await businessServices.getActivePalette();
-    return res.status(200).json({ palette });
-  }
-  async setActivePalette(req: Request, res: Response) {
-    try {
-      const { palette } = req.body as { palette?: string };
-      if (!palette || !isValidPaletteName(palette)) {
-        return res.status(400).json({
-          error: `Paleta inválida. Valores: ${Object.keys(PALETTES).join(" | ")}`,
-        });
-      }
-      await businessServices.setActivePalette(palette);
-      return res.status(200).json({ palette });
-    } catch (error) {
-      logger.error("setActivePalette_error", error);
-      return res.status(500).json({ error: "Error al actualizar la paleta" });
+    return { palette };
+  };
+
+  setActivePalette = async (req: Request, _res: Response): Promise<unknown> => {
+    const { palette } = req.body as { palette?: string };
+    if (!palette || !isValidPaletteName(palette)) {
+      throw new BadRequestError(
+        `Paleta inválida. Valores: ${Object.keys(PALETTES).join(" | ")}`,
+        { allowed: Object.keys(PALETTES) },
+        "invalid_palette",
+      );
     }
-  }
+    await businessServices.setActivePalette(palette);
+    return { palette };
+  };
 }
+
 export default new BusinessController();

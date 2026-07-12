@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.up.railway.app", pathname: "/**" },
     ],
   },
+  output: "standalone",
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns", "recharts"],
   },

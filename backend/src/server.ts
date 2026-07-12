@@ -23,7 +23,7 @@ import EgresosRouter from "@/modules/Egresos/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import swaggerUi from "swagger-ui-express";
 import spec from "./docs/openapi";
-import morgan from "morgan";
+import { httpLogger } from "@/middlewares/httpLogger";
 import path from "path";
 import fs from "fs";
 import { logger } from "@/utils/logger";
@@ -153,13 +153,7 @@ app.use(
     },
   }),
 );
-app.use(
-  morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
-    stream: {
-      write: (msg) => logger.http(msg.trim()),
-    },
-  }),
-);
+app.use(httpLogger);
 app.get(
   "/api/health",
   asyncHandler(async (_req, res) => {

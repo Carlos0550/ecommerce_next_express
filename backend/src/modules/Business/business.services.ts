@@ -1,4 +1,5 @@
 import { prisma } from "@/config/prisma";
+import { NotFoundError } from "@/utils/errors";
 import type {
   AdminLayoutConfig,
   BannerConfig,
@@ -128,7 +129,7 @@ class BusinessServices {
         include: { bankData: true },
       });
       if (!existing) {
-        throw new Error("BUSINESS_NOT_FOUND");
+        throw new NotFoundError("Negocio no encontrado", "business_not_found");
       }
       const updated = await prisma.businessData.update({
         where: { id },
@@ -217,7 +218,7 @@ class BusinessServices {
       select: { id: true },
       orderBy: { id: "asc" },
     });
-    if (!business) throw new Error("BUSINESS_NOT_FOUND");
+    if (!business) throw new NotFoundError("Negocio no encontrado", "business_not_found");
     await prisma.businessData.update({
       where: { id: business.id },
       data: { active_palette: palette },
