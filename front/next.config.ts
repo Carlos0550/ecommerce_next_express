@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      { protocol: "http", hostname: "localhost", port: "3001", pathname: "/api/storage/**" },
       { protocol: "http", hostname: "localhost", port: "9000", pathname: "/images/**" },
       { protocol: "http", hostname: "127.0.0.1", port: "9000", pathname: "/images/**" },
       { protocol: "http", hostname: "192.168.18.6", port: "9000", pathname: "/images/**" },
@@ -17,6 +16,8 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
       { protocol: "https", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
     ],
+    dangerouslyAllowLocalIP: true,
+    qualities: [75, 90],
   },
   output: "standalone",
   experimental: {
