@@ -31,6 +31,12 @@ echo "✅ PostgreSQL está listo"
 export DATABASE_URL="${DATABASE_URL:-postgresql://cinnamon:cinnamon_dev_password@postgres:5432/cinnamon}"
 export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
 
+# Escribir .env para que dotenv (cargado por prisma.config.ts) lo lea de forma fiable
+cat > /app/.env <<EOF
+DATABASE_URL=${DATABASE_URL}
+DIRECT_URL=${DIRECT_URL}
+EOF
+
 # Ejecutar migraciones
 echo "📦 Ejecutando migraciones de Prisma..."
 # Usar DATABASE_URL directamente para prisma migrate deploy
