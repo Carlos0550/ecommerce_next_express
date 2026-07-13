@@ -39,8 +39,8 @@ EOF
 
 # Ejecutar migraciones
 echo "📦 Ejecutando migraciones de Prisma..."
-# Usar DATABASE_URL directamente para prisma migrate deploy
-# ya que prisma.config.ts no es reconocido por migrate deploy
+# prisma.config.ts se carga automáticamente y provee datasource.url
+# desde el .env que escribimos arriba
 npx prisma migrate deploy --schema=./prisma/schema.prisma
 
 if [ $? -eq 0 ]; then

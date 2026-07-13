@@ -37,6 +37,7 @@ COPY --from=builder --chown=app:app /app/package*.json ./
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=builder --chown=app:app /app/prisma ./prisma
+COPY --from=builder --chown=app:app /app/prisma.config.ts ./
 COPY --from=builder --chown=app:app /app/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN mkdir -p /app/uploads /app/uploads/storage /app/logs && \
