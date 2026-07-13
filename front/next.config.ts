@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.up.railway.app", pathname: "/**" },
       { protocol: "http", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
       { protocol: "https", hostname: "**.sslip.io", port: "9010", pathname: "/images/**" },
+      { protocol: "https", hostname: "s3.cinnamon-makeup.com", pathname: "/images/**" },
     ],
     dangerouslyAllowLocalIP: true,
     qualities: [75, 90],
