@@ -29,14 +29,19 @@ function productImages(p: Product): string[] {
     .filter((u): u is string => !!u);
 }
 
+type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 type ProductsResponse = {
   ok: boolean;
-  products: Product[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+  products?: Product[];
+  pagination?: Pagination;
+  data?: {
+    products?: Product[];
+    pagination?: Pagination;
   };
 };
 
@@ -91,11 +96,12 @@ export default function AdminProductsPage() {
       const { data } = await api.get<ProductsResponse>(
         `/products?${params.toString()}`
       );
-      const list = data.products ?? [];
+      const envelope = data.data ?? data;
+      const list = envelope.products ?? [];
       const filtered = trashView
         ? list
         : list.filter((p) => p.state !== "deleted");
-      return { products: filtered, pagination: data.pagination };
+      return { products: filtered, pagination: envelope.pagination };
     },
   });
 
@@ -194,7 +200,8 @@ export default function AdminProductsPage() {
       const { data } = await api.get<ProductsResponse>(
         `/products?page=1&limit=10000`
       );
-      const ids = (data.products ?? []).map((p) => String(p.id));
+      const envelope = data.data ?? data;
+      const ids = (envelope.products ?? []).map((p) => String(p.id));
       if (ids.length === 0) return 0;
       await Promise.all(
         ids.map((id) => api.patch(`/products/status/${id}/deleted`))

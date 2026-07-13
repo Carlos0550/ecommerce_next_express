@@ -147,6 +147,19 @@ export async function deleteFromBucket(
 export function getImageUrl(filePath: string): string {
   return `${getBaseUrl()}/${MINIO_BUCKET}/${filePath}`;
 }
+export function rewriteStorageUrl(stored: string | null | undefined): string | null {
+  if (!stored || typeof stored !== "string") return stored ?? null;
+  try {
+    const u = new URL(stored);
+    return `${getBaseUrl()}${u.pathname}`;
+  } catch {
+    const trimmed = stored.replace(/^\/+/, "");
+    const withBucket = trimmed.toLowerCase().startsWith(`${MINIO_BUCKET.toLowerCase()}/`)
+      ? trimmed
+      : `${MINIO_BUCKET}/${trimmed}`;
+    return `${getBaseUrl()}/${withBucket}`;
+  }
+}
 export function getPublicUrlFor(bucket: string, filePath: string): string {
   return `${getBaseUrl()}/${bucket}/${filePath}`;
 }

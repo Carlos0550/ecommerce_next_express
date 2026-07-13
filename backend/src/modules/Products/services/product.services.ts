@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { uploadImage, deleteImage } from "@/config/minio";
+import { uploadImage, deleteImage, rewriteStorageUrl } from "@/config/minio";
 import fs from "fs";
 import { prisma } from "@/config/prisma";
 import { CategoryStatus, ProductState } from "@prisma/client";
@@ -189,6 +189,7 @@ class ProductServices {
     };
     const categories_with_status = categories.map((c) => ({
       ...c,
+      image: rewriteStorageUrl(c.image),
       status: status_to_number[c.status],
     }));
     return { categories: categories_with_status };
@@ -225,8 +226,19 @@ class ProductServices {
       }),
     ]);
     const totalPages = Math.ceil(totalProducts / limit);
+    const productsRemapped = products.map((p) => ({
+      ...p,
+      images: Array.isArray(p.images)
+        ? (p.images as unknown[]).map((u) =>
+            typeof u === "string" ? rewriteStorageUrl(u) : u,
+          )
+        : p.images,
+      category: p.category
+        ? { ...p.category, image: rewriteStorageUrl(p.category.image) }
+        : p.category,
+    }));
     return {
-      products,
+      products: productsRemapped,
       pagination: {
         total: totalProducts,
         page,
@@ -505,7 +517,11 @@ class ProductServices {
     const categories = await prisma.categories.findMany({
       where: { status: CategoryStatus.active },
     });
-    return { categories };
+    const remapped = categories.map((c) => ({
+      ...c,
+      image: rewriteStorageUrl(c.image),
+    }));
+    return { categories: remapped };
   }
 
   async getPublicProducts(req: Request, _res: Response) {
@@ -545,8 +561,19 @@ class ProductServices {
       }),
     ]);
     const totalPages = Math.ceil(totalProducts / limit) || 1;
+    const productsRemapped = dbProducts.map((p) => ({
+      ...p,
+      images: Array.isArray(p.images)
+        ? (p.images as unknown[]).map((u) =>
+            typeof u === "string" ? rewriteStorageUrl(u) : u,
+          )
+        : p.images,
+      category: p.category
+        ? { ...p.category, image: rewriteStorageUrl(p.category.image) }
+        : p.category,
+    }));
     return {
-      products: dbProducts,
+      products: productsRemapped,
       pagination: {
         total: totalProducts,
         page,
@@ -572,7 +599,18 @@ class ProductServices {
     ) {
       throw errors.productNotFound();
     }
-    return { product };
+    const remapped = {
+      ...product,
+      images: Array.isArray(product.images)
+        ? (product.images as unknown[]).map((u) =>
+            typeof u === "string" ? rewriteStorageUrl(u) : u,
+          )
+        : product.images,
+      category: product.category
+        ? { ...product.category, image: rewriteStorageUrl(product.category.image) }
+        : product.category,
+    };
+    return { product: remapped };
   }
 }
 
