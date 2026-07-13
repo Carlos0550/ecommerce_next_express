@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
     "Productos seleccionados con identidad propia.";
   const heroRaw = business?.hero_image?.trim() || business?.business_image?.trim();
   const ogImage = heroRaw ? storageUrl(heroRaw) : undefined;
-  const iconRaw = business?.business_image?.trim();
+  const iconRaw = business?.favicon?.trim() || business?.business_image?.trim();
   const iconSrc = iconRaw ? storageUrl(iconRaw) : undefined;
   return {
     metadataBase: new URL(
@@ -53,7 +53,11 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       images: ogImage ? [{ url: ogImage }] : undefined,
     },
-    icons: iconSrc ? { icon: iconSrc } : undefined,
+    icons: iconSrc
+      ? {
+          icon: [{ url: iconSrc, type: "image/png" }],
+        }
+      : undefined,
   };
 }
 

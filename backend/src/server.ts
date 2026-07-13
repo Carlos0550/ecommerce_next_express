@@ -20,6 +20,7 @@ import BusinessRouter from "@/modules/Business/router";
 import FaqRouter from "@/modules/FAQ/routes";
 import WhatsAppRouter from "@/modules/WhatsApp/routes";
 import EgresosRouter from "@/modules/Egresos/routes";
+import CuentaCorrienteRouter from "@/modules/CuentaCorriente/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
 import { initTempUploadsCleanupJob } from "./jobs/cleanupTempUploads";
 import { initPurgeDeletedProductsJob } from "./jobs/purgeDeletedProducts";
@@ -184,6 +185,7 @@ app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
 app.use("/api/egresos", EgresosRouter);
+app.use("/api/cuentas-corrientes", CuentaCorrienteRouter);
 app.get(
   /^\/api\/storage\/([^/]+)\/(.+)$/,
   asyncHandler(async (req, res) => {

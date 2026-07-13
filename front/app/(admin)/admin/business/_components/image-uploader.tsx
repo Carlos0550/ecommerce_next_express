@@ -11,7 +11,6 @@ type Props = {
   hint?: string;
   url?: string;
   busy?: boolean;
-  maxBytes?: number;
   recommended?: string;
   onPick: (file: File) => void;
   onRemove?: () => void;
@@ -26,7 +25,6 @@ export function ImageUploader({
   hint,
   url,
   busy,
-  maxBytes = 4 * 1024 * 1024,
   recommended,
   onPick,
   onRemove,
@@ -48,11 +46,6 @@ export function ImageUploader({
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setError("Tiene que ser una imagen.");
-      return;
-    }
-    if (file.size > maxBytes) {
-      const mb = Math.round(maxBytes / 1024 / 1024);
-      setError(`Máximo ${mb}MB.`);
       return;
     }
     if (draftUrl) URL.revokeObjectURL(draftUrl);

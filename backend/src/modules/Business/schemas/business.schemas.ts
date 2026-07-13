@@ -36,4 +36,5 @@ export interface BusinessDataRequest {
   hero_image?: string;
   banner_config?: BannerConfig | null;
   bankData: BusinessBankData[];
+  cc_vencimiento_dias?: number;
 }

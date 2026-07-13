@@ -93,6 +93,9 @@ export function IdentidadSection({
       if (res.url) onChange({ [res.field]: res.url } as Partial<Business>);
       toast.success("Imagen subida");
       qc.invalidateQueries({ queryKey: ["business"] });
+      if (res.field === "favicon" || res.field === "business_image") {
+        fetch("/api/revalidate-business", { method: "POST" }).catch(() => {});
+      }
     },
     onError: (err) => toast.error(unwrapError(err)),
   });
@@ -207,9 +210,8 @@ export function IdentidadSection({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <ImageUploader
             label="Logo"
-            hint="PNG/SVG · máx 2MB"
+            hint="PNG/SVG"
             recommended="Recomendado 512×512"
-            maxBytes={2 * 1024 * 1024}
             url={data.business_image}
             busy={uploadMut.isPending || removeImageMut.isPending}
             onPick={(file) =>
@@ -219,9 +221,8 @@ export function IdentidadSection({
           />
           <ImageUploader
             label="Favicon"
-            hint="ICO/PNG · máx 1MB"
+            hint="ICO/PNG"
             recommended="Recomendado 64×64"
-            maxBytes={1 * 1024 * 1024}
             url={data.favicon}
             busy={uploadMut.isPending || removeImageMut.isPending}
             onPick={(file) => uploadMut.mutate({ file, field: "favicon" })}
@@ -229,9 +230,8 @@ export function IdentidadSection({
           />
           <ImageUploader
             label="Portada"
-            hint="JPG/PNG · máx 4MB"
+            hint="JPG/PNG"
             recommended="Recomendado 1200×630"
-            maxBytes={4 * 1024 * 1024}
             url={data.hero_image}
             busy={uploadMut.isPending || removeImageMut.isPending}
             onPick={(file) => uploadMut.mutate({ file, field: "hero_image" })}

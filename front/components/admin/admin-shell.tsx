@@ -17,6 +17,7 @@ const PRINCIPAL: NavItem[] = [
   { href: "/admin/products", label: "Productos", icon: "box" },
   { href: "/admin/categories", label: "Categorías", icon: "tag" },
   { href: "/admin/egresos", label: "Egresos", icon: "wallet" },
+  { href: "/admin/cuentas-corrientes", label: "Cuentas corrientes", icon: "receipt" },
   { href: "/admin/users", label: "Clientes", icon: "users" },
 ];
 

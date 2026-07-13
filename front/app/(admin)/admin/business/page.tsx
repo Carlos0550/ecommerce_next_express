@@ -12,6 +12,7 @@ import { AparienciaSection } from "./_sections/apariencia-section";
 import { PagosSection } from "./_sections/pagos-section";
 import { FaqSection } from "./_sections/faq-section";
 import { WhatsappSection } from "./_sections/whatsapp-section";
+import { CuentasCorrientesSection } from "./_sections/cuentas-corrientes-section";
 import { DEFAULT_BANNER } from "@/components/admin/banner-editor";
 import type { Business } from "@/lib/types";
 
@@ -82,6 +83,7 @@ export default function AdminBusinessPage() {
     identidad: isDirty(form, initial, IDENTIDAD_KEYS),
     apariencia: isDirty(form, initial, APARIENCIA_KEYS),
     pagos: isDirty(form, initial, PAGOS_KEYS),
+    cc: isDirty(form, initial, CC_KEYS),
   };
 
   return (
@@ -106,6 +108,7 @@ export default function AdminBusinessPage() {
             <DirtyTab value="identidad" label="Identidad" dirty={dirtyFlags.identidad} />
             <DirtyTab value="apariencia" label="Apariencia" dirty={dirtyFlags.apariencia} />
             <DirtyTab value="pagos" label="Pagos" dirty={dirtyFlags.pagos} />
+            <DirtyTab value="cc" label="Cuentas corrientes" dirty={dirtyFlags.cc} />
             <DirtyTab value="whatsapp" label="WhatsApp" dirty={false} />
             <DirtyTab value="faq" label="FAQ" dirty={false} />
           </TabsList>
@@ -134,6 +137,17 @@ export default function AdminBusinessPage() {
 
           <TabsContent value="pagos" className="mt-4 outline-none">
             <PagosSection
+              data={form}
+              initial={initial}
+              onChange={patch}
+              onSaved={() => saveMut.mutate()}
+              saving={saving}
+              setSaving={setSaving}
+            />
+          </TabsContent>
+
+          <TabsContent value="cc" className="mt-4 outline-none">
+            <CuentasCorrientesSection
               data={form}
               initial={initial}
               onChange={patch}
@@ -173,6 +187,8 @@ const IDENTIDAD_KEYS: (keyof Business)[] = [
 const APARIENCIA_KEYS: (keyof Business)[] = ["banner_config"];
 
 const PAGOS_KEYS: (keyof Business)[] = ["bankData"];
+
+const CC_KEYS: (keyof Business)[] = ["cc_vencimiento_dias"];
 
 function isDirty(
   data: Business | null,

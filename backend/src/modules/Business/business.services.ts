@@ -85,6 +85,11 @@ class BusinessServices {
       banner_config:
         (sanitizeBannerConfig(payload.banner_config) as unknown as Prisma.InputJsonValue) ??
         undefined,
+      cc_vencimiento_dias:
+        Number.isFinite(payload.cc_vencimiento_dias) &&
+        (payload.cc_vencimiento_dias ?? 0) > 0
+          ? Math.floor(Number(payload.cc_vencimiento_dias))
+          : 30,
       bankData:
         Array.isArray(payload.bankData) && payload.bankData.length > 0
           ? {
@@ -133,6 +138,11 @@ class BusinessServices {
               : payload.banner_config === null
                 ? Prisma.DbNull
                 : (sanitizeBannerConfig(payload.banner_config) as unknown as Prisma.InputJsonValue),
+          cc_vencimiento_dias:
+            Number.isFinite(payload.cc_vencimiento_dias) &&
+            (payload.cc_vencimiento_dias ?? 0) > 0
+              ? Math.floor(Number(payload.cc_vencimiento_dias))
+              : 30,
           bankData:
             Array.isArray(payload.bankData) && payload.bankData.length > 0
               ? {

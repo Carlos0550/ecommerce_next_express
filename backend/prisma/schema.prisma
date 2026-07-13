@@ -215,6 +215,7 @@ model BusinessData {
   hero_image                 String?
   active_palette             String             @default("kuromi")
   banner_config              Json?
+  cc_vencimiento_dias        Int                @default(30)
   bankData                   BusinessBankData[]
 }
 
@@ -334,4 +335,92 @@ model Egresos {
   @@index([userId])
   @@index([deleted_at])
   @@index([payment_method, egreso_date])
+}
+
+enum CicloEstado {
+  ABIERTO
+  CERRADO
+}
+
+model ClienteCC {
+  id         String           @id @default(cuid())
+  nombre     String
+  telefono   String
+  email      String?
+  direccion  String?
+  notas      String?
+  is_active  Boolean          @default(true)
+  deleted_at DateTime?
+  created_at DateTime         @default(now()) @db.Timestamptz(3)
+  updated_at DateTime         @updatedAt @db.Timestamptz(3)
+  cuenta     CuentaCorriente?
+
+  @@unique([nombre, telefono])
+  @@index([telefono])
+  @@index([is_active, deleted_at])
+  @@index([created_at])
+}
+
+model CuentaCorriente {
+  id         String    @id @default(cuid())
+  clienteId  String    @unique
+  created_at DateTime  @default(now()) @db.Timestamptz(3)
+  cliente    ClienteCC @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  ciclos     Ciclo[]
+
+  @@index([clienteId])
+}
+
+model Ciclo {
+  id             String          @id @default(cuid())
+  cuentaId       String
+  estado         CicloEstado     @default(ABIERTO)
+  fecha_apertura DateTime        @default(now()) @db.Timestamptz(3)
+  fecha_cierre   DateTime?       @db.Timestamptz(3)
+  created_at     DateTime        @default(now()) @db.Timestamptz(3)
+  cuenta         CuentaCorriente @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  deudas         DeudaCC[]
+  pagos          PagoCC[]
+
+  @@index([cuentaId, estado])
+  @@index([fecha_apertura])
+}
+
+model DeudaCC {
+  id          String    @id @default(cuid())
+  cicloId     String
+  cantidad    Int       @default(1)
+  titulo      String
+  precio_unit Decimal   @db.Decimal(12, 2)
+  total       Decimal   @db.Decimal(12, 2)
+  fecha       DateTime  @db.Date
+  notas       String?
+  is_active   Boolean   @default(true)
+  deleted_at  DateTime?
+  created_at  DateTime  @default(now()) @db.Timestamptz(3)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(3)
+  ciclo       Ciclo     @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+
+  @@index([cicloId])
+  @@index([fecha])
+  @@index([deleted_at])
+}
+
+model PagoCC {
+  id             String        @id @default(cuid())
+  cicloId        String
+  monto          Decimal       @db.Decimal(12, 2)
+  payment_method PaymentMethod
+  fecha          DateTime      @db.Date
+  notas          String?
+  is_active      Boolean       @default(true)
+  deleted_at     DateTime?
+  created_at     DateTime      @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime      @updatedAt @db.Timestamptz(3)
+  ciclo          Ciclo         @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+
+  @@index([cicloId])
+  @@index([fecha])
+  @@index([payment_method, fecha])
+  @@index([deleted_at])
 }
