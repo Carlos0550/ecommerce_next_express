@@ -1,6 +1,8 @@
 import { cache } from "react";
-import { API_URL } from "@/lib/api";
 import type { Business, Category, Product, FAQ } from "@/lib/types";
+
+const SSR_API_URL =
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://backend:3000/api";
 
 function normalizeProduct<T extends { images?: unknown }>(p: T): T {
   const raw = (p as any)?.images;
@@ -12,9 +14,11 @@ function normalizeProduct<T extends { images?: unknown }>(p: T): T {
   return p;
 }
 
-async function getJson<T>(path: string): Promise<T | null> {
+async function getJson<T>(path: string, opts?: { tags?: string[]; revalidate?: number }): Promise<T | null> {
   try {
-    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${SSR_API_URL}${path}`, {
+      next: { revalidate: opts?.revalidate ?? 60, tags: opts?.tags },
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -23,7 +27,7 @@ async function getJson<T>(path: string): Promise<T | null> {
 }
 
 export const fetchBusiness = cache(async (): Promise<Business | null> => {
-  const data = await getJson<any>("/business/public");
+  const data = await getJson<any>("/business/public", { tags: ["business"] });
   if (!data) return null;
   return (data.business ?? data.data ?? data) as Business;
 });

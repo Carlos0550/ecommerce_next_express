@@ -66,7 +66,10 @@ export function validateEnvironmentVariables() {
     process.env.MINIO_SECRET_KEY,
   );
   const MINIO_BUCKET = validateEnvVar("MINIO_BUCKET", process.env.MINIO_BUCKET);
-  const GROQ_API_KEY = validateEnvVar("GROQ_API_KEY", process.env.GROQ_API_KEY);
+  const OPENROUTER_API_KEY = validateEnvVar(
+    "OPENROUTER_API_KEY",
+    process.env.OPENROUTER_API_KEY,
+  );
   const NODE_ENV = validateEnvVar("NODE_ENV", process.env.NODE_ENV);
   return {
     DATABASE_URL,
@@ -85,7 +88,7 @@ export function validateEnvironmentVariables() {
     MINIO_ACCESS_KEY,
     MINIO_SECRET_KEY,
     MINIO_BUCKET,
-    GROQ_API_KEY,
+    OPENROUTER_API_KEY,
     NODE_ENV,
   };
 }

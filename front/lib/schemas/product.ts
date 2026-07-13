@@ -14,7 +14,7 @@ export const ProductFormSchema = z.object({
       (v) => Number.isFinite(v) && Number.isInteger(v) && v >= 0,
       "Stock inválido"
     ),
-  category_id: z.string().min(1, "Elegí una categoría"),
+  category_id: z.string().optional(),
   sku: z.string().optional(),
 });
 

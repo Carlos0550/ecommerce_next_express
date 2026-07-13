@@ -22,12 +22,6 @@ export interface BannerConfig {
   custom_images?: string[];
 }
 
-export type AdminLayoutMode = "legacy" | "modern";
-
-export interface AdminLayoutConfig {
-  sales?: AdminLayoutMode;
-}
-
 export interface BusinessDataRequest {
   name: string;
   email: string;
@@ -41,6 +35,6 @@ export interface BusinessDataRequest {
   favicon?: string;
   hero_image?: string;
   banner_config?: BannerConfig | null;
-  admin_layout_config?: AdminLayoutConfig | null;
   bankData: BusinessBankData[];
+  cc_vencimiento_dias?: number;
 }

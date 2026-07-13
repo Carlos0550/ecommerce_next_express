@@ -29,9 +29,11 @@ class ConversationProcessor {
       const mediaUrl = messageData.media_url;
       if (messageData.type === 'audio' && messageData.media_url) {
         messageType = 'audio';
-        const transcription = await this.handleAudioMessage(phone, messageData.media_url);
-        if (!transcription) return;
-        textContent = transcription;
+        await messageService.sendMessage(
+          phone,
+          '🎤 Por el momento no puedo procesar audios. Por favor enviá tu mensaje como texto. ¡Gracias!'
+        );
+        return;
       }
       let session = await this.getOrCreateSession(userId, phone, textContent, messageData.type);
       if (isGreeting(textContent) && messageData.type !== 'image' && !session.greetingTone) {
@@ -137,20 +139,6 @@ class ConversationProcessor {
       return false;
     }
     return true;
-  }
-  private async handleAudioMessage(phone: string, audioUrl: string): Promise<string | null> {
-    try {
-      setImmediate(async () => {
-        await messageService.sendMessage(phone, '🎤 Escuchando tu audio...');
-      });
-      return await aiProcessor.transcribeAudio(audioUrl);
-    } catch {
-      await messageService.sendMessage(
-        phone,
-        '❌ No pude entender el audio. Por favor escribe el mensaje o intenta de nuevo.'
-      );
-      return null;
-    }
   }
   private async getOrCreateSession(
     userId: number,

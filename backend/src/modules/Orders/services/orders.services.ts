@@ -9,6 +9,12 @@ import { decrementStock } from "@/utils/stock";
 import type { PaymentMethod, OrderStatus } from "@prisma/client";
 import fs from "fs";
 import { uploadToBucket } from "@/config/minio";
+import {
+  BadRequestError,
+  ConflictError,
+  errors,
+} from "@/utils/errors";
+
 interface OrderItemInput { product_id: string; quantity: number; options?: any }
 interface CustomerInput {
   name: string;
@@ -20,6 +26,7 @@ interface CustomerInput {
   province?: string;
   pickup?: boolean;
 }
+
 export default class OrdersServices {
   async createOrder(
     userId: number | undefined,
@@ -54,36 +61,35 @@ export default class OrdersServices {
       stock: number;
     }[];
     if (snapshot.length === 0) {
-      return {
-        ok: false,
-        status: 400,
-        error: "invalid_products",
-        missing_product_ids: productIds,
-      };
+      throw new BadRequestError(
+        "Productos inválidos",
+        { missing_product_ids: productIds },
+        "invalid_products",
+      );
     }
     if (snapshot.length !== items.length) {
       const snapshotIds = new Set(snapshot.map((it) => it.id));
       const missing = productIds.filter((id) => !snapshotIds.has(id));
-      return {
-        ok: false,
-        status: 400,
-        error: "invalid_products",
-        missing_product_ids: missing,
-      };
+      throw new BadRequestError(
+        "Productos inválidos",
+        { missing_product_ids: missing },
+        "invalid_products",
+      );
     }
     const outOfStock = snapshot.filter((it) => it.stock < it.quantity);
     if (outOfStock.length > 0) {
-      return {
-        ok: false,
-        status: 409,
-        error: "insufficient_stock",
-        out_of_stock: outOfStock.map((it) => ({
-          product_id: it.id,
-          title: it.title,
-          available: it.stock,
-          requested: it.quantity,
-        })),
-      };
+      throw new ConflictError(
+        "Stock insuficiente",
+        {
+          out_of_stock: outOfStock.map((it) => ({
+            product_id: it.id,
+            title: it.title,
+            available: it.stock,
+            requested: it.quantity,
+          })),
+        },
+        "insufficient_stock",
+      );
     }
     const subtotal = snapshot.reduce(
       (acc, it) => acc + Number(it.price) * Number(it.quantity),
@@ -103,7 +109,7 @@ export default class OrdersServices {
         userId = undefined;
       }
     }
-    const orderData: any = {
+    const orderData: Record<string, unknown> = {
       total,
       subtotal,
       payment_method: paymentNormalized,
@@ -120,7 +126,7 @@ export default class OrdersServices {
       orderData.user = { connect: { id: userId } };
     }
     const order = await prisma.$transaction(async (tx) => {
-      const created = await tx.orders.create({ data: orderData });
+      const created = await tx.orders.create({ data: orderData as any });
       await decrementStock(
         tx,
         snapshot.map((it) => ({ id: it.id, quantity: it.quantity })),
@@ -171,7 +177,10 @@ export default class OrdersServices {
         });
       }
     } catch (err) {
-      console.error("order_sale_link_failed", err);
+      logger.warn("order_sale_link_failed", {
+        orderId: order.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
     setImmediate(() => {
       void (async () => {
@@ -184,6 +193,7 @@ export default class OrdersServices {
     });
     return { ok: true, order_id: order.id, total };
   }
+
   async getOrderById(orderId: string) {
     return prisma.orders.findUnique({
       where: { id: orderId },
@@ -195,32 +205,29 @@ export default class OrdersServices {
       },
     });
   }
+
   async saveTransferReceipt(orderId: string, file: Express.Multer.File) {
-    try {
-      const order = await prisma.orders.findUnique({ where: { id: orderId } });
-      if (!order) return { ok: false, status: 404, error: "order_not_found" };
-      if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA")
-        return { ok: false, status: 400, error: "invalid_payment_method" };
-      const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
-      const uniqueName = `receipt-${orderId}-${Date.now()}`;
-      const up = await uploadToBucket(
-        buffer,
-        uniqueName,
-        "comprobantes",
-        "",
-        file.mimetype,
-      );
-      if (!up.path) return { ok: false, status: 500, error: "upload_failed" };
-      await prisma.orders.update({
-        where: { id: orderId },
-        data: { transfer_receipt_path: up.path },
-      });
-      return { ok: true, path: up.path };
-    } catch (err) {
-      console.error("saveTransferReceipt_error", err);
-      return { ok: false, status: 500, error: "internal_error" };
-    }
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) throw errors.orderNotFound();
+    if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA")
+      throw errors.invalidPaymentMethod();
+    const buffer: Buffer = file.buffer ?? fs.readFileSync(file.path);
+    const uniqueName = `receipt-${orderId}-${Date.now()}`;
+    const up = await uploadToBucket(
+      buffer,
+      uniqueName,
+      "comprobantes",
+      "",
+      file.mimetype,
+    );
+    if (!up.path) throw errors.receiptUploadFailed();
+    await prisma.orders.update({
+      where: { id: orderId },
+      data: { transfer_receipt_path: up.path },
+    });
+    return { ok: true, path: up.path };
   }
+
   async listAdminOrders({
     status,
     page = 1,
@@ -234,7 +241,7 @@ export default class OrdersServices {
   }) {
     const take = Math.max(1, Math.min(100, Number(limit) || 20));
     const skip = (Math.max(1, Number(page) || 1) - 1) * take;
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status && status !== "ALL") where.status = status;
     if (q && q.trim()) {
       const term = q.trim();
@@ -247,7 +254,7 @@ export default class OrdersServices {
     }
     const [items, total] = await Promise.all([
       prisma.orders.findMany({
-        where,
+        where: where as any,
         orderBy: { created_at: "desc" },
         skip,
         take,
@@ -264,7 +271,7 @@ export default class OrdersServices {
           },
         },
       }),
-      prisma.orders.count({ where }),
+      prisma.orders.count({ where: where as any }),
     ]);
     const totalPages = Math.ceil(total / take) || 1;
     return {
@@ -280,15 +287,17 @@ export default class OrdersServices {
       },
     };
   }
+
   async updateStatus(id: string, status: OrderStatus) {
     const order = await prisma.orders.findUnique({ where: { id } });
-    if (!order) return { ok: false, status: 404, error: "order_not_found" };
+    if (!order) throw errors.orderNotFound();
     const updated = await prisma.orders.update({
       where: { id },
       data: { status },
     });
     return { ok: true, order: updated };
   }
+
   async listUserOrders(userId: number, page = 1, limit = 10) {
     const take = Math.max(1, limit);
     const skip = (Math.max(1, page) - 1) * take;
@@ -326,6 +335,7 @@ export default class OrdersServices {
       hasPrevPage: page > 1,
     };
   }
+
   private async notify(
     orderId: string,
     items: { title: string; price: number; quantity: number }[],

@@ -20,10 +20,13 @@ import BusinessRouter from "@/modules/Business/router";
 import FaqRouter from "@/modules/FAQ/routes";
 import WhatsAppRouter from "@/modules/WhatsApp/routes";
 import EgresosRouter from "@/modules/Egresos/routes";
+import CuentaCorrienteRouter from "@/modules/CuentaCorriente/routes";
 import { initUploadsCleanupJob } from "./jobs/cleanupUploads";
+import { initTempUploadsCleanupJob } from "./jobs/cleanupTempUploads";
+import { initPurgeDeletedProductsJob } from "./jobs/purgeDeletedProducts";
 import swaggerUi from "swagger-ui-express";
 import spec from "./docs/openapi";
-import morgan from "morgan";
+import { httpLogger } from "@/middlewares/httpLogger";
 import path from "path";
 import fs from "fs";
 import { logger } from "@/utils/logger";
@@ -153,13 +156,7 @@ app.use(
     },
   }),
 );
-app.use(
-  morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", {
-    stream: {
-      write: (msg) => logger.http(msg.trim()),
-    },
-  }),
-);
+app.use(httpLogger);
 app.get(
   "/api/health",
   asyncHandler(async (_req, res) => {
@@ -188,6 +185,7 @@ app.use("/api/orders", OrdersRouter);
 app.use("/api/business", BusinessRouter);
 app.use("/api/whatsapp", WhatsAppRouter);
 app.use("/api/egresos", EgresosRouter);
+app.use("/api/cuentas-corrientes", CuentaCorrienteRouter);
 app.get(
   /^\/api\/storage\/([^/]+)\/(.+)$/,
   asyncHandler(async (req, res) => {
@@ -231,8 +229,8 @@ if (!isProduction) {
 }
 app.use(notFoundHandler);
 app.use(errorHandler);
-app.listen(PORT, () => {
-  logger.info(`API listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  logger.info(`API listening on http://0.0.0.0:${PORT}`);
   if (process.env.NODE_ENV === "production") {
     exec("npx prisma migrate deploy", (error, stdout, stderr) => {
       if (error) {
@@ -246,6 +244,8 @@ app.listen(PORT, () => {
     });
   }
   initUploadsCleanupJob();
+  initTempUploadsCleanupJob();
+  initPurgeDeletedProductsJob();
   import("./modules/WhatsApp/services/whatsapp.services")
     .then(({ whatsAppServices }) => {
       whatsAppServices.startTimeoutWorker();

@@ -5,6 +5,7 @@ import type {
   EgresoUpdateRequest,
   EgresoListQuery,
 } from "./schemas/egresos.schemas";
+import { BadRequestError, ConflictError, NotFoundError } from "@/utils/errors";
 
 export default class EgresosServices {
   async listEgresos(query: EgresoListQuery) {
@@ -78,7 +79,7 @@ export default class EgresosServices {
       include: { category: true },
     });
     if (!item || item.deleted_at) {
-      return { ok: false, status: 404, error: "Egreso no encontrado." };
+      throw new NotFoundError("Egreso no encontrado", "egreso_not_found");
     }
     return { ok: true, item };
   }
@@ -127,16 +128,16 @@ export default class EgresosServices {
       where: { id: data.category_id },
     });
     if (!category || category.deleted_at || !category.is_active) {
-      return {
-        ok: false,
-        status: 400,
-        error: "La categoría seleccionada no existe o está inactiva.",
-      };
+      throw new BadRequestError(
+        "La categoría seleccionada no existe o está inactiva",
+        undefined,
+        "category_unavailable",
+      );
     }
 
     const egresoDate = new Date(`${data.egreso_date}T12:00:00.000Z`);
     if (Number.isNaN(egresoDate.getTime())) {
-      return { ok: false, status: 400, error: "Fecha inválida." };
+      throw new BadRequestError("Fecha inválida", undefined, "invalid_date");
     }
 
     const item = await prisma.egresos.create({
@@ -158,7 +159,7 @@ export default class EgresosServices {
   async updateEgreso(id: string, data: EgresoUpdateRequest) {
     const existing = await prisma.egresos.findUnique({ where: { id } });
     if (!existing || existing.deleted_at) {
-      return { ok: false, status: 404, error: "Egreso no encontrado." };
+      throw new NotFoundError("Egreso no encontrado", "egreso_not_found");
     }
 
     if (data.category_id) {
@@ -166,11 +167,11 @@ export default class EgresosServices {
         where: { id: data.category_id },
       });
       if (!category || category.deleted_at || !category.is_active) {
-        return {
-          ok: false,
-          status: 400,
-          error: "La categoría seleccionada no existe o está inactiva.",
-        };
+        throw new BadRequestError(
+          "La categoría seleccionada no existe o está inactiva",
+          undefined,
+          "category_unavailable",
+        );
       }
     }
 
@@ -189,7 +190,7 @@ export default class EgresosServices {
     if (data.egreso_date !== undefined) {
       const parsed = new Date(`${data.egreso_date}T12:00:00.000Z`);
       if (Number.isNaN(parsed.getTime())) {
-        return { ok: false, status: 400, error: "Fecha inválida." };
+        throw new BadRequestError("Fecha inválida", undefined, "invalid_date");
       }
       updateData.egreso_date = parsed;
     }
@@ -206,7 +207,7 @@ export default class EgresosServices {
   async softDeleteEgreso(id: string) {
     const existing = await prisma.egresos.findUnique({ where: { id } });
     if (!existing || existing.deleted_at) {
-      return { ok: false, status: 404, error: "Egreso no encontrado." };
+      throw new NotFoundError("Egreso no encontrado", "egreso_not_found");
     }
     await prisma.egresos.update({
       where: { id },
@@ -218,3 +219,5 @@ export default class EgresosServices {
     return { ok: true };
   }
 }
+
+export const _unusedConflict = ConflictError;

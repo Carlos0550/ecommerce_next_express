@@ -1,19 +1,42 @@
-import { Router } from 'express';
-import AuthServices from '@/modules/User/services/auth_services';
-import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
+import { Router } from "express";
+import { asyncHandler } from "@/utils/asyncHandler";
+import AuthServices from "@/modules/User/services/auth_services";
+import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
+
 const router = Router();
 const authServices = new AuthServices();
-router.post('/login', (_req, _res, next) => next(), (req, res) => authServices.loginAdmin(req, res));
+
+router.post("/login", asyncHandler(async (req, res) => {
+  const result = await authServices.loginAdmin(req, res);
+  res.json(result);
+}));
+
 router.post(
-  '/register',
+  "/register",
   requireAuth,
   requireRole(["ADMIN"]),
-  (_req, _res, next) => next(),
-  (req, res) => authServices.registerAdmin(req, res),
+  asyncHandler(async (req, res) => {
+    const result = await authServices.registerAdmin(req, res);
+    res.json(result);
+  }),
 );
-router.post('/password/reset', (_req, _res, next) => next(), (req, res) => authServices.resetPasswordAdmin(req, res));
-router.post('/password/change', requireAuth, requireRole(["ADMIN"]), (req, res) => authServices.changePasswordAdmin(req, res));
-router.get('/validate-token', requireAuth, requireRole(["ADMIN"]), (req, res) => {
+
+router.post("/password/reset", asyncHandler(async (req, res) => {
+  const result = await authServices.resetPasswordAdmin(req, res);
+  res.json(result);
+}));
+
+router.post(
+  "/password/change",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  asyncHandler(async (req, res) => {
+    const result = await authServices.changePasswordAdmin(req, res);
+    res.json(result);
+  }),
+);
+
+router.get("/validate-token", requireAuth, requireRole(["ADMIN"]), (req, res) => {
   const user = (req as any).user;
   res.json({
     ok: true,
@@ -24,7 +47,8 @@ router.get('/validate-token', requireAuth, requireRole(["ADMIN"]), (req, res) =>
     role: user.role || 1,
     profileImage: user.profileImage || null,
     is_clerk: !!user.is_clerk,
-    subjectType: user.subjectType || 'admin',
+    subjectType: user.subjectType || "admin",
   });
 });
+
 export default router;

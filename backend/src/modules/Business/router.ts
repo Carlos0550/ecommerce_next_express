@@ -1,5 +1,5 @@
-import type { Request, Response} from "express";
 import { Router } from "express";
+import { asyncHandler } from "@/utils/asyncHandler";
 import businessController from "./router.controller";
 import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
 import {
@@ -7,10 +7,18 @@ import {
   handleImageUploadError,
   validateImageMagicBytes,
 } from "@/middlewares/image.middleware";
+
 const router = Router();
-router.post("/", requireAuth, requireRole(["ADMIN"]), (req: Request, res: Response) =>
-  businessController.createBusiness(req, res),
+
+router.post(
+  "/",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  asyncHandler(async (req, res) => {
+    res.status(201).json(await businessController.createBusiness(req, res));
+  }),
 );
+
 router.post(
   "/upload-image",
   requireAuth,
@@ -18,8 +26,11 @@ router.post(
   uploadSingleImage("file"),
   handleImageUploadError,
   validateImageMagicBytes,
-  (req: Request, res: Response) => businessController.uploadImage(req, res),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.uploadImage(req, res));
+  }),
 );
+
 router.post(
   "/upload-banner-image",
   requireAuth,
@@ -27,39 +38,66 @@ router.post(
   uploadSingleImage("file"),
   handleImageUploadError,
   validateImageMagicBytes,
-  (req: Request, res: Response) =>
-    businessController.uploadBannerImage(req, res),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.uploadBannerImage(req, res));
+  }),
 );
+
 router.post(
   "/generate-description",
   requireAuth,
   requireRole(["ADMIN"]),
-  (req: Request, res: Response) =>
-    businessController.generateDescription(req, res),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.generateDescription(req, res));
+  }),
 );
+
 router.put(
   "/:id",
   requireAuth,
   requireRole(["ADMIN"]),
-  (req: Request, res: Response) => businessController.updateBusiness(req, res),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.updateBusiness(req, res));
+  }),
 );
-router.get("/", requireAuth, requireRole(["ADMIN"]), (req: Request, res: Response) =>
-  businessController.getBusiness(req, res),
+
+router.get(
+  "/",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.getBusiness(req, res));
+  }),
 );
-router.get("/public", (req: Request, res: Response) =>
-  businessController.getBusiness(req, res),
+
+router.get(
+  "/public",
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.getBusiness(req, res));
+  }),
 );
-router.get("/public/bank-info", (req: Request, res: Response) =>
-  businessController.getBusiness(req, res),
+
+router.get(
+  "/public/bank-info",
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.getBusiness(req, res));
+  }),
 );
-router.get("/theme", (req: Request, res: Response) =>
-  businessController.getActivePalette(req, res),
+
+router.get(
+  "/theme",
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.getActivePalette(req, res));
+  }),
 );
+
 router.patch(
   "/palette",
   requireAuth,
   requireRole(["ADMIN"]),
-  (req: Request, res: Response) =>
-    businessController.setActivePalette(req, res),
+  asyncHandler(async (req, res) => {
+    res.json(await businessController.setActivePalette(req, res));
+  }),
 );
+
 export default router;

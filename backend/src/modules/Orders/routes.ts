@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
+import { asyncHandler } from "@/utils/asyncHandler";
 import {
   requireAuth,
   requireRole,
@@ -13,13 +14,17 @@ import {
 } from "@/middlewares/image.middleware";
 import OrdersServices from "./services/orders.services";
 import { ensureCreatePayload } from "./router.controller";
+import { createSignedUrl } from "@/config/minio";
+import { errors } from "@/utils/errors";
+
 const router = Router();
 const service = new OrdersServices();
+
 router.post(
   "/create",
   attachAuthIfPresent,
   ensureCreatePayload,
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
     const userId = user ? Number(user.sub || user.id) : undefined;
     const rs = await service.createOrder(
@@ -28,26 +33,28 @@ router.post(
       (req as any).payment_method,
       (req as any).customer,
     );
-    if (rs && typeof rs === "object" && "ok" in rs && rs.ok === false) {
-      const status = (rs as any).status || 400;
-      return res.status(status).json(rs);
-    }
     res.json(rs);
-  },
+  }),
 );
-router.get("/", requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const userId = Number(user.sub || user.id);
-  const page = Number((req.query.page as string) || "1");
-  const limit = Number((req.query.limit as string) || "10");
-  const rs = await service.listUserOrders(userId, page, limit);
-  res.json(rs);
-});
+
+router.get(
+  "/",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    const userId = Number(user.sub || user.id);
+    const page = Number((req.query.page as string) || "1");
+    const limit = Number((req.query.limit as string) || "10");
+    const rs = await service.listUserOrders(userId, page, limit);
+    res.json(rs);
+  }),
+);
+
 router.get(
   "/admin",
   requireAuth,
   requireRole(["ADMIN"]),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const status = (req.query.status as string | undefined) || undefined;
     const q = (req.query.q as string | undefined) || undefined;
     const page = Number((req.query.page as string) || "1");
@@ -59,13 +66,14 @@ router.get(
       q,
     });
     res.json(rs);
-  },
+  }),
 );
+
 router.patch(
   "/:id/status",
   requireAuth,
   requireRole(["ADMIN"]),
-  async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const id = String((req.params as any)?.id || "");
     const status = String((req.body as any)?.status || "").toUpperCase();
     const allowed = [
@@ -77,86 +85,71 @@ router.patch(
       "CANCELLED",
       "REFUNDED",
     ];
-    if (!id) return res.status(400).json({ ok: false, error: "missing_id" });
-    if (!allowed.includes(status))
-      return res.status(400).json({ ok: false, error: "invalid_status" });
+    if (!id) throw errors.missingFields(["id"]);
+    if (!allowed.includes(status)) throw errors.invalidStatus();
     const rs = await service.updateStatus(id, status as any);
-    if (!rs.ok)
-      return res.status((rs as any).status || 400).json(rs);
     res.json(rs);
-  },
+  }),
 );
+
 router.post(
   "/:id/receipt",
   attachAuthIfPresent,
   uploadSingleImage("file"),
   handleImageUploadError,
   validateImageMagicBytes,
-  async (req: Request, res: Response) => {
-    try {
-      const id = String((req.params as any)?.id || "");
-      if (!id)
-        return res.status(400).json({ ok: false, error: "missing_order_id" });
-      const order = await service.getOrderById(id);
-      if (!order)
-        return res.status(404).json({ ok: false, error: "order_not_found" });
-      const user = (req as any).user;
-      const isAdmin = !!user && normalizeRole(user.role) === "ADMIN";
-      if (!isAdmin) {
-        if (user) {
-          const userId = Number(user.sub || user.id);
-          if (!order.userId || Number(order.userId) !== userId) {
-            return res.status(403).json({ ok: false, error: "forbidden" });
-          }
-        } else if (order.userId) {
-          return res.status(403).json({ ok: false, error: "forbidden" });
-        }
-      }
-      if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA") {
-        return res
-          .status(400)
-          .json({ ok: false, error: "invalid_payment_method" });
-      }
-      const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file)
-        return res.status(400).json({ ok: false, error: "missing_file" });
-      const rs = await service.saveTransferReceipt(id, file);
-      if (!rs.ok) return res.status(rs.status || 400).json(rs);
-      res.json(rs);
-    } catch (err) {
-      res.status(500).json({ ok: false, error: "receipt_upload_failed" });
-    }
-  },
-);
-router.get("/:id/receipt", requireAuth, async (req: Request, res: Response) => {
-  try {
+  asyncHandler(async (req: Request, res: Response) => {
     const id = String((req.params as any)?.id || "");
-    if (!id)
-      return res.status(400).json({ ok: false, error: "missing_order_id" });
+    if (!id) throw errors.missingFields(["order_id"]);
+    const order = await service.getOrderById(id);
+    if (!order) throw errors.orderNotFound();
+    const user = (req as any).user;
+    const isAdmin = !!user && normalizeRole(user.role) === "ADMIN";
+    if (!isAdmin) {
+      if (user) {
+        const userId = Number(user.sub || user.id);
+        if (!order.userId || Number(order.userId) !== userId) {
+          throw errors.forbidden();
+        }
+      } else if (order.userId) {
+        throw errors.forbidden();
+      }
+    }
+    if (String(order.payment_method).toUpperCase() !== "TRANSFERENCIA") {
+      throw errors.invalidPaymentMethod();
+    }
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) throw errors.missingFields(["file"]);
+    const rs = await service.saveTransferReceipt(id, file);
+    res.json(rs);
+  }),
+);
+
+router.get(
+  "/:id/receipt",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = String((req.params as any)?.id || "");
+    if (!id) throw errors.missingFields(["order_id"]);
     const user = (req as any).user;
     const isAdmin = !!user && normalizeRole(user.role) === "ADMIN";
     const order = await service.getOrderById(id);
-    if (!order)
-      return res.status(404).json({ ok: false, error: "order_not_found" });
+    if (!order) throw errors.orderNotFound();
     if (!isAdmin) {
       const userId = Number(user.sub || user.id);
       if (!order.userId || Number(order.userId) !== userId) {
-        return res.status(403).json({ ok: false, error: "forbidden" });
+        throw errors.forbidden();
       }
     }
-    if (!order.transfer_receipt_path)
-      return res.status(404).json({ ok: false, error: "receipt_not_found" });
-    const { createSignedUrl } = await import("@/config/minio");
+    if (!order.transfer_receipt_path) throw errors.receiptNotFound();
     const signed = await createSignedUrl(
       "comprobantes",
       order.transfer_receipt_path,
       3600,
     );
-    if (!signed.url)
-      return res.status(500).json({ ok: false, error: "signed_url_failed" });
+    if (!signed.url) throw errors.signedUrlFailed();
     res.json({ ok: true, url: signed.url });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: "receipt_fetch_failed" });
-  }
-});
+  }),
+);
+
 export default router;

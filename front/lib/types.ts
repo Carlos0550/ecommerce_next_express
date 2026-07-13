@@ -165,14 +165,8 @@ export interface Business {
     | "midnight"
     | "argentina";
   banner_config?: BannerConfig | null;
-  admin_layout_config?: AdminLayoutConfig | null;
   bankData?: BankData[];
-}
-
-export type AdminLayoutMode = "legacy" | "modern";
-
-export interface AdminLayoutConfig {
-  sales?: AdminLayoutMode;
+  cc_vencimiento_dias?: number;
 }
 
 export interface BankData {
@@ -261,4 +255,81 @@ export interface Paginated<T> {
   pages?: number;
   [key: string]: unknown;
   data?: T[];
+}
+
+export interface ClienteCC {
+  id: string;
+  nombre: string;
+  telefono: string;
+  email?: string | null;
+  direccion?: string | null;
+  notas?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ClienteCCListRow extends ClienteCC {
+  total_adeudado: number;
+  total_entregado: number;
+  estado_ciclo_actual: "abierto" | "vencido" | "cerrado" | "sin_ciclos";
+  ciclo_abierto_id: string | null;
+}
+
+export interface ClienteCCListResponse {
+  ok: true;
+  data: {
+    items: ClienteCCListRow[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
+export interface DeudaCC {
+  id: string;
+  cicloId: string;
+  cantidad: number;
+  titulo: string;
+  precio_unit: string | number;
+  total: string | number;
+  fecha: string;
+  notas?: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface PagoCC {
+  id: string;
+  cicloId: string;
+  monto: string | number;
+  payment_method: EgresoPaymentMethod;
+  fecha: string;
+  notas?: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface Ciclo {
+  id: string;
+  cuentaId: string;
+  estado: "ABIERTO" | "CERRADO";
+  fecha_apertura: string;
+  fecha_cierre?: string | null;
+  deudas: DeudaCC[];
+  pagos: PagoCC[];
+  total_adeudado: number;
+  total_pagado: number;
+  saldo_pendiente: number;
+  vencido: boolean;
+}
+
+export interface ClienteCCDetail extends ClienteCC {
+  cuenta?: { id: string; ciclos: Ciclo[] } | null;
+  ciclo_actual: Ciclo | null;
 }

@@ -1,13 +1,28 @@
 import winston from "winston";
 import "winston-daily-rotate-file";
+import { loggerStorage } from "@/utils/loggerContext";
+
 const { combine, timestamp, printf, colorize, align, errors } = winston.format;
+
+const RESERVED_KEYS = new Set([
+  "level",
+  "message",
+  "timestamp",
+  "stack",
+  "splat",
+  "Symbol(level)",
+  "Symbol(message)",
+  "Symbol(splat)",
+]);
+
 const logLevels = {
   error: 0,
   warn: 1,
   info: 2,
   http: 3,
   debug: 4,
-};
+} as const;
+
 const colors = {
   error: "red",
   warn: "yellow",
@@ -16,25 +31,95 @@ const colors = {
   debug: "white",
 };
 winston.addColors(colors);
-const logFormat = combine(
-  timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-  errors({ stack: true }), 
-  align(),
-  printf((info) => {
-    const { timestamp, level, message, stack, ...args } = info;
-    const argsStr = Object.keys(args).length
-      ? JSON.stringify(args, null, 2)
-      : "";
-    const ts = typeof timestamp === "string" ? timestamp : JSON.stringify(timestamp ?? "");
-    const msg = typeof message === "string" ? message : JSON.stringify(message);
-    const stk = typeof stack === "string" ? stack : stack ? JSON.stringify(stack) : "";
-    return `[${ts}] ${level}: ${msg} ${stk} ${argsStr}`;
+
+const isProduction = process.env.NODE_ENV === "production";
+
+function defaultLevel(): keyof typeof logLevels {
+  const env = (process.env.LOG_LEVEL || "").toLowerCase();
+  if (env in logLevels) return env as keyof typeof logLevels;
+  return isProduction ? "info" : "debug";
+}
+
+function extractMeta(info: Record<string, unknown>): Record<string, unknown> {
+  const meta: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(info)) {
+    if (RESERVED_KEYS.has(k)) continue;
+    if (typeof k === "string" && k.startsWith("Symbol(")) continue;
+    meta[k] = v;
+  }
+  return meta;
+}
+
+const contextFormat = printf((info) => {
+  const ctx = loggerStorage.get();
+  const meta = extractMeta(info as Record<string, unknown>);
+  if (ctx) {
+    if (ctx.requestId) meta.requestId = ctx.requestId;
+    if (ctx.userId !== undefined) meta.userId = ctx.userId;
+    if (ctx.route) meta.route = ctx.route;
+    if (ctx.method) meta.method = ctx.method;
+  }
+  const metaKeys = Object.keys(meta);
+  const metaStr = metaKeys.length ? ` ${JSON.stringify(meta)}` : "";
+  const stack =
+    typeof info.stack === "string"
+      ? info.stack
+      : info.stack
+        ? JSON.stringify(info.stack)
+        : "";
+  const ts =
+    typeof info.timestamp === "string"
+      ? info.timestamp
+      : JSON.stringify(info.timestamp ?? "");
+  const msg =
+    typeof info.message === "string"
+      ? info.message
+      : JSON.stringify(info.message);
+  const level = String(info.level).padEnd(5);
+  return `[${ts}] ${level} ${msg}${stack ? `\n${stack}` : ""}${metaStr}`;
+});
+
+const jsonFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.printf((info) => {
+    const ctx = loggerStorage.get();
+    const meta = extractMeta(info as Record<string, unknown>);
+    const payload: Record<string, unknown> = {
+      ts: info.timestamp,
+      level: info.level,
+      msg: info.message,
+      ...meta,
+    };
+    if (info.stack && typeof info.stack === "string") payload.stack = info.stack;
+    if (ctx) {
+      if (ctx.requestId) payload.requestId = ctx.requestId;
+      if (ctx.userId !== undefined) payload.userId = ctx.userId;
+      if (ctx.route) payload.route = ctx.route;
+      if (ctx.method) payload.method = ctx.method;
+    }
+    return JSON.stringify(payload);
   }),
 );
+
+const fileFormat = combine(
+  timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+  errors({ stack: true }),
+  align(),
+  contextFormat,
+);
+
+const devConsoleFormat = combine(
+  colorize({ all: true }),
+  timestamp({ format: "HH:mm:ss" }),
+  errors({ stack: true }),
+  contextFormat,
+);
+
 export const logger = winston.createLogger({
   levels: logLevels,
-  level: process.env.LOG_LEVEL || "info",
-  format: logFormat,
+  level: defaultLevel(),
+  format: fileFormat,
   transports: [
     new winston.transports.DailyRotateFile({
       filename: "logs/error-%DATE%.log",
@@ -51,30 +136,12 @@ export const logger = winston.createLogger({
     }),
   ],
 });
-if (process.env.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: combine(
-        colorize({ all: true }),
-        timestamp({ format: "HH:mm:ss" }),
-        printf((info) => {
-          const ts =
-            typeof info.timestamp === "string"
-              ? info.timestamp
-              : JSON.stringify(info.timestamp ?? "");
-          const msg =
-            typeof info.message === "string"
-              ? info.message
-              : JSON.stringify(info.message);
-          const stk =
-            typeof info.stack === "string"
-              ? info.stack
-              : info.stack
-                ? JSON.stringify(info.stack)
-                : "";
-          return `[${ts}] ${info.level}: ${msg} ${stk}`;
-        }),
-      ),
-    }),
-  );
-}
+
+logger.add(
+  new winston.transports.Console({
+    format: isProduction ? jsonFormat : devConsoleFormat,
+  }),
+);
+
+export type Logger = typeof logger;
+export default logger;

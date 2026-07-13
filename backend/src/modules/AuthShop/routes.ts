@@ -1,13 +1,32 @@
-import { Router } from 'express';
-import AuthServices from '@/modules/User/services/auth_services';
-import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
+import { Router } from "express";
+import { asyncHandler } from "@/utils/asyncHandler";
+import AuthServices from "@/modules/User/services/auth_services";
+import { requireAuth, requireRole } from "@/middlewares/auth.middleware";
+
 const router = Router();
 const authServices = new AuthServices();
-router.post('/login', (_req, _res, next) => next(), (req, res) => authServices.loginShop(req, res));
-router.post('/register', (_req, _res, next) => next(), (req, res) => authServices.registerShop(req, res));
-router.post('/password/reset', (_req, _res, next) => next(), (req, res) => authServices.resetPasswordShop(req, res));
-router.post('/password/change', requireAuth, (req, res) => authServices.changePasswordShop(req, res));
-router.get('/validate-token', requireAuth, requireRole([2]), (req, res) => {
+
+router.post("/login", asyncHandler(async (req, res) => {
+  const result = await authServices.loginShop(req, res);
+  res.json(result);
+}));
+
+router.post("/register", asyncHandler(async (req, res) => {
+  const result = await authServices.registerShop(req, res);
+  res.json(result);
+}));
+
+router.post("/password/reset", asyncHandler(async (req, res) => {
+  const result = await authServices.resetPasswordShop(req, res);
+  res.json(result);
+}));
+
+router.post("/password/change", requireAuth, asyncHandler(async (req, res) => {
+  const result = await authServices.changePasswordShop(req, res);
+  res.json(result);
+}));
+
+router.get("/validate-token", requireAuth, requireRole([2]), (req, res) => {
   const user = (req as any).user;
   res.json({
     ok: true,
@@ -17,7 +36,8 @@ router.get('/validate-token', requireAuth, requireRole([2]), (req, res) => {
     is_active: user.is_active ?? true,
     role: user.role || 2,
     profileImage: user.profileImage || null,
-    subjectType: user.subjectType || 'user',
+    subjectType: user.subjectType || "user",
   });
 });
+
 export default router;

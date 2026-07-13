@@ -4,6 +4,7 @@ import type {
   EgresoCategoryUpdateRequest,
 } from "./schemas/egresos.schemas";
 import type { EgresoCategoryStatus } from "@prisma/client";
+import { ConflictError, NotFoundError } from "@/utils/errors";
 
 export default class EgresosCategoriesServices {
   async listCategories() {
@@ -25,18 +26,15 @@ export default class EgresosCategoriesServices {
     const normalizedTitle = data.title.trim();
     const existing = await prisma.egresosCategories.findFirst({
       where: {
-        title: {
-          equals: normalizedTitle,
-          mode: "insensitive",
-        },
+        title: { equals: normalizedTitle, mode: "insensitive" },
       },
     });
     if (existing) {
-      return {
-        ok: false,
-        status: 409,
-        error: "Ya existe una categoría con ese título.",
-      };
+      throw new ConflictError(
+        "Ya existe una categoría con ese título",
+        undefined,
+        "category_title_taken",
+      );
     }
     const item = await prisma.egresosCategories.create({
       data: {
@@ -53,7 +51,7 @@ export default class EgresosCategoriesServices {
       where: { id },
     });
     if (!existing || existing.deleted_at) {
-      return { ok: false, status: 404, error: "Categoría no encontrada." };
+      throw new NotFoundError("Categoría no encontrada", "egreso_category_not_found");
     }
     if (data.title) {
       const normalized = data.title.trim();
@@ -64,11 +62,11 @@ export default class EgresosCategoriesServices {
         },
       });
       if (dup) {
-        return {
-          ok: false,
-          status: 409,
-          error: "Ya existe una categoría con ese título.",
-        };
+        throw new ConflictError(
+          "Ya existe una categoría con ese título",
+          undefined,
+          "category_title_taken",
+        );
       }
     }
     const item = await prisma.egresosCategories.update({
@@ -94,15 +92,15 @@ export default class EgresosCategoriesServices {
       },
     });
     if (!existing || existing.deleted_at) {
-      return { ok: false, status: 404, error: "Categoría no encontrada." };
+      throw new NotFoundError("Categoría no encontrada", "egreso_category_not_found");
     }
     const activeEgresos = existing._count.egresos;
     if (activeEgresos > 0) {
-      return {
-        ok: false,
-        status: 409,
-        error: `No se puede eliminar: la categoría tiene ${activeEgresos} egreso(s) activo(s).`,
-      };
+      throw new ConflictError(
+        `No se puede eliminar: la categoría tiene ${activeEgresos} egreso(s) activo(s)`,
+        { activeEgresos },
+        "category_has_active_egresos",
+      );
     }
     await prisma.egresosCategories.update({
       where: { id },
@@ -120,7 +118,7 @@ export default class EgresosCategoriesServices {
       where: { id },
     });
     if (!existing) {
-      return { ok: false, status: 404, error: "Categoría no encontrada." };
+      throw new NotFoundError("Categoría no encontrada", "egreso_category_not_found");
     }
     await prisma.egresosCategories.update({
       where: { id },

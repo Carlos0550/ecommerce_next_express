@@ -11,3 +11,4 @@ README.md
 .claude
 .DS_Store
 tsconfig.tsbuildinfo
+next-env.d.ts

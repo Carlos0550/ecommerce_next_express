@@ -1,5 +1,5 @@
 import { prisma } from '@/config/prisma';
-import { analyzeProductImages } from '@/config/groq';
+import { analyzeProductImages } from '@/config/openrouter';
 import { uploadImage } from '@/config/minio';
 import { messageService } from '../../message.service';
 import { sessionManager } from '../session.manager';
@@ -135,7 +135,7 @@ class ProductActions {
             await messageService.sendMessage(session.phone, '🤖 Regenerando descripción con IA...');
             if (userContext && product.description) {
               console.log(`📝 Usando modelo de TEXTO para aplicar correcciones: ${userContext}`);
-              const { regenerateDescriptionWithCorrections } = await import('@/config/groq');
+              const { regenerateDescriptionWithCorrections } = await import('@/config/openrouter');
               const correctedDescription = await regenerateDescriptionWithCorrections(
                 product.description,
                 product.title,
