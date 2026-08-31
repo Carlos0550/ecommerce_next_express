@@ -158,6 +158,9 @@ export function BulkProductForm() {
         if (data.failed === 0) {
           toast.success(`${data.created} producto(s) creado(s)`, {
             id: toastId,
+            // Reemplaza el duration: Infinity del toast.loading (que de
+            // otro modo se hereda y el toast nunca se cierra solo).
+            duration: 4000,
             description: "Carga masiva finalizada.",
           });
         } else if (data.created > 0) {
@@ -166,6 +169,7 @@ export function BulkProductForm() {
             `${data.created} creados, ${data.failed} con error`,
             {
               id: toastId,
+              duration: 6000,
               description: firstErr ?? "Revisá el listado para más detalles.",
             },
           );
@@ -173,6 +177,7 @@ export function BulkProductForm() {
           const firstErr = data.results.find((r) => r.status === "error")?.message;
           toast.error(`No se pudo crear ningún producto`, {
             id: toastId,
+            duration: 8000,
             description: firstErr ?? "Revisá los datos e intentá de nuevo.",
           });
         }
@@ -183,6 +188,7 @@ export function BulkProductForm() {
             : undefined;
         toast.error(typeof msg === "string" ? msg : "No se pudo procesar la carga masiva", {
           id: toastId,
+          duration: 8000,
           description: "La carga se canceló.",
         });
       }
