@@ -95,6 +95,8 @@ export function Providers({
         position="top-left"
         theme="system"
         toastOptions={{
+          // Regla global: todo toast se autocierra a los 3 segundos.
+          duration: 3000,
           style: {
             background: "var(--color-bg-card)",
             border: "1px solid var(--color-border)",
