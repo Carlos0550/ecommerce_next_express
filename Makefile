@@ -1,6 +1,6 @@
 .PHONY: help up up-build down logs logs-backend logs-frontend logs-db logs-redis logs-minio ps restart build clean clean-all migrate migrate-create seed shell-backend shell-frontend shell-db shell-redis shell-minio minio-ls stop
 
-COMPOSE := docker compose --env-file docker-compose.env
+COMPOSE := docker compose
 
 help: ## Mostrar esta ayuda
 	@echo "Cinnamon - comandos disponibles:"

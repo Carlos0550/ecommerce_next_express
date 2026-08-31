@@ -16,9 +16,9 @@ make logs                   # ver logs
 make down                   # detener
 ```
 
-**No hay `.env` raíz**: cada app tiene el suyo (`backend/.env` y `front/.env`) y el compose usa `env_file` para leerlos. La configuración de la infra (puertos, credenciales de postgres/redis/minio) está en `docker-compose.env`.
+**No hay `.env` raíz**: cada app tiene el suyo (`backend/.env` y `front/.env`) y el compose usa `env_file` para leerlos. Los puertos y URLs públicas usan los defaults de `docker-compose.yml`; si necesitás sobrescribir alguno (p. ej. un puerto ocupado), creá un `.env` opcional en la raíz: Compose lo lee automáticamente solo si existe.
 
-Servicios disponibles (puertos por defecto en `docker-compose.env`):
+Servicios disponibles (puertos por defecto en `docker-compose.yml`):
 
 | Servicio       | URL                                    |
 |----------------|----------------------------------------|
@@ -103,7 +103,6 @@ make migrate-create NAME=add_campo_x
 .
 ├── Makefile
 ├── docker-compose.yml
-├── docker-compose.env     # config de infra (puertos, credenciales postgres/redis/minio)
 ├── backend/
 │   ├── .env               # variables de la app backend
 │   ├── Dockerfile         # producción (multi-stage)
@@ -132,5 +131,5 @@ Para destruir todos los volúmenes: `make clean-all`.
 Al arrancar el stack, un job `minio-init` (imagen `minio/mc`) crea automáticamente el bucket configurado en `MINIO_BUCKET` y le aplica política de **lectura anónima** (para que las imágenes sean accesibles públicamente vía `MINIO_ENDPOINT:9000/<bucket>/<objeto>`).
 
 - **API S3**: `http://localhost:9002`
-- **Consola web**: `http://localhost:9003` (login con `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` de `docker-compose.env`)
+- **Consola web**: `http://localhost:9003` (login con `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
 - **Credenciales de aplicación**: `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` en `backend/.env` (pueden coincidir con root o ser otras)
