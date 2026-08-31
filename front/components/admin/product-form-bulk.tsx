@@ -141,10 +141,14 @@ export function BulkProductForm() {
     setTimeout(() => setSubmitting(false), 800);
 
     const total = ready.length;
+    // La duración de todo toast es 3s (global en providers.tsx). Sonner no
+    // aplica auto-cierre al tipo "loading" por diseño, así que lo forzamos:
+    // si la carga sigue en curso a los 3s, cerramos el toast; al terminar,
+    // el update por id lo vuelve a mostrar ya con el timer global de 3s.
     const toastId = toast.loading(`Subiendo ${total} producto(s) en segundo plano…`, {
       description: "Podés seguir trabajando. Te avisamos cuando termine.",
-      duration: Infinity,
     });
+    const loadingTimer = setTimeout(() => toast.dismiss(toastId), 3000);
 
     void (async () => {
       try {
@@ -185,6 +189,10 @@ export function BulkProductForm() {
           id: toastId,
           description: "La carga se canceló.",
         });
+      } finally {
+        // Si la carga ya terminó, anulamos el dismiss programado: el toast
+        // de resultado debe vivir sus 3 segundos completos desde que aparece.
+        clearTimeout(loadingTimer);
       }
     })();
   };

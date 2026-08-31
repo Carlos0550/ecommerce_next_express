@@ -14,7 +14,7 @@ const MIME_BY_EXT: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-const TEXT_MODEL = "minimax/minimax-m3";
+const TEXT_MODEL = "openai/gpt-5-mini";
 const isDevelopment = process.env.NODE_ENV === "development";
 
 export interface ProductAnalysisResult {
