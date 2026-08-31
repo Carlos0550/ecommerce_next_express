@@ -7,7 +7,7 @@ import type {
 } from '../../schemas/whatsapp.schemas';
 import { buildSystemPrompt, buildStateContext } from './prompt.builder';
 import { getBusinessEmojis } from './tone.detector';
-const TEXT_MODEL = 'minimax/minimax-m3';
+const TEXT_MODEL = 'openai/gpt-5-mini';
 class AIProcessor {
   async getCategoriesForPrompt(): Promise<{ formatted: string; list: { id: string; title: string }[] }> {
     const categories = await prisma.categories.findMany({
